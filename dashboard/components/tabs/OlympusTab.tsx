@@ -280,8 +280,8 @@ export default function OlympusTab() {
   }
   if (error || !data) {
     return (
-      <div className="px-12 py-8 text-red-400 text-sm">
-        ❌ {error ?? 'No data'}
+      <div className="px-12 py-8 text-amber-200/70 text-sm italic">
+        {error ?? 'The realm holds no record yet.'}
       </div>
     );
   }

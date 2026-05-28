@@ -1,11 +1,14 @@
 'use client';
 
 import { useRouter, useSearchParams } from 'next/navigation';
+import { BorderBeam } from '@/components/twentyfirst/BorderBeam';
 import { AGENT_COLORS } from '@/lib/olympus/colors';
 import type { AgentName, Decision } from '@/lib/olympus/types';
 
 type PositionRowProps = {
   decision: Decision;
+  isTopConviction?: boolean;
+  isLive?: boolean;
 };
 
 const COUNCIL_KEYS: Array<{ key: keyof Decision['council']; agent: AgentName }> = [
@@ -32,7 +35,7 @@ function statusTone(decision: Decision) {
   return 'text-amber-100';
 }
 
-export function PositionRow({ decision }: PositionRowProps) {
+export function PositionRow({ decision, isTopConviction = false, isLive = false }: PositionRowProps) {
   const router = useRouter();
   const searchParams = useSearchParams();
 
@@ -48,11 +51,15 @@ export function PositionRow({ decision }: PositionRowProps) {
   const councilVoted = COUNCIL_KEYS.filter(({ key }) => Boolean(decision.council[key]));
   const voteCount = councilVoted.length;
 
-  return (
+  const button = (
     <button
       type="button"
       onClick={handleClick}
-      className="group grid w-full grid-cols-[1fr_auto_auto_auto_auto] items-center gap-3 rounded-xl border border-white/[0.06] bg-white/[0.025] px-3 py-2.5 text-left transition-all hover:border-[#C9A96155] hover:bg-[#C9A96108]"
+      className={`group grid w-full grid-cols-[1fr_auto_auto_auto_auto] items-center gap-3 rounded-xl bg-white/[0.025] px-3 py-2.5 text-left transition-all ${
+        isTopConviction
+          ? 'border border-transparent'
+          : 'border border-white/[0.06] hover:border-[#C9A96155] hover:bg-[#C9A96108]'
+      }`}
     >
       <div className="flex items-baseline gap-2 overflow-hidden">
         <span className="font-sans text-base font-bold tracking-wide text-white">{decision.ticker}</span>
@@ -67,6 +74,12 @@ export function PositionRow({ decision }: PositionRowProps) {
         >
           {decision.right}
         </span>
+        {/* LIVE badge — shown when this position exists in real Robinhood portfolio */}
+        {isLive && (
+          <span className="rounded-full border border-emerald-400/40 bg-emerald-400/10 px-1.5 py-0.5 text-[9px] font-semibold uppercase tracking-[0.14em] text-emerald-300">
+            live
+          </span>
+        )}
       </div>
 
       <span className="font-mono text-xs text-white/72">${decision.strike}</span>
@@ -99,4 +112,10 @@ export function PositionRow({ decision }: PositionRowProps) {
       </span>
     </button>
   );
+
+  if (isTopConviction) {
+    return <BorderBeam active speed={5}>{button}</BorderBeam>;
+  }
+
+  return button;
 }

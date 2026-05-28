@@ -1,16 +1,20 @@
 'use client';
 
-import { Suspense, useCallback, useEffect, useState } from 'react';
+import { Suspense, useCallback, useEffect, useRef, useState } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { ApprovedPositions } from '@/components/olympus/ApprovedPositions';
 import { AgentLegend } from '@/components/olympus/AgentLegend';
+import { CouncilFlowBeam } from '@/components/olympus/CouncilFlowBeam';
 import { DecisionDrawer } from '@/components/olympus/DecisionDrawer';
 import { EquityHeader } from '@/components/olympus/EquityHeader';
 import { MacroPulse } from '@/components/olympus/MacroPulse';
 import { RecentResolutions } from '@/components/olympus/RecentResolutions';
 import { TradingBotsStatus } from '@/components/olympus/TradingBotsStatus';
 import { WhaleHunting } from '@/components/olympus/WhaleHunting';
+import { LivePortfolioSnapshot } from '@/components/olympus/LivePortfolioSnapshot';
+import { WinConfetti } from '@/components/olympus/WinConfetti';
 import { OracleDrawer } from '@/components/oracle/OracleDrawer';
+import { useWinConfetti } from '@/hooks/useWinConfetti';
 import mockState from '@/data/olympus-mock.json';
 import type { Decision, OlympusState } from '@/lib/olympus/types';
 
@@ -42,6 +46,12 @@ function OlympusInner() {
   const [state, setState] = useState<OlympusState>(INITIAL_STATE);
   const [error, setError] = useState<string | null>(null);
 
+  // Win confetti
+  const confettiCanvasRef = useRef<HTMLCanvasElement>(null);
+  const { fire: fireConfetti } = useWinConfetti(confettiCanvasRef);
+  const seenWinIds = useRef(new Set<string>());
+  const isFirstLoad = useRef(true);
+
   const decisionId = searchParams.get('decision');
   const decisionMap = buildDecisionMap(state.decisions);
   const activeDecision = decisionId ? (decisionMap.get(decisionId) ?? null) : null;
@@ -62,6 +72,16 @@ function OlympusInner() {
         if (!res.ok) throw new Error(`state ${res.status}`);
         const next = (await res.json()) as OlympusState;
         if (!cancelled) {
+          // Detect new WIN resolutions (skip on first load to avoid confetti storm)
+          for (const d of next.decisions.resolved) {
+            if (d.outcome === 'win') {
+              if (!isFirstLoad.current && !seenWinIds.current.has(d.decision_id)) {
+                fireConfetti();
+              }
+              seenWinIds.current.add(d.decision_id);
+            }
+          }
+          isFirstLoad.current = false;
           setState(next);
           setError(null);
         }
@@ -76,7 +96,7 @@ function OlympusInner() {
       cancelled = true;
       window.clearInterval(timer);
     };
-  }, []);
+  }, [fireConfetti]);
 
   return (
     <>
@@ -113,6 +133,10 @@ function OlympusInner() {
           </div>
 
           <EquityHeader state={state} />
+
+          {/* Council → Anubis → Thor → Execution flow beam */}
+          <CouncilFlowBeam />
+
           <AgentLegend agents={state.agents} />
 
           <div className="grid grid-cols-1 gap-5 xl:grid-cols-[260px_minmax(0,1fr)_340px]">
@@ -130,10 +154,14 @@ function OlympusInner() {
             <div className="space-y-5 xl:order-3">
               <WhaleHunting flow={state.whale_flow ?? []} />
               <TradingBotsStatus bots={state.trading_bots ?? []} />
+              <LivePortfolioSnapshot />
             </div>
           </div>
         </main>
       </div>
+
+      {/* Confetti canvas — fixed full-screen, pointer-events-none */}
+      <WinConfetti ref={confettiCanvasRef} />
 
       <DecisionDrawer decision={activeDecision} onClose={handleClose} />
       <OracleDrawer decisionContext={activeDecision} />
@@ -146,7 +174,7 @@ export default function OlympusPage() {
     <Suspense
       fallback={
         <div className="flex min-h-screen items-center justify-center bg-[#0D0B1A] text-white/40">
-          Loading...
+          The realm stirs…
         </div>
       }
     >

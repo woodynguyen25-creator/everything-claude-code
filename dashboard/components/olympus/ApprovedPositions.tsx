@@ -6,6 +6,13 @@ type ApprovedPositionsProps = {
 };
 
 export function ApprovedPositions({ decisions }: ApprovedPositionsProps) {
+  // Find the single highest-conviction decision — only it gets the BorderBeam
+  const topId = decisions.reduce<string | null>((best, d) => {
+    if (!best) return d.decision_id;
+    const bestConviction = decisions.find((x) => x.decision_id === best)?.conviction ?? 0;
+    return d.conviction > bestConviction ? d.decision_id : best;
+  }, null);
+
   return (
     <section className="flex flex-col rounded-2xl border border-white/[0.08] bg-[rgba(12,10,26,0.85)] p-5 shadow-[0_16px_60px_rgba(0,0,0,0.42)] backdrop-blur-xl">
       <div className="mb-4 flex items-center justify-between gap-3">
@@ -27,7 +34,7 @@ export function ApprovedPositions({ decisions }: ApprovedPositionsProps) {
 
       {decisions.length === 0 ? (
         <div className="flex min-h-32 items-center justify-center rounded-xl border border-dashed border-white/[0.08] text-sm text-white/34">
-          No active positions
+          The council sits in silence — no positions are open.
         </div>
       ) : (
         <>
@@ -43,7 +50,12 @@ export function ApprovedPositions({ decisions }: ApprovedPositionsProps) {
             style={{ maxHeight: 'calc(100vh - 280px)', minHeight: '420px', scrollbarWidth: 'thin' }}
           >
             {decisions.map((decision) => (
-              <PositionRow key={decision.decision_id} decision={decision} />
+              <PositionRow
+                key={decision.decision_id}
+                decision={decision}
+                isTopConviction={decision.decision_id === topId}
+                isLive={false}
+              />
             ))}
           </div>
         </>

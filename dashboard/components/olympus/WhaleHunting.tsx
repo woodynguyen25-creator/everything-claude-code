@@ -1,3 +1,4 @@
+import { MarqueeFlow } from '@/components/twentyfirst/MarqueeFlow';
 import type { WhaleFlowItem } from '@/lib/olympus/types';
 
 type WhaleHuntingProps = {
@@ -23,7 +24,7 @@ function timeLabel(ts: string) {
 export function WhaleHunting({ flow }: WhaleHuntingProps) {
   return (
     <section className="rounded-2xl border border-white/[0.08] bg-[rgba(12,10,26,0.85)] p-4 shadow-[0_16px_60px_rgba(0,0,0,0.42)] backdrop-blur-xl">
-      <div className="mb-3 flex items-center justify-between gap-3">
+      <div className="mb-2 flex items-center justify-between gap-3">
         <div>
           <h2 className="text-sm font-semibold uppercase tracking-[0.22em] text-white">🐋 Whale Hunting</h2>
           <p className="mt-1 text-[11px] uppercase tracking-[0.16em] text-white/34">Artemis live flow board</p>
@@ -35,12 +36,15 @@ export function WhaleHunting({ flow }: WhaleHuntingProps) {
         ) : null}
       </div>
 
+      {/* Marquee ticker tape between title and list */}
+      {flow.length > 0 && <MarqueeFlow items={flow} />}
+
       {flow.length === 0 ? (
         <div className="flex min-h-36 items-center justify-center rounded-xl border border-dashed border-white/[0.08] text-sm text-white/34">
           Scanning the deep...
         </div>
       ) : (
-        <div className="max-h-[380px] space-y-2 overflow-y-auto pr-1">
+        <div className="mt-2 max-h-[340px] space-y-2 overflow-y-auto pr-1">
           {flow.slice(0, 15).map((item) => (
             <div
               key={item.id}
@@ -50,11 +54,13 @@ export function WhaleHunting({ flow }: WhaleHuntingProps) {
                 <div className="min-w-0">
                   <div className="flex items-center gap-2">
                     <span className="text-base font-bold tracking-wide text-white">{item.ticker}</span>
-                    <span className={`rounded-full border px-2 py-0.5 text-[10px] font-semibold uppercase tracking-[0.14em] ${
-                      item.right === 'call'
-                        ? 'border-emerald-300/35 bg-emerald-400/10 text-emerald-200'
-                        : 'border-rose-300/35 bg-rose-400/10 text-rose-200'
-                    }`}>
+                    <span
+                      className={`rounded-full border px-2 py-0.5 text-[10px] font-semibold uppercase tracking-[0.14em] ${
+                        item.right === 'call'
+                          ? 'border-emerald-300/35 bg-emerald-400/10 text-emerald-200'
+                          : 'border-rose-300/35 bg-rose-400/10 text-rose-200'
+                      }`}
+                    >
                       {item.right}
                     </span>
                     {item.notable ? <span className="h-2 w-2 animate-pulse rounded-full bg-emerald-300" /> : null}

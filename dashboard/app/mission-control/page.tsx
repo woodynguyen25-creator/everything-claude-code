@@ -4,6 +4,7 @@ import { useEffect, useState } from 'react';
 import { AgentGrid } from '@/components/mission-control/AgentGrid';
 import { ActivityRiver } from '@/components/mission-control/ActivityRiver';
 import { CategoryFilter } from '@/components/mission-control/CategoryFilter';
+import { PageShell } from '@/components/layout/PageShell';
 import mockAgents from '@/data/mission-control-mock.json';
 import type { AgentActivity } from '@/lib/mission-control/types';
 
@@ -40,16 +41,13 @@ export default function MissionControlPage() {
   const filtered = filter === 'all' ? agents : agents.filter((agent) => agent.category === filter);
 
   return (
-    <main className="mx-auto max-w-[1600px] px-6 py-8">
-      <div className="mb-6 flex flex-wrap items-center justify-between gap-4">
-        <div>
-          <div className="text-[10px] uppercase tracking-[0.28em] text-white/40">Full system view</div>
-          <h1 className="mt-2 font-display text-3xl tracking-wide text-text-primary">Mission Control</h1>
-        </div>
-        <CategoryFilter value={filter} onChange={setFilter} />
-      </div>
-
-      <div className="mb-5 text-[11px] uppercase tracking-[0.16em] text-white/40">
+    <PageShell
+      title="Mission Control"
+      eyebrow="Full system view"
+      maxWidth={1600}
+      rightSlot={<CategoryFilter value={filter} onChange={setFilter} />}
+    >
+      <div className="mb-1 text-[11px] uppercase tracking-[0.16em] text-white/40">
         {filtered.length} agents visible
       </div>
 
@@ -60,10 +58,9 @@ export default function MissionControlPage() {
         </div>
       </div>
 
-      {/* Activity river on mobile — below grid */}
       <div className="mt-6 lg:hidden">
         <ActivityRiver />
       </div>
-    </main>
+    </PageShell>
   );
 }
