@@ -33,18 +33,21 @@ export async function GET() {
       const token = process.env.OLYMPUS_STATE_TOKEN;
       if (token) headers['Authorization'] = `Bearer ${token}`;
 
-      const res = await fetch(`${endpoint}/state`, {
-        cache: 'no-store',
-        headers,
-        signal: AbortSignal.timeout(8000),
-      });
-      if (res.ok) {
-        const data: OlympusState = await res.json();
-        const normalized = normalizeOlympusState(data, fallback);
-        return NextResponse.json(normalized);
+      try {
+        const res = await fetch(`${endpoint}/state`, {
+          cache: 'no-store',
+          headers,
+          signal: AbortSignal.timeout(8000),
+        });
+        if (res.ok) {
+          const data: OlympusState = await res.json();
+          const normalized = normalizeOlympusState(data, fallback);
+          return NextResponse.json(normalized);
+        }
+        console.warn('[olympus/state] Droplet returned', res.status, '— falling back to mock');
+      } catch (fetchErr) {
+        console.warn('[olympus/state] Droplet unreachable, falling back to mock:', String(fetchErr));
       }
-      // Log non-ok but fall through to mock
-      console.warn('[olympus/state] Droplet returned', res.status, '— falling back to mock');
     }
 
     return NextResponse.json(fallback);

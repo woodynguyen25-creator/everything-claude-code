@@ -261,7 +261,7 @@ export default function ActivityTimeline() {
         </article>
 
         <aside className="panel p-6">
-          <div className="text-rune text-[10px] tracking-[0.3em] text-text-muted">TODAY'S TALLY</div>
+          <div className="text-rune text-[10px] tracking-[0.3em] text-text-muted">TODAY&apos;S TALLY</div>
           <div className="mt-4 space-y-4">
             <div>
               <div className="font-numeric text-2xl text-text-primary">{tally.forgings}</div>
