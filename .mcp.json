@@ -1,5 +1,9 @@
 {
   "mcpServers": {
+    "robinhood-trading": {
+      "type": "http",
+      "url": "https://agent.robinhood.com/mcp/trading"
+    },
     "exa": {
       "type": "http",
       "url": "https://mcp.exa.ai/mcp"
