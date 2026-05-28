@@ -1,6 +1,6 @@
 export interface AgentActivity {
   slug: string;
-  category: 'aios' | 'olympus' | 'trading';
+  category: 'aios' | 'olympus' | 'trading' | 'ops';
   emoji: string;
   codename: string;
   last_action: string;

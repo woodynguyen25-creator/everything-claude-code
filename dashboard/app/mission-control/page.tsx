@@ -6,7 +6,7 @@ import { CategoryFilter } from '@/components/mission-control/CategoryFilter';
 import mockAgents from '@/data/mission-control-mock.json';
 import type { AgentActivity } from '@/lib/mission-control/types';
 
-type Category = 'all' | 'aios' | 'olympus' | 'trading';
+type Category = 'all' | 'aios' | 'olympus' | 'trading' | 'ops';
 
 const INITIAL_AGENTS = mockAgents as AgentActivity[];
 

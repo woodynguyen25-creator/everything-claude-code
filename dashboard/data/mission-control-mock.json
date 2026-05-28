@@ -18,5 +18,6 @@
   { "slug": "hermes-btc", "category": "trading", "emoji": "₿", "codename": "Hermes BTC", "last_action": "rebalance hold", "last_action_ts": "2026-05-27T19:30:00-05:00", "provider": "deepseek", "calls_today": 48, "status": "active" },
   { "slug": "hermes-eth", "category": "trading", "emoji": "Ξ", "codename": "Hermes ETH", "last_action": "two trades executed", "last_action_ts": "2026-05-27T18:15:00-05:00", "provider": "deepseek", "calls_today": 48, "status": "active" },
   { "slug": "hermes-spy", "category": "trading", "emoji": "🇺🇸", "codename": "Hermes SPY", "last_action": "paper open SPY 590C", "last_action_ts": "2026-05-27T14:00:00-05:00", "provider": "deepseek", "calls_today": 48, "status": "active" },
-  { "slug": "parlay", "category": "trading", "emoji": "🎲", "codename": "ParlayBot", "last_action": "idle — slate window 5-9PM", "last_action_ts": "2026-05-26T21:00:00-05:00", "provider": "none", "calls_today": 0, "status": "idle" }
+  { "slug": "parlay", "category": "trading", "emoji": "🎲", "codename": "ParlayBot", "last_action": "idle — slate window 5-9PM", "last_action_ts": "2026-05-26T21:00:00-05:00", "provider": "none", "calls_today": 0, "status": "idle" },
+  { "slug": "atlas", "category": "ops", "emoji": "🛡", "codename": "Atlas", "last_action": "15/15 checks ok · 0 restarts", "last_action_ts": "2026-05-28T09:00:00-05:00", "provider": "none", "calls_today": 1440, "status": "active" }
 ]

@@ -12,6 +12,7 @@ import { ActivityRecent } from '@/components/ActivityRecent';
 import { TriadCostMeter } from '@/components/TriadCostMeter';
 import { TradingAgentsPanel } from '@/components/TradingAgentsPanel';
 import { PantheonCouncil } from '@/components/PantheonCouncil';
+import { AtlasStatus } from '@/components/atlas/AtlasStatus';
 import { getActiveInternshipCounts } from '@/lib/internships';
 import { getRealmStatus } from '@/lib/realm-status';
 
@@ -64,6 +65,10 @@ export default async function Home() {
       <MarketPulseBar />
 
       <HeroBand />
+
+      <div className="mx-12 mb-4">
+        <AtlasStatus />
+      </div>
 
       <SectionLabel label="TODAY" meta={today} />
       <DailyRitesPanel />

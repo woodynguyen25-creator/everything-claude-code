@@ -21,6 +21,7 @@ function providerTone(provider: AgentActivity['provider']) {
 function categoryTone(category: AgentActivity['category']) {
   if (category === 'aios') return 'text-rune-gold';
   if (category === 'olympus') return 'text-[#C9A961]';
+  if (category === 'ops') return 'text-violet-300';
   return 'text-emerald-300';
 }
 

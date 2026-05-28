@@ -1,6 +1,6 @@
 'use client';
 
-type Category = 'all' | 'aios' | 'olympus' | 'trading';
+type Category = 'all' | 'aios' | 'olympus' | 'trading' | 'ops';
 
 type CategoryFilterProps = {
   value: Category;
@@ -12,6 +12,7 @@ const OPTIONS: Array<{ value: Category; label: string }> = [
   { value: 'aios', label: 'AIOS' },
   { value: 'olympus', label: 'Olympus' },
   { value: 'trading', label: 'Trading' },
+  { value: 'ops', label: 'Ops' },
 ];
 
 export function CategoryFilter({ value, onChange }: CategoryFilterProps) {
