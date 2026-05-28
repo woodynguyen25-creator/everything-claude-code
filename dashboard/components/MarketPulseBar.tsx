@@ -67,9 +67,10 @@ export default function MarketPulseBar() {
       locale: 'en',
     });
     containerRef.current.appendChild(script);
+    const el = containerRef.current;
 
     return () => {
-      if (containerRef.current) containerRef.current.innerHTML = '';
+      if (el) el.innerHTML = '';
     };
   }, [enabled]);
 

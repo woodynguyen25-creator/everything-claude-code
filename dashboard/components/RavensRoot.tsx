@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { usePathname, useRouter } from 'next/navigation';
 
 const COST_CONFIRM_THRESHOLD = 0.5;
@@ -53,7 +53,7 @@ export default function RavensRoot() {
     return [...memories, ...files];
   }, [results]);
 
-  function openSelected() {
+  const openSelected = useCallback(() => {
     const item = flattened[selectedIndex];
     if (!item) return;
     if (item.kind === 'memory') {
@@ -64,7 +64,7 @@ export default function RavensRoot() {
     if (item.kind === 'file') {
       window.location.href = `vscode://file/${item.file.path.replace(/\\/g, '/')}`;
     }
-  }
+  }, [flattened, selectedIndex, router]);
 
   useEffect(() => {
     const onKey = (event: KeyboardEvent) => {
@@ -110,7 +110,7 @@ export default function RavensRoot() {
       window.removeEventListener('keydown', onKey);
       window.removeEventListener('ravens:open', onOpen as EventListener);
     };
-  }, [pathname, open, selectedIndex, flattened.length]);
+  }, [pathname, open, selectedIndex, flattened.length, openSelected]);
 
   useEffect(() => {
     if (!open) return;

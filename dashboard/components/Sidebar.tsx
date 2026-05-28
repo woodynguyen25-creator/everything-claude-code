@@ -39,21 +39,46 @@ const TRADING_BOTS = [
   { slug: 'parlay', emoji: '🎲', codename: 'PARLAYBOT', status: 'idle' },
 ];
 
+// Pinned AIOS council members — Perseus and Fenrir are visible on Mission Control only
+const PINNED_COUNCIL_SLUGS = ['lebot-james', 'thor', 'sauron'];
+
 const NAV: NavItem[] = [
   { href: '/', label: '🏛️ Home' },
   { href: '/activity', label: '📊 Activity' },
   { href: '/memory', label: '🧠 Memory' },
-  { href: '/trading', label: '💹 Trading' },
   { href: '/olympus', label: '⚡ Olympus Fund' },
   { href: '/mission-control', label: '🎛️ Mission Control' },
   { href: '/hermes', label: '🪶 Hermes' },
   { href: '/skills', label: '🛠️ Skills' },
 ];
 
+function useLocalToggle(key: string, defaultOpen: boolean) {
+  const [open, setOpen] = useState(defaultOpen);
+
+  useEffect(() => {
+    try {
+      const stored = window.localStorage.getItem(key);
+      if (stored !== null) setOpen(stored === 'true');
+    } catch {}
+  }, [key]);
+
+  const toggle = () => {
+    setOpen((prev) => {
+      const next = !prev;
+      try { window.localStorage.setItem(key, String(next)); } catch {}
+      return next;
+    });
+  };
+
+  return [open, toggle] as const;
+}
+
 export default function Sidebar({ agentStatuses, operatorDateLabel }: SidebarProps) {
   const pathname = usePathname();
   const isActive = (href: string) => (href === '/' ? pathname === '/' : pathname.startsWith(href));
   const [healthMap, setHealthMap] = useState<HealthMap>({});
+  const [olympusOpen, toggleOlympus] = useLocalToggle('sidebar.olympus.open', false);
+  const [botsOpen, toggleBots] = useLocalToggle('sidebar.bots.open', false);
 
   useEffect(() => {
     let cancelled = false;
@@ -74,6 +99,8 @@ export default function Sidebar({ agentStatuses, operatorDateLabel }: SidebarPro
     const t = setInterval(load, 60_000);
     return () => { cancelled = true; clearInterval(t); };
   }, []);
+
+  const pinnedAgents = agentStatuses.filter((a) => PINNED_COUNCIL_SLUGS.includes(a.slug));
 
   return (
     <aside className="relative z-20 flex min-h-screen w-72 shrink-0 flex-col border-r border-border-subtle bg-bg-panel">
@@ -96,6 +123,7 @@ export default function Sidebar({ agentStatuses, operatorDateLabel }: SidebarPro
         </div>
       </div>
 
+      {/* NAV */}
       <nav className="px-3 py-5">
         <div className="mb-2 px-2 text-rune text-[10px] tracking-[0.3em] text-text-muted">NAV</div>
         <ul className="space-y-1">
@@ -119,10 +147,11 @@ export default function Sidebar({ agentStatuses, operatorDateLabel }: SidebarPro
         </ul>
       </nav>
 
-      <div className="mt-2 flex-1 overflow-y-auto px-3">
+      <div className="flex-1 overflow-y-auto px-3 pb-4">
+        {/* AIOS COUNCIL — pinned 3 */}
         <div className="mb-2 px-2 text-rune text-[10px] tracking-[0.3em] text-text-muted">COUNCIL</div>
         <ul className="space-y-2">
-          {agentStatuses.map((agent) => (
+          {pinnedAgents.map((agent) => (
             <li key={agent.slug}>
               <AgentCard
                 href={agent.href}
@@ -139,40 +168,76 @@ export default function Sidebar({ agentStatuses, operatorDateLabel }: SidebarPro
           ))}
         </ul>
 
+        {/* OLYMPUS COUNCIL — collapsible drawer */}
         <div className="mt-4">
-          <div className="mb-2 px-2 text-rune text-[10px] tracking-[0.3em] text-text-muted">⚡ OLYMPUS COUNCIL</div>
-          <ul className="space-y-1">
-            {OLYMPUS_PANTHEON.map((agent) => (
-              <li key={agent.slug}>
-                <Link
-                  href={`/olympus?agent=${agent.slug}`}
-                  className="flex items-center gap-2 rounded px-2 py-1.5 text-[12px] text-text-secondary transition-colors hover:bg-bg-hover hover:text-text-primary"
-                >
-                  <span className="text-base">{agent.emoji}</span>
-                  <span className="font-mono uppercase tracking-wider">{agent.codename}</span>
-                  <span className="ml-auto text-[10px] text-text-muted">{agent.role}</span>
-                </Link>
-              </li>
-            ))}
-          </ul>
+          <button
+            type="button"
+            onClick={toggleOlympus}
+            className="flex w-full items-center justify-between rounded px-2 py-1.5 text-[10px] tracking-[0.3em] text-text-muted transition-colors hover:bg-bg-hover hover:text-text-primary"
+            aria-expanded={olympusOpen}
+          >
+            <span className="text-rune">⚡ OLYMPUS COUNCIL</span>
+            <span className="font-mono text-[10px] text-text-muted">
+              {olympusOpen ? '▲' : '▼'} ({OLYMPUS_PANTHEON.length})
+            </span>
+          </button>
+          {olympusOpen && (
+            <div className="mt-1 overflow-hidden">
+              <div className="mb-1.5 px-2 text-[10px] text-text-muted">
+                Chaired by ⚖️ Anubis · Voiced by ⚒️ Thor
+              </div>
+              <ul className="space-y-0.5">
+                {OLYMPUS_PANTHEON.map((agent) => (
+                  <li key={agent.slug}>
+                    <Link
+                      href={`/olympus?agent=${agent.slug}`}
+                      className="flex items-center gap-2 rounded px-2 py-1.5 text-[12px] text-text-secondary transition-colors hover:bg-bg-hover hover:text-text-primary"
+                    >
+                      <span className="text-base">{agent.emoji}</span>
+                      <span className="font-mono uppercase tracking-wider">{agent.codename}</span>
+                      <span className="ml-auto text-[10px] text-text-muted">{agent.role}</span>
+                    </Link>
+                  </li>
+                ))}
+              </ul>
+            </div>
+          )}
         </div>
 
-        <div className="mt-4 mb-4">
-          <div className="mb-2 px-2 text-rune text-[10px] tracking-[0.3em] text-text-muted">🤖 TRADING BOTS</div>
-          <ul className="space-y-1">
-            {TRADING_BOTS.map((bot) => (
-              <li key={bot.slug}>
-                <Link
-                  href={`/olympus?bot=${bot.slug}`}
-                  className="flex items-center gap-2 rounded px-2 py-1.5 text-[12px] text-text-secondary transition-colors hover:bg-bg-hover hover:text-text-primary"
-                >
-                  <span className="text-base">{bot.emoji}</span>
-                  <span className="font-mono uppercase tracking-wider">{bot.codename}</span>
-                  <span className="ml-auto text-[10px] text-text-muted">{bot.status}</span>
-                </Link>
-              </li>
-            ))}
-          </ul>
+        {/* TRADING BOTS — collapsible drawer */}
+        <div className="mt-3 mb-4">
+          <button
+            type="button"
+            onClick={toggleBots}
+            className="flex w-full items-center justify-between rounded px-2 py-1.5 text-[10px] tracking-[0.3em] text-text-muted transition-colors hover:bg-bg-hover hover:text-text-primary"
+            aria-expanded={botsOpen}
+          >
+            <span className="text-rune">🤖 TRADING BOTS</span>
+            <span className="font-mono text-[10px] text-text-muted">
+              {botsOpen ? '▲' : '▼'} ({TRADING_BOTS.length})
+            </span>
+          </button>
+          {botsOpen && (
+            <div className="mt-1 overflow-hidden">
+              <div className="mb-1.5 px-2 text-[10px] text-text-muted">
+                Operated by ⚒️ Thor
+              </div>
+              <ul className="space-y-0.5">
+                {TRADING_BOTS.map((bot) => (
+                  <li key={bot.slug}>
+                    <Link
+                      href={`/olympus?bot=${bot.slug}`}
+                      className="flex items-center gap-2 rounded px-2 py-1.5 text-[12px] text-text-secondary transition-colors hover:bg-bg-hover hover:text-text-primary"
+                    >
+                      <span className="text-base">{bot.emoji}</span>
+                      <span className="font-mono uppercase tracking-wider">{bot.codename}</span>
+                      <span className="ml-auto text-[10px] text-text-muted">{bot.status}</span>
+                    </Link>
+                  </li>
+                ))}
+              </ul>
+            </div>
+          )}
         </div>
       </div>
 

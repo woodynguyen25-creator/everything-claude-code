@@ -56,7 +56,7 @@ export async function getAgentStatuses(): Promise<AgentStatus[]> {
       slug: 'thor',
       href: '/thor',
       codename: '⚒️ THOR',
-      persona: 'Thunder · Markets',
+      persona: 'Head of Trading · Voice of Olympus',
       accent: 'bifrost',
       tone: marketTone(),
       symbol: '⚡',

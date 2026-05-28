@@ -79,10 +79,13 @@ export function ThorChat({ decisionContext }: ThorChatProps) {
   return (
     <div className="flex h-full flex-col overflow-hidden rounded-2xl border border-white/[0.08] bg-[rgba(12,10,26,0.85)] shadow-[0_16px_60px_rgba(0,0,0,0.42)] backdrop-blur-xl">
       <div className="flex items-center gap-3 border-b border-white/[0.06] px-5 py-3">
-        <span className="text-lg">⚖️</span>
+        <div className="flex items-center gap-1.5">
+          <span className="text-lg">⚒️</span>
+          <span className="text-base opacity-60">⚖️</span>
+        </div>
         <div>
-          <div className="text-sm font-semibold uppercase tracking-[0.18em] text-white">Anubis</div>
-          <div className="text-[10px] uppercase tracking-[0.14em] text-white/38">chairman · ask anything</div>
+          <div className="text-sm font-semibold uppercase tracking-[0.18em] text-white">Thor</div>
+          <div className="text-[10px] uppercase tracking-[0.14em] text-white/38">Head of Trading · Voice of the Olympus Council</div>
         </div>
         {decisionContext ? (
           <span className="ml-auto rounded-full border border-[#C9A96155] bg-[#C9A96112] px-2.5 py-0.5 font-mono text-[10px] text-[#C9A961]">
@@ -95,7 +98,7 @@ export function ThorChat({ decisionContext }: ThorChatProps) {
         {messages.length === 0 ? (
           <div className="mt-4 flex flex-col gap-2">
             <p className="mb-4 text-center text-xs uppercase tracking-[0.18em] text-white/28">
-              Ask Anubis anything about the Olympus Fund
+              Ask Thor about the Olympus Fund · trading bots · positions
             </p>
             {SUGGESTIONS.map((suggestion) => (
               <button

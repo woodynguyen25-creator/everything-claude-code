@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import type { Memory, MemorySource, MemoryType } from '@/lib/memory';
 import MemoryCard from '@/components/MemoryCard';
@@ -74,7 +74,7 @@ export default function MemoryWellClient() {
     return match?.name ?? focusName;
   }, [focusName, items]);
 
-  async function load(reset = false, nextOffset = offset) {
+  const load = useCallback(async (reset = false, nextOffset = offset) => {
     setLoading(true);
     try {
       const res = await fetch(`/api/memory?${queryString.replace(`offset=${offset}`, `offset=${nextOffset}`)}`);
@@ -91,7 +91,7 @@ export default function MemoryWellClient() {
     } finally {
       setLoading(false);
     }
-  }
+  }, [queryString, offset]);
 
   useEffect(() => {
     const focus = searchParams.get('focus');
@@ -106,7 +106,45 @@ export default function MemoryWellClient() {
     setOffset(0);
     setSelected(0);
     void load(true, 0);
-  }, [search, types, sources]);
+  }, [search, types, sources, load]);
+
+  const updateUrl = useCallback((next: { focus?: string | null }) => {
+    const nextParams = new URLSearchParams(searchParams.toString());
+    if (search.trim()) {
+      nextParams.set('q', search.trim());
+    } else {
+      nextParams.delete('q');
+    }
+
+    if (next.focus) {
+      nextParams.set('focus', next.focus);
+    } else {
+      nextParams.delete('focus');
+    }
+
+    const query = nextParams.toString();
+    router.replace(query ? `/memory?${query}` : '/memory', { scroll: false });
+  }, [searchParams, search, router]);
+
+  const openMemory = useCallback((name: string) => {
+    setFocusName(name);
+    updateUrl({ focus: name });
+  }, [updateUrl]);
+
+  const closeDrawer = useCallback(() => {
+    setFocusName(null);
+    updateUrl({ focus: null });
+  }, [updateUrl]);
+
+  const mutateMemory = useCallback(async (name: string, action: 'promote' | 'archive') => {
+    await fetch(`/api/memory/${encodeURIComponent(name)}`, {
+      method: 'PATCH',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({ action }),
+    });
+    setOffset(0);
+    await load(true, 0);
+  }, [load]);
 
   useEffect(() => {
     const onKey = (event: KeyboardEvent) => {
@@ -157,45 +195,7 @@ export default function MemoryWellClient() {
 
     window.addEventListener('keydown', onKey);
     return () => window.removeEventListener('keydown', onKey);
-  }, [resolvedFocusName, items, search, selected, sources.length, types.length]);
-
-  function updateUrl(next: { focus?: string | null }) {
-    const nextParams = new URLSearchParams(searchParams.toString());
-    if (search.trim()) {
-      nextParams.set('q', search.trim());
-    } else {
-      nextParams.delete('q');
-    }
-
-    if (next.focus) {
-      nextParams.set('focus', next.focus);
-    } else {
-      nextParams.delete('focus');
-    }
-
-    const query = nextParams.toString();
-    router.replace(query ? `/memory?${query}` : '/memory', { scroll: false });
-  }
-
-  function openMemory(name: string) {
-    setFocusName(name);
-    updateUrl({ focus: name });
-  }
-
-  function closeDrawer() {
-    setFocusName(null);
-    updateUrl({ focus: null });
-  }
-
-  async function mutateMemory(name: string, action: 'promote' | 'archive') {
-    await fetch(`/api/memory/${encodeURIComponent(name)}`, {
-      method: 'PATCH',
-      headers: { 'content-type': 'application/json' },
-      body: JSON.stringify({ action }),
-    });
-    setOffset(0);
-    await load(true, 0);
-  }
+  }, [resolvedFocusName, items, search, selected, sources.length, types.length, closeDrawer, mutateMemory, openMemory]);
 
   function toggleType(type: MemoryType) {
     setTypes((prev) => (prev.includes(type) ? prev.filter((item) => item !== type) : [...prev, type]));

@@ -1,3 +1,4 @@
+import Image from 'next/image';
 import { getModeContext } from '@/lib/mode';
 import AnimatedRaven from '@/components/AnimatedRaven';
 
@@ -44,7 +45,7 @@ export default async function HeroBand() {
           poster={HERO_IMAGE ?? undefined}
         />
       ) : HERO_IMAGE ? (
-        <img src={HERO_IMAGE} alt="" className="absolute inset-0 h-full w-full object-cover" />
+        <Image src={HERO_IMAGE} alt="" fill className="object-cover" />
       ) : null}
 
       <div className="absolute inset-0 bg-[radial-gradient(circle_at_18%_18%,oklch(var(--color-rune-gold)_/_0.18),transparent_38%),radial-gradient(circle_at_78%_24%,oklch(var(--color-ember)_/_0.12),transparent_34%),radial-gradient(circle_at_55%_80%,oklch(var(--color-bifrost)_/_0.08),transparent_38%),linear-gradient(180deg,oklch(var(--color-bg-deep))_0%,oklch(10%_0.01_250)_55%,oklch(8%_0_0)_100%)]" />

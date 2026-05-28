@@ -23,9 +23,11 @@ function formatTime(ts: string) {
   });
 }
 
+const VIEW_BOX = { width: 420, height: 96, pad: 10 };
+
 export function EquitySparkline({ points }: EquitySparklineProps) {
   const [hovered, setHovered] = useState<EquityPoint | null>(null);
-  const viewBox = { width: 420, height: 96, pad: 10 };
+  const viewBox = VIEW_BOX;
 
   const spark = useMemo(() => {
     const safePoints = points.slice(-30);
@@ -55,7 +57,7 @@ export function EquitySparkline({ points }: EquitySparklineProps) {
       last,
       positive: lastValue >= firstValue,
     };
-  }, [points]);
+  }, [points, viewBox]);
 
   const stroke = spark.positive ? '#22C55E' : '#F43F5E';
   const fill = spark.positive ? '#22C55E22' : '#F43F5E22';

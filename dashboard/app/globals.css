@@ -232,3 +232,15 @@ body::before {
     @apply rounded-lg border border-border-subtle bg-bg-raised shadow-panel;
   }
 }
+
+@keyframes marquee-scroll {
+  0% { transform: translateX(0); }
+  10% { transform: translateX(0); }
+  90% { transform: translateX(-60%); }
+  100% { transform: translateX(0); }
+}
+
+@keyframes river-fade-in {
+  from { opacity: 0; transform: translateY(-4px); }
+  to   { opacity: 1; transform: translateY(0); }
+}

@@ -42,6 +42,9 @@ export function EquityHeader({ state }: EquityHeaderProps) {
               {currency(state.total_unrealized_pnl)} unrealized
             </span>
           </div>
+          <div className="mt-3 text-[10px] text-white/30 tracking-wide">
+            ⚖️ Anubis chairs · ⚒️ Thor speaks · 🤴 LeBot reports
+          </div>
         </div>
         <EquitySparkline points={state.equity_curve} />
         <EdgeBarWidget edgeBar={state.edge_bar} />
