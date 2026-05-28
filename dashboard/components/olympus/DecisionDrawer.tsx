@@ -143,7 +143,7 @@ export function DecisionDrawer({ decision, onClose }: DrawerProps) {
 }
 
 function DecisionDrawerBody({ decision }: { decision: Decision }) {
-  const accent = AGENT_COLORS.thor;
+  const accent = AGENT_COLORS.anubis;
   const convictionWidth = `${Math.max(0, Math.min(decision.conviction, 10)) * 10}%`;
   const totalCost = totalCouncilCost(decision);
   const hasResolution =

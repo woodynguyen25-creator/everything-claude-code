@@ -42,7 +42,7 @@ function statusStyles(decision: Decision) {
 export function DecisionCard({ decision }: DecisionCardProps) {
   const router = useRouter();
   const searchParams = useSearchParams();
-  const accent = decision.status === 'rejected' ? AGENT_COLORS.loki : decision.status === 'candidate' ? AGENT_COLORS.artemis : AGENT_COLORS.thor;
+  const accent = decision.status === 'rejected' ? AGENT_COLORS.loki : decision.status === 'candidate' ? AGENT_COLORS.artemis : AGENT_COLORS.anubis;
   const convictionWidth = `${Math.max(0, Math.min(decision.conviction, 10)) * 10}%`;
 
   const handleClick = () => {

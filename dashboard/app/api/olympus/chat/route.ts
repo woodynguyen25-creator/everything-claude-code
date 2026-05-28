@@ -1,7 +1,7 @@
 /**
  * POST /api/olympus/chat
  *
- * Thor Chat endpoint — answers questions about the Olympus Fund using
+ * Anubis chat endpoint — answers questions about the Olympus Fund using
  * a live snapshot of fund state as context.
  *
  * Body: { question: string; decision_id?: string }
@@ -113,7 +113,7 @@ function buildSystemPrompt(state: OlympusState, focusDecision: Decision | null):
     ? `\n\nFOCUSED DECISION (user is asking about this specific one):\n${formatDecision(focusDecision)}`
     : '';
 
-  return `You are Thor, Chairman and CIO of the Olympus Fund — a Greek-Norse hybrid AI trading council.
+  return `You are Anubis, Chairman and CIO of the Olympus Fund — a Greek, Norse, and Egyptian trading council.
 
 You speak with authority, precision, and mythological gravitas. You are direct, confident, and data-driven.
 You refer to your council members by name (Zeus, Apollo, Athena, Ares, Loki, Poseidon, Artemis).
@@ -185,7 +185,7 @@ export async function POST(req: NextRequest) {
 
     const systemPrompt = state
       ? buildSystemPrompt(state, focusDecision)
-      : `You are Thor, Chairman and CIO of the Olympus Fund. State data is temporarily unavailable — answer generally based on your role and principles.`;
+      : `You are Anubis, Chairman and CIO of the Olympus Fund. State data is temporarily unavailable — answer generally based on your role and principles.`;
 
     const messages = [
       { role: 'system', content: systemPrompt },

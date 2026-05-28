@@ -1,16 +1,20 @@
 'use client';
 
-import { useEffect, useState, Suspense, useCallback } from 'react';
+import { Suspense, useCallback, useEffect, useState } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
+import { ApprovedPositions } from '@/components/olympus/ApprovedPositions';
 import { AgentLegend } from '@/components/olympus/AgentLegend';
-import { DecisionQuadrants } from '@/components/olympus/DecisionQuadrants';
-import { EquityHeader } from '@/components/olympus/EquityHeader';
 import { DecisionDrawer } from '@/components/olympus/DecisionDrawer';
+import { EquityHeader } from '@/components/olympus/EquityHeader';
+import { MacroPulse } from '@/components/olympus/MacroPulse';
+import { RecentResolutions } from '@/components/olympus/RecentResolutions';
 import { ThorChat } from '@/components/olympus/ThorChat';
+import { TradingBotsStatus } from '@/components/olympus/TradingBotsStatus';
+import { WhaleHunting } from '@/components/olympus/WhaleHunting';
 import mockState from '@/data/olympus-mock.json';
 import type { Decision, OlympusState } from '@/lib/olympus/types';
 
-const INITIAL_STATE = mockState as unknown as OlympusState;
+const INITIAL_STATE = mockState as OlympusState;
 
 function formatUpdated(ts: string) {
   return new Date(ts).toLocaleString('en-US', {
@@ -22,18 +26,16 @@ function formatUpdated(ts: string) {
   });
 }
 
-/** Flatten all decisions from all quadrants into a single lookup map. */
 function buildDecisionMap(decisions: OlympusState['decisions']): Map<string, Decision> {
   const map = new Map<string, Decision>();
   for (const group of Object.values(decisions)) {
-    for (const d of group as Decision[]) {
-      map.set(d.decision_id, d);
+    for (const decision of group as Decision[]) {
+      map.set(decision.decision_id, decision);
     }
   }
   return map;
 }
 
-/** Inner component that reads searchParams (must be wrapped in Suspense) */
 function OlympusInner() {
   const router = useRouter();
   const searchParams = useSearchParams();
@@ -44,7 +46,6 @@ function OlympusInner() {
   const decisionMap = buildDecisionMap(state.decisions);
   const activeDecision = decisionId ? (decisionMap.get(decisionId) ?? null) : null;
 
-  // Close drawer: strip the ?decision= param
   const handleClose = useCallback(() => {
     const params = new URLSearchParams(searchParams.toString());
     params.delete('decision');
@@ -79,9 +80,7 @@ function OlympusInner() {
 
   return (
     <>
-      {/* Main page */}
       <div className="relative min-h-screen overflow-hidden bg-[#0D0B1A] px-4 py-8 text-white sm:px-6 md:px-8 lg:px-10 xl:px-12">
-        {/* Dot-grid overlay */}
         <div
           aria-hidden
           className="pointer-events-none absolute inset-0 opacity-[0.04]"
@@ -91,18 +90,16 @@ function OlympusInner() {
             backgroundSize: '18px 18px',
           }}
         />
-        {/* Blue top glow */}
         <div
           aria-hidden
-          className="pointer-events-none absolute inset-x-0 top-0 h-80 bg-[radial-gradient(ellipse_at_top,_rgba(59,130,246,0.18),_transparent_62%)]"
+          className="pointer-events-none absolute inset-x-0 top-0 h-80 bg-[radial-gradient(ellipse_at_top,_rgba(201,169,97,0.18),_transparent_62%)]"
         />
 
         <main className="relative z-10 mx-auto flex max-w-[1800px] flex-col gap-5">
-          {/* Page header */}
           <div className="flex flex-wrap items-end justify-between gap-4">
             <div>
               <div className="text-[10px] uppercase tracking-[0.32em] text-white/42">
-                Greek/Norse options council
+                Greek, Norse, and Egyptian trading council
               </div>
               <h1 className="mt-2 font-sans text-3xl font-semibold uppercase tracking-wide text-white md:text-4xl">
                 Olympus Fund
@@ -111,30 +108,39 @@ function OlympusInner() {
             <div className="text-right font-mono text-[11px] text-white/45">
               <div>Live Droplet · 30s polling</div>
               <div>Updated {formatUpdated(state.ts)}</div>
-              {error ? (
-                <div className="mt-1 text-amber-200">Using cached mock: {error}</div>
-              ) : null}
+              {error ? <div className="mt-1 text-amber-200">Using cached mock: {error}</div> : null}
             </div>
           </div>
 
           <EquityHeader state={state} />
           <AgentLegend agents={state.agents} />
-          <DecisionQuadrants decisions={state.decisions} />
 
-          {/* Thor Chat — council Q&A panel */}
+          <div className="grid grid-cols-1 gap-6 lg:grid-cols-[2fr_1fr]">
+            <div className="space-y-6">
+              {state.decisions.resolved.length > 0 ? (
+                <RecentResolutions decisions={state.decisions.resolved.slice(0, 5)} />
+              ) : null}
+              <ApprovedPositions decisions={state.decisions.approved} />
+            </div>
+
+            <div className="space-y-6">
+              <WhaleHunting flow={state.whale_flow ?? []} />
+              <TradingBotsStatus bots={state.trading_bots ?? []} />
+              <MacroPulse brief={state.macro_brief ?? null} />
+            </div>
+          </div>
+
           <div className="h-[520px]">
             <ThorChat decisionContext={activeDecision} />
           </div>
         </main>
       </div>
 
-      {/* Decision detail drawer (portal-style, fixed) */}
       <DecisionDrawer decision={activeDecision} onClose={handleClose} />
     </>
   );
 }
 
-/** Outer page: wraps inner in Suspense as required by Next 14 useSearchParams */
 export default function OlympusPage() {
   return (
     <Suspense

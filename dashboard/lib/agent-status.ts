@@ -45,7 +45,7 @@ export async function getAgentStatuses(): Promise<AgentStatus[]> {
     {
       slug: 'lebot-james',
       href: '/lebot-james',
-      codename: 'LEBOT JAMES',
+      codename: '🤴 LEBOT JAMES',
       persona: 'The AIOS Allfather',
       accent: 'gold',
       tone: 'iron',
@@ -55,7 +55,7 @@ export async function getAgentStatuses(): Promise<AgentStatus[]> {
     {
       slug: 'thor',
       href: '/thor',
-      codename: 'THOR',
+      codename: '⚒️ THOR',
       persona: 'Thunder · Markets',
       accent: 'bifrost',
       tone: marketTone(),
@@ -65,7 +65,7 @@ export async function getAgentStatuses(): Promise<AgentStatus[]> {
     {
       slug: 'perseus',
       href: '/perseus',
-      codename: 'PERSEUS',
+      codename: '🛡️ PERSEUS',
       persona: 'Prince of Parleys',
       accent: 'emerald',
       tone: hasFreshSlate ? 'bifrost' : 'iron',
@@ -75,7 +75,7 @@ export async function getAgentStatuses(): Promise<AgentStatus[]> {
     {
       slug: 'fenrir',
       href: '/fenrir',
-      codename: 'FENRIR',
+      codename: '🐺 FENRIR',
       persona: 'Wolf of the Forge',
       accent: 'blood',
       tone: 'iron',
@@ -85,7 +85,7 @@ export async function getAgentStatuses(): Promise<AgentStatus[]> {
     {
       slug: 'sauron',
       href: '/sauron',
-      codename: 'SAURON',
+      codename: '👁️ SAURON',
       persona: 'All-Seeing Eye',
       accent: 'fire',
       tone: 'iron',

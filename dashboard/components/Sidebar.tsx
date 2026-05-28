@@ -18,14 +18,36 @@ type SidebarProps = {
 
 type NavItem = { href: string; label: string };
 
+const OLYMPUS_PANTHEON = [
+  { slug: 'anubis', emoji: '⚖️', codename: 'ANUBIS', role: 'Chairman' },
+  { slug: 'zeus', emoji: '⚡', codename: 'ZEUS', role: 'Macro' },
+  { slug: 'apollo', emoji: '☀️', codename: 'APOLLO', role: 'Bull' },
+  { slug: 'athena', emoji: '🦉', codename: 'ATHENA', role: 'Bear' },
+  { slug: 'ares', emoji: '⚔️', codename: 'ARES', role: 'Catalyst' },
+  { slug: 'loki', emoji: '🔥', codename: 'LOKI', role: 'Red Team' },
+  { slug: 'poseidon', emoji: '🌊', codename: 'POSEIDON', role: 'Risk' },
+  { slug: 'artemis', emoji: '🏹', codename: 'ARTEMIS', role: 'Scanner' },
+  { slug: 'hephaestus', emoji: '🔨', codename: 'HEPHAESTUS', role: 'Resolver' },
+  { slug: 'hades', emoji: '💀', codename: 'HADES', role: 'Janitor' },
+  { slug: 'calliope', emoji: '🎭', codename: 'CALLIOPE', role: 'Reporter' },
+];
+
+const TRADING_BOTS = [
+  { slug: 'hermes-btc', emoji: '₿', codename: 'HERMES BTC', status: 'paper' },
+  { slug: 'hermes-eth', emoji: 'Ξ', codename: 'HERMES ETH', status: 'paper' },
+  { slug: 'hermes-spy', emoji: '🇺🇸', codename: 'HERMES SPY', status: 'paper' },
+  { slug: 'parlay', emoji: '🎲', codename: 'PARLAYBOT', status: 'idle' },
+];
+
 const NAV: NavItem[] = [
-  { href: '/', label: 'Home' },
-  { href: '/activity', label: 'Activity' },
-  { href: '/memory', label: 'Memory' },
-  { href: '/trading', label: 'Trading' },
+  { href: '/', label: '🏛️ Home' },
+  { href: '/activity', label: '📊 Activity' },
+  { href: '/memory', label: '🧠 Memory' },
+  { href: '/trading', label: '💹 Trading' },
   { href: '/olympus', label: '⚡ Olympus Fund' },
-  { href: '/hermes', label: 'Hermes' },
-  { href: '/skills', label: 'Skills' },
+  { href: '/mission-control', label: '🎛️ Mission Control' },
+  { href: '/hermes', label: '🪶 Hermes' },
+  { href: '/skills', label: '🛠️ Skills' },
 ];
 
 export default function Sidebar({ agentStatuses, operatorDateLabel }: SidebarProps) {
@@ -97,7 +119,7 @@ export default function Sidebar({ agentStatuses, operatorDateLabel }: SidebarPro
         </ul>
       </nav>
 
-      <div className="mt-2 flex-1 px-3">
+      <div className="mt-2 flex-1 overflow-y-auto px-3">
         <div className="mb-2 px-2 text-rune text-[10px] tracking-[0.3em] text-text-muted">COUNCIL</div>
         <ul className="space-y-2">
           {agentStatuses.map((agent) => (
@@ -116,6 +138,42 @@ export default function Sidebar({ agentStatuses, operatorDateLabel }: SidebarPro
             </li>
           ))}
         </ul>
+
+        <div className="mt-4">
+          <div className="mb-2 px-2 text-rune text-[10px] tracking-[0.3em] text-text-muted">⚡ OLYMPUS COUNCIL</div>
+          <ul className="space-y-1">
+            {OLYMPUS_PANTHEON.map((agent) => (
+              <li key={agent.slug}>
+                <Link
+                  href={`/olympus?agent=${agent.slug}`}
+                  className="flex items-center gap-2 rounded px-2 py-1.5 text-[12px] text-text-secondary transition-colors hover:bg-bg-hover hover:text-text-primary"
+                >
+                  <span className="text-base">{agent.emoji}</span>
+                  <span className="font-mono uppercase tracking-wider">{agent.codename}</span>
+                  <span className="ml-auto text-[10px] text-text-muted">{agent.role}</span>
+                </Link>
+              </li>
+            ))}
+          </ul>
+        </div>
+
+        <div className="mt-4 mb-4">
+          <div className="mb-2 px-2 text-rune text-[10px] tracking-[0.3em] text-text-muted">🤖 TRADING BOTS</div>
+          <ul className="space-y-1">
+            {TRADING_BOTS.map((bot) => (
+              <li key={bot.slug}>
+                <Link
+                  href={`/olympus?bot=${bot.slug}`}
+                  className="flex items-center gap-2 rounded px-2 py-1.5 text-[12px] text-text-secondary transition-colors hover:bg-bg-hover hover:text-text-primary"
+                >
+                  <span className="text-base">{bot.emoji}</span>
+                  <span className="font-mono uppercase tracking-wider">{bot.codename}</span>
+                  <span className="ml-auto text-[10px] text-text-muted">{bot.status}</span>
+                </Link>
+              </li>
+            ))}
+          </ul>
+        </div>
       </div>
 
       <div className="border-t border-border-subtle px-5 py-4 text-[10px] text-text-muted">

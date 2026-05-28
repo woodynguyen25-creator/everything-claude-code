@@ -118,7 +118,7 @@ function JournalEntry({ entry }: { entry: Record<string, unknown> }) {
   const time = ts ? new Date(ts).toLocaleString('en-US', { timeZone: 'America/Chicago' }) : '';
 
   const typeLabel: Record<string, { icon: string; label: string }> = {
-    thor_decision:   { icon: 'T', label: 'Thor Decision' },
+    thor_decision:   { icon: '⚖️', label: 'Anubis Decision' },
     macro_brief:     { icon: '⚡', label: 'Zeus Brief' },
     poseidon_veto:   { icon: '🌊', label: 'Poseidon Veto' },
     artemis_signal:  { icon: '🏹', label: 'Artemis Signal' },
@@ -162,7 +162,7 @@ function DecisionQueue({ decisions }: { decisions: Decision[] }) {
   if (decisions.length === 0) {
     return (
       <div className="rounded-lg border border-bg-hover bg-bg-deep p-4 text-xs text-text-dim">
-        Thor has no decisions queued yet. The first Artemis sweep will create a reviewable proposal ledger.
+        Anubis has no decisions queued yet. The first Artemis sweep will create a reviewable proposal ledger.
       </div>
     );
   }
@@ -333,10 +333,10 @@ export default function OlympusTab() {
         </div>
       )}
 
-      {/* Thor decision queue */}
+      {/* Anubis decision queue */}
       <div>
         <div className="flex items-center gap-3 mb-3">
-          <h3 className="text-rune text-sm tracking-[0.2em] text-text-primary">THOR DECISION QUEUE</h3>
+          <h3 className="text-rune text-sm tracking-[0.2em] text-text-primary">ANUBIS DECISION QUEUE</h3>
           <div className="h-px flex-1 bg-bg-hover" />
           <span className="text-[10px] text-text-dim">{decisions.length} latest</span>
         </div>

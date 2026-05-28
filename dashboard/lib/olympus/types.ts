@@ -13,7 +13,7 @@ export type AgentName =
   | 'athena'
   | 'ares'
   | 'loki'
-  | 'thor'
+  | 'anubis'
   | 'hades'
   | 'hephaestus'
   | 'calliope';
@@ -88,6 +88,41 @@ export interface AgentActivity {
   status: 'active' | 'idle' | 'error';
 }
 
+export interface WhaleFlowItem {
+  id: string;
+  ts: string;
+  ticker: string;
+  type: 'sweep' | 'block' | 'dark_pool';
+  right: 'call' | 'put';
+  strike: number;
+  expiry: string;
+  size: number;
+  premium: number;
+  side: 'bid' | 'ask' | 'mid';
+  notable: boolean;
+}
+
+export interface TradingBot {
+  slug: string;
+  emoji: string;
+  name: string;
+  daily_pnl: number;
+  daily_pnl_pct: number;
+  status: 'paper' | 'live' | 'idle' | 'error';
+  last_action_ts: string;
+  last_action: string;
+}
+
+export interface MacroBrief {
+  regime: 'risk-on' | 'risk-off' | 'mixed';
+  vix: number;
+  fomc_distance_days: number;
+  key_levels: string[];
+  brief: string;
+  updated_ts: string;
+  author: 'zeus';
+}
+
 export interface OlympusState {
   ts: string;
   current_equity: number;
@@ -104,4 +139,7 @@ export interface OlympusState {
     resolved: Decision[];
   };
   agents: AgentActivity[];
+  whale_flow?: WhaleFlowItem[];
+  trading_bots?: TradingBot[];
+  macro_brief?: MacroBrief | null;
 }

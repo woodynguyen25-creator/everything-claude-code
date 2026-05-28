@@ -46,8 +46,8 @@ const ROSTER = [
   { name: 'Artemis',  role: 'Options Flow Scout',   symbol: '🏹', phase: 1, heritage: 'Greek',
     description: 'Hunts unusual sweeps and whale moves across the watchlist.' },
   // CIO — overall
-  { name: 'Thor',     role: 'Chairman / CIO',        symbol: '⚒️', phase: 1, heritage: 'Norse',
-    description: 'Final call on every trade. Synthesizes the full council.' },
+  { name: 'Anubis',   role: 'Chairman / CIO',        symbol: '⚖️', phase: 1, heritage: 'Egyptian',
+    description: 'Final call on every trade. Judges the full council and signs the order.' },
   // Phase 2
   { name: 'Apollo',   role: 'The Bull',              symbol: '☀️', phase: 2, heritage: 'Greek',
     description: 'Argues the upside thesis for every signal.' },

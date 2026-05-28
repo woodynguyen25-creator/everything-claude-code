@@ -1,21 +1,21 @@
 {
-  "generatedAt": "2026-05-28T01:35:50.940Z",
+  "generatedAt": "2026-05-28T03:29:24.908Z",
   "fiveHour": {
-    "weightedTokens": 25974887,
+    "weightedTokens": 31935725,
     "ceiling": 250000,
     "ceilingSource": "estimate",
     "percent": 100,
     "resetsAt": "2026-05-28T06:18:37.656Z"
   },
   "weekly": {
-    "weightedTokens": 52586679,
+    "weightedTokens": 54459847,
     "ceiling": 3000000,
     "ceilingSource": "estimate",
     "percent": 100,
     "resetsAt": "2026-06-01T05:00:00.000Z"
   },
   "weeklyOpus": {
-    "weightedTokens": 42796770,
+    "weightedTokens": 43816005,
     "ceiling": 900000,
     "percent": 100,
     "resetsAt": "2026-06-01T05:00:00.000Z"
