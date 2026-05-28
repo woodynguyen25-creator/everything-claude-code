@@ -6,6 +6,7 @@ import { AgentLegend } from '@/components/olympus/AgentLegend';
 import { DecisionQuadrants } from '@/components/olympus/DecisionQuadrants';
 import { EquityHeader } from '@/components/olympus/EquityHeader';
 import { DecisionDrawer } from '@/components/olympus/DecisionDrawer';
+import { ThorChat } from '@/components/olympus/ThorChat';
 import mockState from '@/data/olympus-mock.json';
 import type { Decision, OlympusState } from '@/lib/olympus/types';
 
@@ -108,7 +109,7 @@ function OlympusInner() {
               </h1>
             </div>
             <div className="text-right font-mono text-[11px] text-white/45">
-              <div>Mock-first state / 30s polling</div>
+              <div>Live Droplet · 30s polling</div>
               <div>Updated {formatUpdated(state.ts)}</div>
               {error ? (
                 <div className="mt-1 text-amber-200">Using cached mock: {error}</div>
@@ -119,6 +120,11 @@ function OlympusInner() {
           <EquityHeader state={state} />
           <AgentLegend agents={state.agents} />
           <DecisionQuadrants decisions={state.decisions} />
+
+          {/* Thor Chat — council Q&A panel */}
+          <div className="h-[520px]">
+            <ThorChat decisionContext={activeDecision} />
+          </div>
         </main>
       </div>
 
