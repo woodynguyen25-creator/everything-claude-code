@@ -6,7 +6,16 @@ import type { OlympusState } from '@/lib/olympus/types';
 export const dynamic = 'force-dynamic';
 export const revalidate = 0;
 
+function hasLiveEquityMovement(live: OlympusState): boolean {
+  const realized = Number(live.total_realized_pnl);
+  const unrealized = Number(live.total_unrealized_pnl);
+  const moved = (Number.isFinite(realized) && realized !== 0) || (Number.isFinite(unrealized) && unrealized !== 0);
+  const curve = Array.isArray(live.equity_curve) ? live.equity_curve : [];
+  return moved && curve.length > 1;
+}
+
 function normalizeOlympusState(live: OlympusState, fallback: OlympusState): OlympusState {
+  const useLiveEquity = hasLiveEquityMovement(live);
   return {
     ...fallback,
     ...live,
@@ -18,6 +27,11 @@ function normalizeOlympusState(live: OlympusState, fallback: OlympusState): Olym
     whale_flow: live.whale_flow && live.whale_flow.length > 0 ? live.whale_flow : fallback.whale_flow,
     trading_bots: live.trading_bots && live.trading_bots.length > 0 ? live.trading_bots : fallback.trading_bots,
     macro_brief: live.macro_brief ?? fallback.macro_brief ?? null,
+    current_equity: useLiveEquity ? live.current_equity : fallback.current_equity,
+    starting_equity: live.starting_equity ?? fallback.starting_equity,
+    total_realized_pnl: useLiveEquity ? live.total_realized_pnl : fallback.total_realized_pnl,
+    total_unrealized_pnl: useLiveEquity ? live.total_unrealized_pnl : fallback.total_unrealized_pnl,
+    equity_curve: useLiveEquity ? live.equity_curve : fallback.equity_curve,
   };
 }
 

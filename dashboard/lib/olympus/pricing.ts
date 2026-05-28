@@ -8,12 +8,15 @@ export const PRICING = {
 export type Provider = keyof typeof PRICING;
 
 export function estimateCost(
-  provider: Provider,
+  provider: string,
   inputTokens: number,
   outputTokens: number,
 ): number {
-  const p = PRICING[provider];
-  return (inputTokens * p.input + outputTokens * p.output) / 1_000_000;
+  const p = PRICING[provider as Provider];
+  if (!p) return 0;
+  const inT = Number.isFinite(inputTokens) ? inputTokens : 0;
+  const outT = Number.isFinite(outputTokens) ? outputTokens : 0;
+  return (inT * p.input + outT * p.output) / 1_000_000;
 }
 
 export function formatCost(usd: number): string {

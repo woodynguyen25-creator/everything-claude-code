@@ -12,6 +12,7 @@ interface Message {
 
 interface ThorChatProps {
   decisionContext?: Decision | null;
+  bare?: boolean;
 }
 
 const SUGGESTIONS = [
@@ -22,7 +23,7 @@ const SUGGESTIONS = [
   'Which decisions should we monitor most closely this week?',
 ];
 
-export function ThorChat({ decisionContext }: ThorChatProps) {
+export function ThorChat({ decisionContext, bare = false }: ThorChatProps) {
   const [messages, setMessages] = useState<Message[]>([]);
   const [input, setInput] = useState('');
   const [loading, setLoading] = useState(false);
@@ -30,7 +31,8 @@ export function ThorChat({ decisionContext }: ThorChatProps) {
   const inputRef = useRef<HTMLTextAreaElement>(null);
 
   useEffect(() => {
-    bottomRef.current?.scrollIntoView({ behavior: 'smooth' });
+    if (messages.length === 0) return;
+    bottomRef.current?.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
   }, [messages]);
 
   async function sendMessage(question: string) {
@@ -76,8 +78,12 @@ export function ThorChat({ decisionContext }: ThorChatProps) {
     }
   }
 
+  const shellClass = bare
+    ? 'flex h-full flex-col overflow-hidden bg-transparent'
+    : 'flex h-full flex-col overflow-hidden rounded-2xl border border-white/[0.08] bg-[rgba(12,10,26,0.85)] shadow-[0_16px_60px_rgba(0,0,0,0.42)] backdrop-blur-xl';
+
   return (
-    <div className="flex h-full flex-col overflow-hidden rounded-2xl border border-white/[0.08] bg-[rgba(12,10,26,0.85)] shadow-[0_16px_60px_rgba(0,0,0,0.42)] backdrop-blur-xl">
+    <div className={shellClass}>
       <div className="flex items-center gap-3 border-b border-white/[0.06] px-5 py-3">
         <div className="flex items-center gap-1.5">
           <span className="text-lg">⚒️</span>

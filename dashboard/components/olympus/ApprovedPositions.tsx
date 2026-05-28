@@ -1,4 +1,4 @@
-import { DecisionCard } from '@/components/olympus/DecisionCard';
+import { PositionRow } from '@/components/olympus/PositionRow';
 import type { Decision } from '@/lib/olympus/types';
 
 type ApprovedPositionsProps = {
@@ -7,7 +7,7 @@ type ApprovedPositionsProps = {
 
 export function ApprovedPositions({ decisions }: ApprovedPositionsProps) {
   return (
-    <section className="rounded-2xl border border-white/[0.08] bg-[rgba(12,10,26,0.85)] p-5 shadow-[0_16px_60px_rgba(0,0,0,0.42)] backdrop-blur-xl">
+    <section className="flex flex-col rounded-2xl border border-white/[0.08] bg-[rgba(12,10,26,0.85)] p-5 shadow-[0_16px_60px_rgba(0,0,0,0.42)] backdrop-blur-xl">
       <div className="mb-4 flex items-center justify-between gap-3">
         <div>
           <div className="flex items-center gap-2">
@@ -17,7 +17,7 @@ export function ApprovedPositions({ decisions }: ApprovedPositionsProps) {
             </h2>
           </div>
           <p className="mt-1 text-xs uppercase tracking-[0.16em] text-white/34">
-            Anubis-approved exposures
+            Anubis-approved · click for full council read
           </p>
         </div>
         <span className="rounded-full border border-[#C9A96155] bg-[#C9A96112] px-3 py-1 font-mono text-xs text-[#C9A961]">
@@ -25,11 +25,29 @@ export function ApprovedPositions({ decisions }: ApprovedPositionsProps) {
         </span>
       </div>
 
-      <div className="grid grid-cols-1 gap-4 xl:grid-cols-2 2xl:grid-cols-3">
-        {decisions.map((decision) => (
-          <DecisionCard key={decision.decision_id} decision={decision} />
-        ))}
-      </div>
+      {decisions.length === 0 ? (
+        <div className="flex min-h-32 items-center justify-center rounded-xl border border-dashed border-white/[0.08] text-sm text-white/34">
+          No active positions
+        </div>
+      ) : (
+        <>
+          <div className="mb-2 grid grid-cols-[1fr_auto_auto_auto_auto] items-center gap-3 px-3 text-[9px] uppercase tracking-[0.18em] text-white/30">
+            <span>Position</span>
+            <span>Strike</span>
+            <span>Exp</span>
+            <span title="Zeus · Apollo · Athena · Ares · Loki">Council</span>
+            <span>Status</span>
+          </div>
+          <div
+            className="flex-1 space-y-1.5 overflow-y-auto pr-1"
+            style={{ maxHeight: 'calc(100vh - 280px)', minHeight: '420px', scrollbarWidth: 'thin' }}
+          >
+            {decisions.map((decision) => (
+              <PositionRow key={decision.decision_id} decision={decision} />
+            ))}
+          </div>
+        </>
+      )}
     </section>
   );
 }

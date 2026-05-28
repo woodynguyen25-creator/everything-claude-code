@@ -40,6 +40,25 @@ function shortDate(v: string) {
   }
 }
 
+function daysUntil(expiry: string): number | null {
+  try {
+    const ms = new Date(`${expiry}T16:00:00-05:00`).getTime() - Date.now();
+    return Math.max(0, Math.ceil(ms / 86_400_000));
+  } catch {
+    return null;
+  }
+}
+
+function targetReturnPct(entry: number | null, target: number | null): number | null {
+  if (entry === null || target === null || entry <= 0) return null;
+  return ((target - entry) / entry) * 100;
+}
+
+function stopReturnPct(entry: number | null, stop: number | null): number | null {
+  if (entry === null || stop === null || entry <= 0) return null;
+  return ((stop - entry) / entry) * 100;
+}
+
 function totalCouncilCost(decision: Decision): number {
   if (!decision.council_metadata) return 0;
   return Object.values(decision.council_metadata).reduce((sum, meta) => {
@@ -170,10 +189,52 @@ function DecisionDrawerBody({ decision }: { decision: Decision }) {
           </span>
           <span className="font-mono text-sm text-white/55">${decision.strike}</span>
         </div>
-        <div className="mt-1 font-mono text-xs text-white/40">
-          Expiry: {shortDate(decision.expiry)}
+        <div className="mt-1 flex items-center gap-3 font-mono text-xs text-white/40">
+          <span>Expiry: {shortDate(decision.expiry)}</span>
+          {(() => {
+            const d = daysUntil(decision.expiry);
+            if (d === null) return null;
+            const tone = d <= 3 ? 'text-rose-300' : d <= 7 ? 'text-amber-300' : 'text-white/60';
+            return <span className={tone}>· {d}d to expiry</span>;
+          })()}
         </div>
       </div>
+
+      {/* Trade levels */}
+      {(decision.entry_price !== null || decision.target_price !== null || decision.stop_price !== null) ? (
+        <div>
+          <div className="mb-2 text-[10px] uppercase tracking-[0.22em] text-white/42">Trade Levels</div>
+          <div className="grid grid-cols-3 gap-2 rounded-xl border border-white/[0.06] bg-white/[0.025] p-3">
+            <div>
+              <div className="text-[9px] uppercase tracking-[0.18em] text-white/35">Entry</div>
+              <div className="mt-1 font-mono text-sm text-white/90">{money(decision.entry_price)}</div>
+            </div>
+            <div>
+              <div className="text-[9px] uppercase tracking-[0.18em] text-white/35">Target</div>
+              <div className="mt-1 font-mono text-sm text-emerald-200">{money(decision.target_price)}</div>
+              {(() => {
+                const pct = targetReturnPct(decision.entry_price, decision.target_price);
+                if (pct === null) return null;
+                return <div className="font-mono text-[10px] text-emerald-200/60">+{pct.toFixed(0)}%</div>;
+              })()}
+            </div>
+            <div>
+              <div className="text-[9px] uppercase tracking-[0.18em] text-white/35">Stop</div>
+              <div className="mt-1 font-mono text-sm text-rose-200">{money(decision.stop_price)}</div>
+              {(() => {
+                const pct = stopReturnPct(decision.entry_price, decision.stop_price);
+                if (pct === null) return null;
+                return <div className="font-mono text-[10px] text-rose-200/60">{pct.toFixed(0)}%</div>;
+              })()}
+            </div>
+          </div>
+          {decision.status === 'active' ? (
+            <div className="mt-2 text-[10px] uppercase tracking-[0.18em] text-white/30">
+              Live P&amp;L tracking · mark-to-market wiring in progress
+            </div>
+          ) : null}
+        </div>
+      ) : null}
 
       {/* Conviction bar */}
       <div>

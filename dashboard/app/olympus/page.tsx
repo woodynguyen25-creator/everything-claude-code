@@ -8,9 +8,9 @@ import { DecisionDrawer } from '@/components/olympus/DecisionDrawer';
 import { EquityHeader } from '@/components/olympus/EquityHeader';
 import { MacroPulse } from '@/components/olympus/MacroPulse';
 import { RecentResolutions } from '@/components/olympus/RecentResolutions';
-import { ThorChat } from '@/components/olympus/ThorChat';
 import { TradingBotsStatus } from '@/components/olympus/TradingBotsStatus';
 import { WhaleHunting } from '@/components/olympus/WhaleHunting';
+import { OracleDrawer } from '@/components/oracle/OracleDrawer';
 import mockState from '@/data/olympus-mock.json';
 import type { Decision, OlympusState } from '@/lib/olympus/types';
 
@@ -115,28 +115,28 @@ function OlympusInner() {
           <EquityHeader state={state} />
           <AgentLegend agents={state.agents} />
 
-          <div className="grid grid-cols-1 gap-6 lg:grid-cols-[2fr_1fr]">
-            <div className="space-y-6">
+          <div className="grid grid-cols-1 gap-5 xl:grid-cols-[260px_minmax(0,1fr)_340px]">
+            <div className="space-y-5 xl:order-1">
               {state.decisions.resolved.length > 0 ? (
                 <RecentResolutions decisions={state.decisions.resolved.slice(0, 5)} />
               ) : null}
+              <MacroPulse brief={state.macro_brief ?? null} />
+            </div>
+
+            <div className="xl:order-2">
               <ApprovedPositions decisions={state.decisions.approved} />
             </div>
 
-            <div className="space-y-6">
+            <div className="space-y-5 xl:order-3">
               <WhaleHunting flow={state.whale_flow ?? []} />
               <TradingBotsStatus bots={state.trading_bots ?? []} />
-              <MacroPulse brief={state.macro_brief ?? null} />
             </div>
-          </div>
-
-          <div className="h-[520px]">
-            <ThorChat decisionContext={activeDecision} />
           </div>
         </main>
       </div>
 
       <DecisionDrawer decision={activeDecision} onClose={handleClose} />
+      <OracleDrawer decisionContext={activeDecision} />
     </>
   );
 }
