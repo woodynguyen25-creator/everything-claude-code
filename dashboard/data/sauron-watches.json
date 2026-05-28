@@ -1,0 +1,142 @@
+{
+  "version": 1,
+  "lastUpdated": "2026-05-18",
+  "scanSchedule": {
+    "cron": "0 23 * * *",
+    "timezone": "America/Chicago",
+    "description": "Nightly at 11pm CDT — Sauron scans all watch categories and produces a digest by 11:15pm"
+  },
+  "categories": {
+    "trading": {
+      "label": "Markets + macro + geopolitical",
+      "weight": "primary",
+      "description": "Deep scan for overnight market-moving events. Sauron is the news machine for trading.",
+      "watchlistTickers": [
+        "SPY", "QQQ", "IWM", "DIA",
+        "NVDA", "AAPL", "MSFT", "GOOGL", "META", "TSLA", "AMZN",
+        "AMD", "AVGO", "PLTR", "COIN"
+      ],
+      "sources": [
+        { "name": "Bloomberg Markets RSS", "url": "https://feeds.bloomberg.com/markets/news.rss", "type": "rss" },
+        { "name": "Reuters Business", "url": "https://www.reuters.com/business/", "type": "scrape" },
+        { "name": "Financial Times Markets", "url": "https://www.ft.com/markets", "type": "scrape" },
+        { "name": "ZeroHedge", "url": "https://www.zerohedge.com/", "type": "scrape", "note": "doom bias, weight signals lower but check for early macro turns" },
+        { "name": "TradingView ideas (top stocks)", "url": "https://www.tradingview.com/ideas/", "type": "exa" },
+        { "name": "Earnings calendar (TipRanks)", "url": "https://www.tipranks.com/calendars/earnings", "type": "scrape" },
+        { "name": "FOMC + Fed speakers calendar", "url": "https://www.federalreserve.gov/newsevents/calendar.htm", "type": "scrape" },
+        { "name": "Economic calendar (ForexFactory)", "url": "https://www.forexfactory.com/calendar", "type": "scrape" },
+        { "name": "X/Twitter financial accounts via exa", "query": "@unusual_whales OR @zerohedge OR @DeItaone OR @LiveSquawk last 24h", "type": "exa" }
+      ],
+      "geopoliticalKeywords": [
+        "Fed", "FOMC", "CPI", "PPI", "NFP", "unemployment", "rate decision", "rate hike", "rate cut",
+        "China tariff", "Taiwan", "Ukraine", "Russia sanctions", "Iran", "OPEC", "oil supply",
+        "war", "conflict", "election", "treasury yield", "dollar strength"
+      ],
+      "scanDepth": "deep",
+      "triggerThresholds": {
+        "marketMove": "any S&P futures move >1% overnight triggers a high-priority finding",
+        "ticker": "any watchlist ticker with >3% pre-market move or breaking news triggers high-priority",
+        "macro": "any Fed action, CPI surprise, or geopolitical escalation triggers high-priority"
+      }
+    },
+    "aiTooling": {
+      "label": "AI tooling landscape",
+      "weight": "secondary",
+      "description": "Track new releases that affect Woody's AIOS build-out.",
+      "sources": [
+        { "name": "Anthropic blog + changelog", "url": "https://www.anthropic.com/news", "type": "scrape" },
+        { "name": "OpenAI blog", "url": "https://openai.com/blog", "type": "scrape" },
+        { "name": "Google DeepMind blog", "url": "https://deepmind.google/discover/blog/", "type": "scrape" },
+        { "name": "DeepSeek API changelog", "url": "https://api-docs.deepseek.com/news/news", "type": "scrape" },
+        { "name": "Hacker News (top stories filtered AI)", "url": "https://hn.algolia.com/?dateRange=last24h&query=claude+OR+gpt+OR+llm+OR+agent", "type": "exa" },
+        { "name": "ArXiv cs.AI new submissions", "url": "https://arxiv.org/list/cs.AI/new", "type": "scrape" },
+        { "name": "r/LocalLLaMA top weekly", "url": "https://www.reddit.com/r/LocalLLaMA/top/?t=week", "type": "exa" },
+        { "name": "r/ClaudeAI top weekly", "url": "https://www.reddit.com/r/ClaudeAI/top/?t=week", "type": "exa" },
+        { "name": "MCP server directory", "url": "https://github.com/modelcontextprotocol", "type": "github" },
+        { "name": "Awesome Claude Code lists", "query": "site:github.com awesome claude code", "type": "exa" }
+      ],
+      "interestKeywords": [
+        "Claude", "Anthropic", "Opus", "Sonnet", "Haiku",
+        "GPT-5", "GPT-6", "Codex",
+        "DeepSeek", "Llama", "Gemini", "Qwen",
+        "MCP", "agent framework", "agentic OS",
+        "Hermes", "Open-Claw", "Captain Claw", "ClawPort"
+      ],
+      "scanDepth": "medium"
+    },
+    "competitiveIntel": {
+      "label": "Other agentic OS dashboards + AI consultants",
+      "weight": "secondary",
+      "description": "Track who else is building what Woody is building — for AI consulting positioning and to learn from others' moves.",
+      "sources": [
+        { "name": "Jack Roberts YouTube channel", "url": "https://www.youtube.com/@JackRobertsAI", "type": "watch", "note": "his Hermes dashboard videos" },
+        { "name": "Chase AI / curiouslychase.com", "url": "https://curiouslychase.com/", "type": "scrape" },
+        { "name": "ClawPort releases", "url": "https://www.clawport.dev/", "type": "scrape" },
+        { "name": "Captain Claw GitHub", "url": "https://github.com/kstevica/captain-claw", "type": "github" },
+        { "name": "Cole Medin YouTube", "url": "https://www.youtube.com/@ColeMedin", "type": "watch" },
+        { "name": "Nate Herk AI Automation Society", "url": "https://www.youtube.com/@NateHerk", "type": "watch" },
+        { "name": "Miles Deutsche AI Edge", "url": "https://www.instagram.com/milesdeutscher", "type": "exa" },
+        { "name": "Daniel Miessler PAI", "url": "https://danielmiessler.com/", "type": "scrape" },
+        { "name": "Mission Control (mc.builderz.dev)", "url": "https://mc.builderz.dev/", "type": "scrape" }
+      ],
+      "interestKeywords": [
+        "personal AI OS", "agentic dashboard", "claude code dashboard",
+        "command center", "AI workstation", "operator dashboard",
+        "AI consultant", "AI consulting"
+      ],
+      "scanDepth": "medium"
+    },
+    "dfs": {
+      "label": "DFS / sports betting prep",
+      "weight": "tertiary",
+      "description": "Game-day prep for Perseus + ParlayBot. Only fires when active sports seasons + tomorrow has games.",
+      "sources": [
+        { "name": "Rotowire injury report", "url": "https://www.rotowire.com/baseball/news.php", "type": "scrape" },
+        { "name": "FantasyLabs", "url": "https://www.fantasylabs.com/", "type": "scrape" },
+        { "name": "MLB lineups", "url": "https://www.mlb.com/starting-lineups", "type": "scrape", "season": "MLB" },
+        { "name": "NFL injury reports", "url": "https://www.nfl.com/injuries/", "type": "scrape", "season": "NFL" },
+        { "name": "NBA injury reports", "url": "https://www.nba.com/players/injury-status", "type": "scrape", "season": "NBA" },
+        { "name": "Weather forecast for game cities", "type": "openweather", "note": "wire when Perseus's slate identifies which cities matter tomorrow" },
+        { "name": "DraftKings player props (early lines)", "url": "https://sportsbook.draftkings.com/", "type": "scrape" },
+        { "name": "PrizePicks player props", "url": "https://app.prizepicks.com/", "type": "scrape" },
+        { "name": "Beat-writer Twitter via exa", "query": "(NBA OR MLB OR NFL) beat writer lineup news", "type": "exa" }
+      ],
+      "scanDepth": "shallow",
+      "scheduleOverride": "Only scan if ParlayBot has tomorrow scheduled OR active season detected"
+    }
+  },
+  "deliveryRules": {
+    "highPriority": {
+      "description": "Findings that trigger immediate Telegram digest",
+      "criteria": [
+        "marketMove > 1% overnight",
+        "watchlist ticker with >3% pre-market move",
+        "any geopolitical escalation keyword",
+        "new model release from Anthropic / OpenAI / DeepSeek / Google",
+        "DFS late scratch on a player you have lineup exposure to"
+      ]
+    },
+    "mediumPriority": {
+      "description": "Findings included in nightly digest, no immediate ping",
+      "criteria": [
+        "Hacker News AI top stories",
+        "ArXiv submissions matching interestKeywords",
+        "competitive intel discovery (new dashboard / new framework)",
+        "DFS lineup changes (non-critical)"
+      ]
+    },
+    "lowPriority": {
+      "description": "Logged to Obsidian's Sauron's Watch archive, never pinged",
+      "criteria": [
+        "general market commentary",
+        "duplicate stories",
+        "stale news (>48h old)"
+      ]
+    }
+  },
+  "digestFormat": {
+    "obsidianPath": "Obsidian Vault/Sauron's Watch/{YYYY-MM-DD}.md",
+    "telegramTrigger": "send only if at least one high-priority finding",
+    "structure": "ranked list per category, source-cited, 2-3 sentence summary per finding, max 200 words total"
+  }
+}

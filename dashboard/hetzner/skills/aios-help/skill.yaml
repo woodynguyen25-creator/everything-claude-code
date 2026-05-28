@@ -1,0 +1,11 @@
+name: aios-help
+version: 0.1.0
+description: >
+  List every installed Hermes skill with its description and trigger.
+  Auto-generated from skill.yaml manifests — no manual maintenance.
+trigger:
+  type: explicit
+  command: /aios-help
+runtime: python3.11
+env_required: []
+entrypoint: main.py:help

@@ -1,0 +1,15 @@
+name: intake-route
+version: 0.1.0
+description: >
+  Auto-router. Takes any Telegram message, runs it through /classify, and
+  acts on the classification: urgent → reply with quick action plan,
+  action → suggest /triad invocation, informational → save to inbox,
+  noise → silent ack. The "send anything to LeBot" entrypoint.
+trigger:
+  type: explicit
+  command: /route
+runtime: python3.11
+env_required:
+  - ECC_BRIDGE_URL
+  - ECC_BRIDGE_TOKEN
+entrypoint: main.py:run

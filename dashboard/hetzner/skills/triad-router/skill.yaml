@@ -1,0 +1,27 @@
+name: triad-router
+version: 0.1.0
+description: >
+  Cost-aware orchestrator. Decomposes a Forging into pieces and routes each
+  piece to the best-fit model (Claude Max, Codex, DeepSeek, free tiers)
+  considering both capability AND Woody's real budget. Implements the
+  triad/quad pattern locked 2026-05-24.
+trigger:
+  type: explicit
+  command: /triad
+runtime: python3.11
+env_required:
+  - ECC_BRIDGE_URL
+  - ECC_BRIDGE_TOKEN
+  - DEEPSEEK_API_KEY
+  - GROQ_API_KEY
+  - CEREBRAS_API_KEY
+  - GEMINI_API_KEY
+entrypoint: main.py:route
+state:
+  daily_spend_file: /home/hermes/.hermes/state/triad-daily-spend.json
+  activity_log_url: "{ECC_BRIDGE_URL}/api/vault/write"
+budget:
+  deepseek_soft_warn_usd: 0.50
+  deepseek_hard_stop_usd: 1.50
+  reset_hour_local: 0
+  timezone: America/Chicago

@@ -1,0 +1,48 @@
+{
+  "name": "Sauron",
+  "displayName": "Sauron — The All-Seeing Eye",
+  "description": "AIOS Council deep research and surveillance specialist. Handles web scanning, competitive intelligence, trend monitoring, news aggregation, and design system extraction from any website. Uses exa MCP, firecrawl, and designlang as primary tools.",
+  "version": "1.0",
+  "url": "http://127.0.0.1:3737/api/agents/sauron",
+  "documentationUrl": "http://127.0.0.1:3737/sauron",
+  "provider": {
+    "organization": "Woody's Realm",
+    "url": "http://127.0.0.1:3737"
+  },
+  "capabilities": {
+    "streaming": true,
+    "pushNotifications": false,
+    "stateTransitionHistory": true
+  },
+  "authentication": {
+    "schemes": ["none"]
+  },
+  "defaultInputModes": ["text/plain"],
+  "defaultOutputModes": ["text/plain", "text/markdown"],
+  "skills": [
+    {
+      "id": "deep-research",
+      "name": "Deep Research",
+      "description": "Multi-source web research with citation discipline, scope declaration, and signal/noise separation",
+      "tags": ["research", "web", "intelligence"]
+    },
+    {
+      "id": "competitive-intelligence",
+      "name": "Competitive Intelligence",
+      "description": "Competitor profiling, market landscape scanning, trend detection, news monitoring",
+      "tags": ["competitive", "market", "trends"]
+    },
+    {
+      "id": "design-extraction",
+      "name": "Design System Extraction",
+      "description": "Extract complete DESIGN.md from any website using designlang CLI. Outputs tokens, Tailwind config, Figma variables, React anatomy stubs.",
+      "tags": ["design", "extraction", "designlang"]
+    },
+    {
+      "id": "design-grade",
+      "name": "Design Quality Grading",
+      "description": "Grade any site A-F using designlang, compare via battle command, enforce 10-point anti-template checklist",
+      "tags": ["design", "grade", "quality"]
+    }
+  ]
+}

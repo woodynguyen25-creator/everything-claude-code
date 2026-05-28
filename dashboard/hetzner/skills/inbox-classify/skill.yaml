@@ -1,0 +1,15 @@
+name: inbox-classify
+version: 0.1.0
+description: >
+  4-tier classifier for any Telegram message Woody sends. Buckets into:
+  urgent (act now) / action (todo for the AIOS) / informational (capture) /
+  noise (ignore). Routes to the right downstream skill based on the tier.
+  Per AI Masterclass video #17 (Zero to Inbox Agent).
+trigger:
+  type: explicit
+  command: /classify
+runtime: python3.11
+env_required:
+  - ECC_BRIDGE_URL
+  - ECC_BRIDGE_TOKEN
+entrypoint: main.py:run

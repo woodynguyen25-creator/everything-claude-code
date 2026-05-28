@@ -1,0 +1,15 @@
+name: session-handoff
+version: 0.1.0
+description: >
+  Hermes-side session snapshot. Aggregates today's activity log rows,
+  DeepSeek spend, voice-note fallbacks pending flush, and active cron
+  jobs into a BATON-style note. Triggered from Telegram when Woody is
+  about to step away or wants the AIOS to summarize itself.
+trigger:
+  type: explicit
+  command: /session-handoff
+runtime: python3.11
+env_required:
+  - ECC_BRIDGE_URL
+  - ECC_BRIDGE_TOKEN
+entrypoint: main.py:run

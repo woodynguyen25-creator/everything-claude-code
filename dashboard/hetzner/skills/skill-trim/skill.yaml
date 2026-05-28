@@ -1,0 +1,15 @@
+name: skill-trim
+version: 0.1.0
+description: >
+  Reads every installed Hermes skill's source files, asks a free critic to
+  propose a shorter version while preserving intent, writes a diff report to
+  AIOS/Reports/. Read-only — never auto-applies changes. Per AI Masterclass
+  synthesis adoption #4.7.
+trigger:
+  type: explicit
+  command: /skill-trim
+runtime: python3.11
+env_required:
+  - ECC_BRIDGE_URL
+  - ECC_BRIDGE_TOKEN
+entrypoint: main.py:run

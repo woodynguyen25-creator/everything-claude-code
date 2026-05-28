@@ -1,0 +1,234 @@
+@import '../styles/tokens.css';
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+* {
+  box-sizing: border-box;
+}
+
+html,
+body {
+  min-height: 100vh;
+  margin: 0;
+  background: oklch(var(--color-bg-deep));
+  color: oklch(var(--color-text-primary));
+  font-family: var(--font-body), system-ui, sans-serif;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+body::before {
+  content: '';
+  position: fixed;
+  inset: 0;
+  z-index: 0;
+  pointer-events: none;
+  background-image:
+    radial-gradient(ellipse at 20% 10%, oklch(var(--color-rune-gold) / 0.04) 0%, transparent 50%),
+    radial-gradient(ellipse at 80% 90%, oklch(var(--color-bifrost) / 0.03) 0%, transparent 50%);
+}
+
+@keyframes home-fade-up {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes ember-drift {
+  from {
+    transform: translate3d(var(--drift-x-start, 0px), 110vh, 0);
+    opacity: 0;
+  }
+  10% {
+    opacity: 0.35;
+  }
+  90% {
+    opacity: 0.18;
+  }
+  to {
+    transform: translate3d(var(--drift-x-end, 10px), -20vh, 0);
+    opacity: 0;
+  }
+}
+
+@keyframes shimmer-slide {
+  0% {
+    transform: translateX(-100%);
+  }
+  100% {
+    transform: translateX(100%);
+  }
+}
+
+@keyframes border-beam-slide {
+  from {
+    transform: translateX(-140%);
+  }
+  to {
+    transform: translateX(420%);
+  }
+}
+
+/*
+ * Default: opacity 1 (always visible) — handles reduced-motion users + browsers
+ * where the media query doesn't match. Motion-allowed users get the entrance
+ * animation, ending at opacity 1 via `forwards`.
+ */
+.stagger-enter {
+  opacity: 1;
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  .stagger-enter {
+    opacity: 0;
+    animation: home-fade-up 600ms ease-out forwards;
+    animation-delay: var(--stagger-delay, 0ms);
+  }
+}
+
+.shimmer {
+  position: relative;
+  overflow: hidden;
+}
+
+.shimmer::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(90deg, transparent, oklch(95% 0.02 80 / 0.04), transparent);
+  animation: shimmer-slide 2.4s ease-in-out infinite;
+}
+
+.border-beam::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  left: -30%;
+  width: 33%;
+  border-radius: inherit;
+  background: linear-gradient(
+    90deg,
+    var(--beam-color-from, oklch(var(--color-rune-gold) / 0)),
+    var(--beam-color-to, oklch(var(--color-rune-gold) / 0.5)),
+    var(--beam-color-from, oklch(var(--color-rune-gold) / 0))
+  );
+  filter: blur(10px);
+  opacity: 0.8;
+  animation: border-beam-slide var(--beam-duration, 8s) linear infinite;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .shimmer::after {
+    animation: none;
+  }
+
+  .border-beam::before {
+    animation: none;
+    opacity: 0;
+  }
+}
+
+@keyframes raven-idle {
+  0%, 100% { transform: translateY(0px) rotate(0deg); }
+  30%       { transform: translateY(-3px) rotate(-1deg); }
+  60%       { transform: translateY(-1px) rotate(0.5deg); }
+  80%       { transform: translateY(-4px) rotate(-0.5deg); }
+}
+
+@keyframes raven-wing-left {
+  0%, 100% { transform: rotate(0deg) scaleY(1); }
+  20%      { transform: rotate(-8deg) scaleY(0.9); }
+  40%      { transform: rotate(4deg) scaleY(1.05); }
+  60%      { transform: rotate(-4deg) scaleY(0.95); }
+  80%      { transform: rotate(2deg) scaleY(1.02); }
+}
+
+@keyframes raven-wing-right {
+  0%, 100% { transform: rotate(0deg) scaleY(1); }
+  20%      { transform: rotate(8deg) scaleY(0.9); }
+  40%      { transform: rotate(-4deg) scaleY(1.05); }
+  60%      { transform: rotate(4deg) scaleY(0.95); }
+  80%      { transform: rotate(-2deg) scaleY(1.02); }
+}
+
+@keyframes raven-eye-pulse {
+  0%, 100% { opacity: 1; }
+  45%      { opacity: 0.4; }
+  55%      { opacity: 1; }
+}
+
+@keyframes aurora-drift {
+  0%   { opacity: 0.06; transform: translateX(0%) scaleX(1); }
+  33%  { opacity: 0.12; transform: translateX(3%) scaleX(1.04); }
+  66%  { opacity: 0.08; transform: translateX(-2%) scaleX(0.97); }
+  100% { opacity: 0.06; transform: translateX(0%) scaleX(1); }
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  .raven-idle {
+    animation: raven-idle 8s ease-in-out infinite;
+  }
+
+  .raven-wing-left {
+    transform-origin: 60px 55px;
+    animation: raven-wing-left 8s ease-in-out infinite;
+  }
+
+  .raven-wing-right {
+    transform-origin: 60px 55px;
+    animation: raven-wing-right 8s ease-in-out infinite;
+  }
+
+  .raven-eye {
+    animation: raven-eye-pulse 6s ease-in-out 3s infinite;
+  }
+
+  .aurora-drift {
+    animation: aurora-drift 18s ease-in-out infinite;
+  }
+}
+
+::-webkit-scrollbar {
+  width: 10px;
+  height: 10px;
+}
+
+::-webkit-scrollbar-track {
+  background: oklch(var(--color-bg-deep));
+}
+
+::-webkit-scrollbar-thumb {
+  background: oklch(var(--color-border-subtle));
+  border-radius: 5px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: oklch(var(--color-border-strong));
+}
+
+*:focus-visible {
+  outline: 2px solid oklch(var(--color-rune-gold));
+  outline-offset: 2px;
+  border-radius: 2px;
+}
+
+@layer utilities {
+  .text-rune {
+    @apply font-body font-semibold uppercase tracking-wider;
+  }
+
+  .panel {
+    @apply rounded-lg border border-border-subtle bg-bg-panel shadow-panel;
+  }
+
+  .panel-raised {
+    @apply rounded-lg border border-border-subtle bg-bg-raised shadow-panel;
+  }
+}

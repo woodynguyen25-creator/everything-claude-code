@@ -1,0 +1,12 @@
+name: skill-stats
+version: 0.1.0
+description: >
+  Quick metric snapshot of the Hermes skill catalog: count, total LOC,
+  pytest coverage %, average skill age. Useful for monthly health snapshots
+  and feeds the dashboard activity widget. Read-only.
+trigger:
+  type: explicit
+  command: /skill-stats
+runtime: python3.11
+env_required: []
+entrypoint: main.py:run

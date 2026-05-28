@@ -1,0 +1,21 @@
+:root {
+  --color-bg-deep: 14% 0.005 250;
+  --color-bg-panel: 17% 0.006 250;
+  --color-bg-raised: 20% 0.008 250;
+  --color-bg-hover: 23% 0.010 250;
+
+  --color-text-primary: 95% 0.005 90;
+  --color-text-secondary: 72% 0.010 90;
+  --color-text-muted: 52% 0.008 90;
+
+  --color-border-subtle: 28% 0.006 250;
+  --color-border-strong: 38% 0.008 250;
+
+  --color-rune-gold: 75% 0.13 80;
+  --color-bifrost: 68% 0.16 245;
+  --color-blood: 58% 0.20 25;
+  --color-ember: 72% 0.18 50;
+  --color-iron: 60% 0 0;
+  --color-perseus-emerald: 60% 0.14 155;
+  --color-sauron-fire: 60% 0.22 35;
+}

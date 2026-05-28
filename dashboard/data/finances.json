@@ -1,0 +1,20 @@
+{
+  "paychecks": [
+    { "date": "2026-05-15", "grossPay": 750, "netPay": 600, "employer": "Part-time", "notes": "" },
+    { "date": "2026-05-01", "grossPay": 750, "netPay": 600, "employer": "Part-time", "notes": "" }
+  ],
+  "monthlyBudget": {
+    "family": 200,
+    "savings": 500,
+    "food": 150,
+    "transport": 80,
+    "subscriptions": 60,
+    "misc": 100
+  },
+  "savingsGoal": {
+    "name": "Emergency Fund",
+    "target": 2000,
+    "current": 0
+  },
+  "accounts": []
+}

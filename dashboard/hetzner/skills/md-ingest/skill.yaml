@@ -1,0 +1,14 @@
+name: md-ingest
+version: 0.1.0
+description: >
+  Convert a PDF / HTML / DOCX / image into clean markdown for downstream
+  Claude consumption. Wraps the local `docling` CLI on the PC via the
+  dashboard. Drops the converted file into AIOS/ingest/<date>/<basename>.md.
+trigger:
+  type: explicit
+  command: /md-ingest
+runtime: python3.11
+env_required:
+  - ECC_BRIDGE_URL
+  - ECC_BRIDGE_TOKEN
+entrypoint: main.py:run

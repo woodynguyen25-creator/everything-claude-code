@@ -1,0 +1,123 @@
+{
+  "jobs": [
+    {
+      "id": "morning-brief",
+      "name": "Morning Brief",
+      "description": "Pre-market digest: watchlist, options flow, news. Writes to Obsidian + Telegram.",
+      "enabled": true,
+      "script": "morning-brief.js",
+      "schedule": { "cron": "30 9 * * *", "time": "09:30", "days": "daily", "tz": "America/Chicago" },
+      "on_error": "telegram_notify_and_log"
+    },
+    {
+      "id": "close-ritual",
+      "name": "Close Ritual",
+      "description": "End-of-day P/L + position review. Weekdays only.",
+      "enabled": true,
+      "script": "close-ritual.js",
+      "schedule": { "cron": "15 16 * * 1-5", "time": "16:15", "days": "weekdays", "tz": "America/Chicago" },
+      "on_error": "telegram_notify_and_log"
+    },
+    {
+      "id": "weekly-summary",
+      "name": "Weekly Summary",
+      "description": "Friday week-in-review: trades, applications, habits, finances.",
+      "enabled": true,
+      "script": "weekly-summary.js",
+      "schedule": { "cron": "45 16 * * 5", "time": "16:45", "days": "friday", "tz": "America/Chicago" },
+      "on_error": "telegram_notify_and_log"
+    },
+    {
+      "id": "obsidian-sync",
+      "name": "Obsidian Daily Sync",
+      "description": "Sync habits.db (workout, read, podcast, apply) + workout heatmap to Obsidian.",
+      "enabled": true,
+      "script": "sync-workouts-obsidian.js",
+      "schedule": { "cron": "0 20 * * *", "time": "20:00", "days": "daily", "tz": "America/Chicago" },
+      "on_error": "telegram_notify_and_log"
+    },
+    {
+      "id": "habit-nudge",
+      "name": "Habit Nudge",
+      "description": "Telegram alert at 8pm if any of today's 4 habits aren't checked off yet.",
+      "enabled": false,
+      "script": "habit-nudge.js",
+      "schedule": { "cron": "0 20 * * *", "time": "20:00", "days": "daily", "tz": "America/Chicago" },
+      "on_error": "log_only"
+    },
+    {
+      "id": "internship-followups",
+      "name": "Internship Follow-ups",
+      "description": "Scan InternshipPanel for due follow-ups (post-application + post-interview).",
+      "enabled": true,
+      "script": "internship-followups.js",
+      "schedule": { "cron": "0 9 * * *", "time": "09:00", "days": "daily", "tz": "America/Chicago" },
+      "on_error": "telegram_notify_and_log"
+    },
+    {
+      "id": "deadline-alerts",
+      "name": "Internship Deadline Alerts",
+      "description": "24h-before alerts for upcoming internship application deadlines.",
+      "enabled": true,
+      "script": "deadline-alerts.js",
+      "schedule": { "cron": "0 8 * * *", "time": "08:00", "days": "daily", "tz": "America/Chicago" },
+      "on_error": "telegram_notify_and_log"
+    },
+    {
+      "id": "aios-audit-weekly",
+      "name": "AIOS Audit (weekly)",
+      "description": "Run /aios-audit: 4 C's coverage check, stale skills, unused MCPs, prune candidates. Per Masterclass adoption #2.",
+      "enabled": true,
+      "script": "aios-audit.js",
+      "schedule": { "cron": "0 18 * * 0", "time": "18:00", "days": "sunday", "tz": "America/Chicago" },
+      "on_error": "telegram_notify_and_log",
+      "writes_to": "Command Center/AIOS/AIOS-ACTIVITY-LOG.md"
+    },
+    {
+      "id": "aios-onboard-quarterly",
+      "name": "AIOS Onboard reminder (quarterly)",
+      "description": "Quarterly reminder to re-run /aios-onboard intake. Per Masterclass adoption #1.",
+      "enabled": true,
+      "script": "aios-onboard-nudge.js",
+      "schedule": { "cron": "0 19 1-7 1,4,7,10 0", "time": "19:00", "days": "1st-Sunday-of-quarter", "tz": "America/Chicago" },
+      "on_error": "log_only"
+    },
+    {
+      "id": "deepseek-spend-reset",
+      "name": "DeepSeek Spend Reset",
+      "description": "Clear the daily DeepSeek spend tracker at midnight CT. Used by triad-router.",
+      "enabled": true,
+      "script": "deepseek-spend-reset.js",
+      "schedule": { "cron": "0 0 * * *", "time": "00:00", "days": "daily", "tz": "America/Chicago" },
+      "on_error": "log_only"
+    },
+    {
+      "id": "voice-flush",
+      "name": "Voice Note Flush",
+      "description": "If /tmp/voice-*.md fallback files exist (PC was offline when voice arrived), replay them through /api/vault/write now that the bridge is back. Skipped silently if none.",
+      "enabled": true,
+      "script": "voice-flush.js",
+      "schedule": { "cron": "*/15 * * * *", "time": "every-15-min", "days": "daily", "tz": "America/Chicago" },
+      "on_error": "log_only"
+    },
+    {
+      "id": "activity-log-rollup-monthly",
+      "name": "Activity Log Monthly Rollup",
+      "description": "Mine AIOS-ACTIVITY-LOG for patterns. Flag tasks with >20% failure rate or 30+ days idle. Per Masterclass adoption #6.",
+      "enabled": true,
+      "script": "activity-log-rollup.js",
+      "schedule": { "cron": "0 10 1 * *", "time": "10:00", "days": "1st-of-month", "tz": "America/Chicago" },
+      "on_error": "telegram_notify_and_log",
+      "writes_to": "Command Center/AIOS/Reports/activity-log-rollup-{YYYY-MM}.md"
+    }
+  ],
+  "error_handlers": {
+    "telegram_notify_and_log": {
+      "description": "Post failure to Telegram + append row to AIOS-ACTIVITY-LOG.md with ❌ outcome",
+      "channel": "@LeBotJamesAiosBot"
+    },
+    "log_only": {
+      "description": "Append row to AIOS-ACTIVITY-LOG.md only — no Telegram noise"
+    }
+  }
+}

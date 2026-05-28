@@ -1,0 +1,209 @@
+{
+  "generatedAt": "2026-05-27T13:59:15.263Z",
+  "lookbackDays": 7,
+  "models": {
+    "claude-sonnet-4-6": {
+      "in": 117242,
+      "out": 3961669,
+      "cache_read": 391057744,
+      "cache_write": 25928148,
+      "turns": 3869,
+      "cost": 274.3246392
+    },
+    "<synthetic>": {
+      "in": 0,
+      "out": 0,
+      "cache_read": 0,
+      "cache_write": 0,
+      "turns": 223,
+      "cost": 0
+    },
+    "claude-opus-4-7": {
+      "in": 345418,
+      "out": 8229998,
+      "cache_read": 1216403410,
+      "cache_write": 64389932,
+      "turns": 5152,
+      "cost": 3654.34746
+    },
+    "claude-haiku-4-5-20251001": {
+      "in": 55112,
+      "out": 4457161,
+      "cache_read": 265331347,
+      "cache_write": 25179806,
+      "turns": 5574,
+      "cost": 80.3488092
+    }
+  },
+  "totalCost": 4009.0209084,
+  "topSkills": [
+    {
+      "skill": "bash",
+      "count": 9
+    },
+    {
+      "skill": "batch",
+      "count": 5
+    },
+    {
+      "skill": "write",
+      "count": 4
+    },
+    {
+      "skill": "watch",
+      "count": 3
+    },
+    {
+      "skill": "read",
+      "count": 3
+    }
+  ],
+  "topTools": [
+    {
+      "tool": "Bash",
+      "count": 1336
+    },
+    {
+      "tool": "Read",
+      "count": 814
+    },
+    {
+      "tool": "PowerShell",
+      "count": 689
+    },
+    {
+      "tool": "Edit",
+      "count": 686
+    },
+    {
+      "tool": "Write",
+      "count": 464
+    },
+    {
+      "tool": "TaskUpdate",
+      "count": 320
+    },
+    {
+      "tool": "TaskCreate",
+      "count": 187
+    },
+    {
+      "tool": "Glob",
+      "count": 99
+    }
+  ],
+  "projects": [
+    {
+      "key": "everything-claude-code",
+      "name": "AIOS Hub (ECC)",
+      "sessions": 28,
+      "prompts": 503,
+      "lastTouched": 1779890324575.1895
+    },
+    {
+      "key": "lucky-dog-landing",
+      "name": "Lucky Dog Landing",
+      "sessions": 0,
+      "prompts": 0,
+      "lastTouched": 0
+    },
+    {
+      "key": "tradingview-mcp-jackson",
+      "name": "TradingView Assistant",
+      "sessions": 0,
+      "prompts": 0,
+      "lastTouched": 0
+    },
+    {
+      "key": "parlay-bot",
+      "name": "ParlayBot",
+      "sessions": 0,
+      "prompts": 0,
+      "lastTouched": 0
+    }
+  ],
+  "dreams": [
+    "🌀 You called `Skill` **36×** this week — codify a wrapper skill?",
+    "💭 \"working directory\" came up **712×** in your prompts — recurring task?",
+    "💭 \"directory parameters\" came up **359×** in your prompts — recurring task?",
+    "💭 \"happened occurred\" came up **356×** in your prompts — recurring task?"
+  ],
+  "mcps": [
+    "21st-dev-magic",
+    "alphavantage",
+    "ccxt",
+    "context7",
+    "designlang",
+    "e2b",
+    "eslint",
+    "figma",
+    "firecrawl",
+    "github",
+    "graphiti",
+    "hermes",
+    "mcpcontrol",
+    "mem0",
+    "meta-ads",
+    "n8n-mcp",
+    "obsidian",
+    "playwright",
+    "semble",
+    "sequential-thinking",
+    "sourcebot",
+    "task-master-ai",
+    "telegram",
+    "trading-skills",
+    "tradingview",
+    "tradingview-mcp"
+  ],
+  "recentSessions": [
+    {
+      "project": "everything-claude-code",
+      "title": "[Image: original 1179x2556, displayed at 923x2000. Multiply coordinates by 1.28 to map to original image.] ",
+      "mtime": 1779890324575.1895
+    },
+    {
+      "project": "everything-claude-code",
+      "title": "So I'm currently using Wispr Flow right now as my main diction tool to talk into Claude code. Can you find me ",
+      "mtime": 1779867388555.6416
+    },
+    {
+      "project": "everything-claude-code",
+      "title": "Okay, can you just go ahead and continue wherever you were at and then just do a recap for me?",
+      "mtime": 1779865412272.9192
+    },
+    {
+      "project": "everything-claude-code",
+      "title": "After the compact, can you do a brief summary of where you're at, and then continue working?",
+      "mtime": 1779862766400.6252
+    },
+    {
+      "project": "everything-claude-code",
+      "title": "Hello Claude. I want to make sure you can access the Everything Claude Code and all the skills I've installed ",
+      "mtime": 1779862296530.5178
+    },
+    {
+      "project": "everything-claude-code",
+      "title": "Okay, I restarted cloud coat. Just scan over everything you've done and give me a brief summary of where every",
+      "mtime": 1779861974905.6255
+    },
+    {
+      "project": "everything-claude-code",
+      "title": "do a mix of captain and guild master but make it very good ",
+      "mtime": 1779858106410.0588
+    },
+    {
+      "project": "everything-claude-code",
+      "title": "Go ahead and do a brief recap, and then continue with everything where you were at. /model",
+      "mtime": 1779856287187.7744
+    }
+  ],
+  "baton": {
+    "found": true,
+    "handoff": "2026-05-26T19:00:00-05:00",
+    "from": "everything-claude-code (AIOS hub) — Hermes v7+ shipped, deploy attempted, 21st.dev components applied",
+    "branch": "main",
+    "open": "### 🔥 Decision points waiting on Woody's review\n1. **Skill format conversion** — convert 22 skills to Hermes-native SKILL.md? Or keep as Python services with SKILL.md wrappers?\n2. **Apply RuneButton elsewhere** — HermesPage, NextActionCard, and other CTAs could use the new variants\n3. **Direction for next session** — finish format conversion vs. bigger project (Lucky Dog morph, ParlayBot free-data rebuild, AI consulting pitch)",
+    "next": null
+  }
+}

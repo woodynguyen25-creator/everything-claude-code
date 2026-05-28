@@ -1,0 +1,19 @@
+name: voice-note
+version: 0.1.0
+description: >
+  Transcribe Telegram voice memos from Woody and save them to the Obsidian
+  Command Center vault inbox. Auto-routes by hashtag (#trading, #luckydog,
+  #parlay, #solo, #homework) to the correct project folder.
+trigger:
+  type: telegram_voice_message
+  user_id: 2019823847
+runtime: python3.11
+env_required:
+  - GROQ_API_KEY
+  - ECC_BRIDGE_URL
+  - ECC_BRIDGE_TOKEN
+entrypoint: main.py:handle_voice
+fallback:
+  type: local_save
+  path: /tmp/voice-{ts}.md
+  reply: "PC offline — voice queued locally on Droplet at {path}"

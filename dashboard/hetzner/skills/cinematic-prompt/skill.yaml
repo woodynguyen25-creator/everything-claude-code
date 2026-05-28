@@ -1,0 +1,16 @@
+name: cinematic-prompt
+version: 0.1.0
+description: >
+  Takes a raw idea and returns a cinematographer-grade prompt for image or
+  video generation. Specifies subject + setting + camera + lighting +
+  atmosphere + style references. Use for Lucky Dog hero animations, Solo
+  Store poster prompts, AI consulting client B-roll. Per AI Masterclass
+  video #18 (Sora 2 + n8n agents).
+trigger:
+  type: explicit
+  command: /cinematic
+runtime: python3.11
+env_required:
+  - ECC_BRIDGE_URL
+  - ECC_BRIDGE_TOKEN
+entrypoint: main.py:run

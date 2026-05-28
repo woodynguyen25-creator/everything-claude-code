@@ -1,0 +1,7 @@
+.env
+.env.local
+*.key
+*.pem
+id_*
+known_hosts
+hermes-status.json

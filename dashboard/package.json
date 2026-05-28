@@ -1,0 +1,36 @@
+{
+  "name": "aios-dashboard",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Woody's AIOS command center — Norse-themed Claude Code OS dashboard",
+  "scripts": {
+    "dev": "next dev -p 3737 -H 127.0.0.1",
+    "build": "next build",
+    "start": "next start -p 3737 -H 127.0.0.1",
+    "typecheck": "tsc --noEmit -p tsconfig.typecheck.json",
+    "lint": "next lint --dir app --dir components --dir lib",
+    "sync:obsidian": "node scripts/sync-workouts-obsidian.js"
+  },
+  "dependencies": {
+    "better-sqlite3": "^11.3.0",
+    "class-variance-authority": "^0.7.1",
+    "lucide-react": "^1.16.0",
+    "next": "14.2.18",
+    "react": "^18.3.1",
+    "react-dom": "^18.3.1",
+    "react-markdown": "^10.1.0",
+    "remark-gfm": "^4.0.1",
+    "zod": "^4.4.3"
+  },
+  "devDependencies": {
+    "@tailwindcss/typography": "^0.5.19",
+    "@types/better-sqlite3": "^7.6.11",
+    "@types/node": "^20",
+    "@types/react": "^18",
+    "@types/react-dom": "^18",
+    "autoprefixer": "^10.4.20",
+    "postcss": "^8.4.49",
+    "tailwindcss": "^3.4.14",
+    "typescript": "^5"
+  }
+}

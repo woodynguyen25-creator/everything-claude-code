@@ -1,0 +1,15 @@
+name: forge
+version: 0.1.0
+description: >
+  End-to-end orchestrator. Takes a high-level goal, runs it through the full
+  AIOS pipeline: interrogate → decompose → research → execute → review →
+  log. Wraps triad-router with audit + activity-log integration so one
+  command does the whole loop.
+trigger:
+  type: explicit
+  command: /forge
+runtime: python3.11
+env_required:
+  - ECC_BRIDGE_URL
+  - ECC_BRIDGE_TOKEN
+entrypoint: main.py:run

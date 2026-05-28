@@ -1,0 +1,48 @@
+{
+  "name": "Perseus",
+  "displayName": "Perseus — Hero of Calculation",
+  "description": "AIOS Council finance and DFS specialist. Handles DFS slate construction, ParlayBot operations, personal finances, budget tracking, and quantitative modeling. Owner of the parlay-bot codebase and Kelly criterion sizing.",
+  "version": "1.0",
+  "url": "http://127.0.0.1:3737/api/agents/perseus",
+  "documentationUrl": "http://127.0.0.1:3737/perseus",
+  "provider": {
+    "organization": "Woody's Realm",
+    "url": "http://127.0.0.1:3737"
+  },
+  "capabilities": {
+    "streaming": true,
+    "pushNotifications": false,
+    "stateTransitionHistory": true
+  },
+  "authentication": {
+    "schemes": ["none"]
+  },
+  "defaultInputModes": ["text/plain"],
+  "defaultOutputModes": ["text/plain", "text/markdown"],
+  "skills": [
+    {
+      "id": "dfs-slate",
+      "name": "DFS Slate Construction",
+      "description": "PrizePicks + Odds API + MLB Stats lineup gate, vig stripping, sanity gates, Kelly sizing",
+      "tags": ["dfs", "parlay", "prizepicks"]
+    },
+    {
+      "id": "finances",
+      "name": "Personal Finance Tracking",
+      "description": "Budget analysis, expense tracking, savings goal modeling against finances.json",
+      "tags": ["finance", "budget", "savings"]
+    },
+    {
+      "id": "kelly-sizing",
+      "name": "Kelly Criterion Position Sizing",
+      "description": "Calculate optimal bet/position sizes using Kelly criterion given edge and bankroll",
+      "tags": ["kelly", "sizing", "bankroll"]
+    },
+    {
+      "id": "parlay-bot",
+      "name": "ParlayBot Operations",
+      "description": "Run, debug, and tune the parlay-bot pipeline at C:\\Github Repos\\parlay-bot",
+      "tags": ["parlay-bot", "automation", "sports"]
+    }
+  ]
+}

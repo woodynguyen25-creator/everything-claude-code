@@ -1,0 +1,21 @@
+{
+  "displayName": "Lord Woody",
+  "timezone": "America/Chicago",
+  "birthday": null,
+  "northStars": [
+    "AIOS power-up",
+    "Lucky Dog launch",
+    "AI consulting growth"
+  ],
+  "schedule": {
+    "work": {
+      "days": [1, 2, 3, 4, 5],
+      "start": "15:00",
+      "end": "19:00"
+    },
+    "gym": {
+      "preferred": "morning",
+      "target": "daily"
+    }
+  }
+}

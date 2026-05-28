@@ -1,0 +1,15 @@
+name: aios-prune
+version: 0.1.0
+description: >
+  Companion to /aios-audit. Reads the most recent audit report and proposes
+  specific skills/MCPs/jobs to delete with one-line reasoning each. Writes a
+  prune-proposal to AIOS/Reports/. Read-only — never auto-deletes. Run
+  monthly after the weekly /aios-audit accumulates evidence.
+trigger:
+  type: explicit
+  command: /aios-prune
+runtime: python3.11
+env_required:
+  - ECC_BRIDGE_URL
+  - ECC_BRIDGE_TOKEN
+entrypoint: main.py:run

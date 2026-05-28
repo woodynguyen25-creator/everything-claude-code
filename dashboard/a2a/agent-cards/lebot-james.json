@@ -1,0 +1,48 @@
+{
+  "name": "LeBotJames",
+  "displayName": "LeBotJames — The All-Father",
+  "description": "AIOS Council orchestrator. Strategic overseer, session memory keeper, decision logger, and coach for all workstreams (trading, Lucky Dog, AI consulting, AIOS build-out). Routes complex tasks to the right Council member. Final word on cross-domain decisions.",
+  "version": "1.0",
+  "url": "http://127.0.0.1:3737/api/agents/lebot-james",
+  "documentationUrl": "http://127.0.0.1:3737/lebot-james",
+  "provider": {
+    "organization": "Woody's Realm",
+    "url": "http://127.0.0.1:3737"
+  },
+  "capabilities": {
+    "streaming": true,
+    "pushNotifications": false,
+    "stateTransitionHistory": true
+  },
+  "authentication": {
+    "schemes": ["none"]
+  },
+  "defaultInputModes": ["text/plain"],
+  "defaultOutputModes": ["text/plain", "text/markdown"],
+  "skills": [
+    {
+      "id": "strategic-planning",
+      "name": "Strategic Planning",
+      "description": "Break down ambiguous goals into phased execution plans with task sequencing and agent assignment",
+      "tags": ["planning", "orchestration", "strategy"]
+    },
+    {
+      "id": "session-memory",
+      "name": "Session Memory Recall",
+      "description": "Retrieve and synthesize decisions, context, and prior work from SHARED_MEMORY and Command Center",
+      "tags": ["memory", "context", "recall"]
+    },
+    {
+      "id": "agent-routing",
+      "name": "Agent Routing",
+      "description": "Determine which Council member owns a given task and hand off with full context",
+      "tags": ["routing", "handoff", "delegation"]
+    },
+    {
+      "id": "council-debate",
+      "name": "Council Debate Orchestration",
+      "description": "Fan-out a question to all 5 Council members, collect Artifacts, synthesize final recommendation",
+      "tags": ["debate", "synthesis", "multi-agent"]
+    }
+  ]
+}

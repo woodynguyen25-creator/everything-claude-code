@@ -1,0 +1,15 @@
+name: aios-audit
+version: 0.1.0
+description: >
+  The 4 C's coverage audit (Context · Connections · Capabilities · Cadence).
+  Walks the live AIOS, identifies coverage gaps, stale skills, unused MCPs,
+  silent-failure jobs. Writes a dated report to AIOS/Reports/ and one row to
+  AIOS-ACTIVITY-LOG. Per Masterclass adoption #2.
+trigger:
+  type: explicit
+  command: /aios-audit
+runtime: python3.11
+env_required:
+  - ECC_BRIDGE_URL
+  - ECC_BRIDGE_TOKEN
+entrypoint: main.py:run_audit

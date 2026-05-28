@@ -1,0 +1,14 @@
+name: morning-brief-status
+version: 0.1.0
+description: >
+  Quick Telegram lookup — did today's morning brief fire, and what's in it?
+  Reads today's brief note from the Trading Assistant folder and surfaces
+  the headline + watchlist. Falls back to the activity log if no file found.
+trigger:
+  type: explicit
+  command: /morning-brief
+runtime: python3.11
+env_required:
+  - ECC_BRIDGE_URL
+  - ECC_BRIDGE_TOKEN
+entrypoint: main.py:run

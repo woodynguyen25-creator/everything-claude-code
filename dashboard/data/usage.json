@@ -1,0 +1,33 @@
+{
+  "generatedAt": "2026-05-28T01:35:50.940Z",
+  "fiveHour": {
+    "weightedTokens": 25974887,
+    "ceiling": 250000,
+    "ceilingSource": "estimate",
+    "percent": 100,
+    "resetsAt": "2026-05-28T06:18:37.656Z"
+  },
+  "weekly": {
+    "weightedTokens": 52586679,
+    "ceiling": 3000000,
+    "ceilingSource": "estimate",
+    "percent": 100,
+    "resetsAt": "2026-06-01T05:00:00.000Z"
+  },
+  "weeklyOpus": {
+    "weightedTokens": 42796770,
+    "ceiling": 900000,
+    "percent": 100,
+    "resetsAt": "2026-06-01T05:00:00.000Z"
+  },
+  "calibrated": {
+    "fiveHourCeiling": null,
+    "weeklyCeiling": null,
+    "weeklyOpusCeiling": null
+  },
+  "weights": {
+    "opus": 5,
+    "sonnet": 1
+  },
+  "excludesCacheTokens": true
+}

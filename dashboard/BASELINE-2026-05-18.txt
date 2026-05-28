@@ -1,0 +1,75 @@
+ M .mcp.json
+ M AGENTS.md
+ M CODE_OF_CONDUCT.md
+ M README.md
+ M README.zh-CN.md
+ M docs/ja-JP/rules/patterns.md
+ M docs/zh-CN/AGENTS.md
+ M docs/zh-CN/README.md
+ M package.json
+ M skills/remotion-video-creation/SKILL.md
+ M the-longform-guide.md
+ M the-security-guide.md
+ M the-shortform-guide.md
+ M yarn.lock
+?? .claude/settings.json
+?? .claude/settings.local.json
+?? .cursor/mcp.json
+?? .cursor/mcp.json.entroly-backup
+?? .entroly/
+?? .github/context-mode/
+?? .mcp.json.bak-20260515T155046
+?? .obsidian/
+?? 2026-04-12.md
+?? 2026-04-15.md
+?? 2026-04-30.md
+?? 2026-05-14.md
+?? "Lucky Dog Landing - V2 Masterplan.md"
+?? PROJECT_BRIEF.md
+?? "Untitled 1.base"
+?? "Untitled 1.canvas"
+?? "Untitled 2.base"
+?? Untitled.base
+?? Untitled.canvas
+?? UserswoodyAppDataLocalTempcengage_current.png
+?? aios-hub.code-workspace
+?? codex-compat/
+?? contexts/dashboard-aios-claude-response-2026-05-17.md
+?? contexts/dashboard-aios-handoff-2026-05-17.md
+?? dashboard/
+?? scripts/codex/claude-mem-bridge.js
+?? scripts/codex/sync-claude-portable.js
+?? scripts/codex/sync-codex-upstreams.js
+?? scripts/codex/validate-codex-compat.js
+?? skills/3d-cinematic-web/
+?? skills/accessibility-audit/
+?? skills/design-critique/
+?? skills/design-elevation/
+?? skills/design-sprint/
+?? skills/design-style/
+?? skills/error-memory/
+?? skills/full-handoff/
+?? skills/hooked-ux/
+?? skills/implicit-preferences/
+?? skills/interaction-design/
+?? skills/isolate-before-iterate/
+?? skills/mid-task-triage/
+?? skills/never-give-up/
+?? skills/pre-debug-check/
+?? skills/predictive-next/
+?? skills/react-best-practices/
+?? skills/refactoring-ui/
+?? skills/reflexion/
+?? skills/review-handoff/
+?? skills/sanity-check/
+?? skills/skill-awareness/
+?? skills/smart-clarify/
+?? skills/structured-build/
+?? skills/systematic-debugging/
+?? skills/task-router/
+?? skills/total-recall/
+?? skills/ui-ux-pro-max/
+?? skills/verification-before-completion/
+?? skills/website-design-agent/
+125d5e61 feat: add ecc2 legacy plugin migration import
+Mon May 18 14:26:15 CDT 2026

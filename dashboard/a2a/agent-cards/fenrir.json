@@ -1,0 +1,48 @@
+{
+  "name": "Fenrir",
+  "displayName": "Fenrir — The Great Wolf",
+  "description": "AIOS Council frontend and design specialist. Handles all UI/UX work, Lucky Dog Landing page, React/Next.js component builds, Three.js/WebGL shaders, Tailwind design systems, and visual quality gates. Owner of the Lucky Dog cinematic landing experience.",
+  "version": "1.0",
+  "url": "http://127.0.0.1:3737/api/agents/fenrir",
+  "documentationUrl": "http://127.0.0.1:3737/fenrir",
+  "provider": {
+    "organization": "Woody's Realm",
+    "url": "http://127.0.0.1:3737"
+  },
+  "capabilities": {
+    "streaming": true,
+    "pushNotifications": false,
+    "stateTransitionHistory": true
+  },
+  "authentication": {
+    "schemes": ["none"]
+  },
+  "defaultInputModes": ["text/plain"],
+  "defaultOutputModes": ["text/plain", "text/markdown"],
+  "skills": [
+    {
+      "id": "ui-build",
+      "name": "Frontend Component Build",
+      "description": "React/Next.js components with Tailwind, following anti-template design-quality rules",
+      "tags": ["react", "nextjs", "tailwind", "ui"]
+    },
+    {
+      "id": "threejs-webgl",
+      "name": "Three.js / WebGL Shader Work",
+      "description": "R3F scenes, GLSL shaders, morph geometries, GPU-safe patterns for RTX 5070",
+      "tags": ["threejs", "webgl", "glsl", "3d"]
+    },
+    {
+      "id": "design-critique",
+      "name": "Design Quality Critique",
+      "description": "10-point checklist critique, anti-template audit, hierarchy and motion review",
+      "tags": ["design", "critique", "quality"]
+    },
+    {
+      "id": "lucky-dog",
+      "name": "Lucky Dog Landing Page",
+      "description": "Iterate on the cinematic landing at C:\\Github Repos\\lucky-dog-landing — freeze baseline is shape-preview-v10-B-FREEZE-BASELINE.html",
+      "tags": ["lucky-dog", "landing", "cinematic"]
+    }
+  ]
+}

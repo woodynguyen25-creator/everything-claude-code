@@ -1,0 +1,16 @@
+name: think
+version: 0.1.0
+description: >
+  Sequential-thinking scratchpad. Forces the model to break a hard question
+  into ordered reasoning steps before answering — useful when Woody asks
+  something that needs structured analysis (trade thesis, life decision,
+  architecture call). Routes through Claude Max with system prompt that
+  enforces the step-by-step shape.
+trigger:
+  type: explicit
+  command: /think
+runtime: python3.11
+env_required:
+  - ECC_BRIDGE_URL
+  - ECC_BRIDGE_TOKEN
+entrypoint: main.py:run

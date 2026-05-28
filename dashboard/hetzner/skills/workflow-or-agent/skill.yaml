@@ -1,0 +1,15 @@
+name: workflow-or-agent
+version: 0.1.0
+description: >
+  Before building anything new, answer the workflow-vs-agent filter from AI
+  Masterclass video #15/#34. Takes a problem description, scores it on
+  determinism, tool selection variability, and reasoning depth, and returns
+  WORKFLOW or AGENT with reasoning. Cheap free-tier call (Cerebras).
+trigger:
+  type: explicit
+  command: /workflow-or-agent
+runtime: python3.11
+env_required:
+  - ECC_BRIDGE_URL
+  - ECC_BRIDGE_TOKEN
+entrypoint: main.py:run

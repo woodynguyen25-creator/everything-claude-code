@@ -1,0 +1,79 @@
+# Hermes Model Backlog
+#
+# All chat-capable brains available to LeBot James. Easy swap by editing
+# /home/hermes/.hermes/config.yaml `model.default` to one of the model_id values below.
+#
+# Last verified 2026-05-27.
+
+default: llama-3.3-70b-versatile
+
+providers:
+  groq:
+    base_url: https://api.groq.com/openai/v1
+    api_key_env: GROQ_API_KEY
+    free_tier: yes
+    notes: Fast inference on Groq LPU chips. ~200-500ms TTFT for chat models.
+    models:
+      - model_id: llama-3.3-70b-versatile
+        size: 70B
+        latency: fast
+        smarts: high
+        recommended_for: default chat
+      - model_id: openai/gpt-oss-120b
+        size: 120B
+        latency: medium
+        smarts: very-high
+        recommended_for: deep reasoning (this is a reasoning model — eats tokens on internal thinking)
+      - model_id: meta-llama/llama-4-scout-17b-16e-instruct
+        size: 17B-MoE
+        latency: fast
+        smarts: medium-high
+        recommended_for: lightweight chat, newer arch
+      - model_id: qwen/qwen3-32b
+        size: 32B
+        latency: medium
+        smarts: high
+        recommended_for: code + reasoning tasks
+      - model_id: llama-3.1-8b-instant
+        size: 8B
+        latency: very-fast
+        smarts: medium
+        recommended_for: tool routing, classification
+
+  cerebras:
+    base_url: https://api.cerebras.ai/v1
+    api_key_env: CEREBRAS_API_KEY
+    free_tier: yes
+    notes: Even faster than Groq (wafer-scale chips). Lower model variety.
+    models:
+      - model_id: llama-3.3-70b
+        latency: very-fast
+        smarts: high
+
+  deepseek:
+    base_url: https://api.deepseek.com/v1
+    api_key_env: DEEPSEEK_API_KEY
+    free_tier: no (paid, $5 funded)
+    notes: Best reasoning. Used by Thor reflection + Sauron synthesis. Not for live chat (slow).
+    models:
+      - model_id: deepseek-chat
+        latency: medium
+        smarts: very-high
+
+  codex_cli:
+    base_url: http://100.69.115.98:3739/codex
+    api_key_env: (none — uses ChatGPT login on PC)
+    free_tier: included with ChatGPT subscription
+    notes: |
+      Codex CLI bridge — calls GPT-5/Codex with full tool use (shell, files, browse).
+      Best for deep coding/refactoring/debugging. Slow for chat (3-8s).
+      Auto-routed when user message contains: deep, analyze, refactor, architect, debug, investigate
+    models:
+      - model_id: codex-default
+        latency: slow
+        smarts: agentic-very-high
+
+# Future additions (not wired yet):
+# - moonshotai/kimi-k2-instruct (Groq, would A/B vs llama-3.3)
+# - Anthropic Claude Sonnet via OpenRouter
+# - Local Ollama models on PC (qwen2.5-coder, llama3.2 for offline mode)

@@ -1,0 +1,16 @@
+name: aios-onboard
+version: 0.1.0
+description: >
+  Quarterly intake interview. 7 questions Woody answers in Telegram. Output
+  becomes AIOS/Memory/intake.md — the master reference for "what is the AIOS
+  actually for right now." Per Masterclass adoption #1.
+trigger:
+  type: explicit
+  command: /aios-onboard
+runtime: python3.11
+env_required:
+  - ECC_BRIDGE_URL
+  - ECC_BRIDGE_TOKEN
+entrypoint: main.py:start
+state:
+  conversation_file: /home/hermes/.hermes/state/onboard-{chat_id}.json

@@ -1,0 +1,30 @@
+{
+  "_note": "Populate via: python robinhood-import.py statements/ OR manually edit positions below",
+  "generatedAt": null,
+  "source": "manual",
+  "account": {
+    "totalValue": 0,
+    "cash": 0,
+    "dayPnl": 0,
+    "dayPnlPct": 0,
+    "totalPnl": 0,
+    "totalPnlPct": 0,
+    "buyingPower": 0
+  },
+  "positions": [
+    {
+      "symbol": "SPY",
+      "type": "option",
+      "direction": "call",
+      "qty": 1,
+      "avgCost": 0,
+      "markPrice": 0,
+      "strike": 0,
+      "expiry": null,
+      "dte": null,
+      "unrealizedPnl": 0,
+      "unrealizedPnlPct": 0,
+      "dayPnl": 0
+    }
+  ]
+}

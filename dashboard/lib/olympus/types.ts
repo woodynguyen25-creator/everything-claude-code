@@ -1,0 +1,107 @@
+export interface AgentCallMetadata {
+  provider: 'gemini' | 'cerebras' | 'groq' | 'deepseek';
+  ts: string; // ISO with -05:00 offset for CT
+  input_tokens: number;
+  output_tokens: number;
+}
+
+export type AgentName =
+  | 'zeus'
+  | 'poseidon'
+  | 'artemis'
+  | 'apollo'
+  | 'athena'
+  | 'ares'
+  | 'loki'
+  | 'thor'
+  | 'hades'
+  | 'hephaestus'
+  | 'calliope';
+
+export type DecisionStatus =
+  | 'active'
+  | 'win'
+  | 'loss'
+  | 'expired'
+  | 'rejected'
+  | 'candidate';
+
+export interface Decision {
+  decision_id: string;
+  ticker: string;
+  strike: number;
+  right: 'call' | 'put';
+  expiry: string;
+  conviction: number;
+  status: DecisionStatus;
+  target_price: number | null;
+  stop_price: number | null;
+  entry_price: number | null;
+  exit_price: number | null;
+  approved_at: string | null;
+  resolved_at: string | null;
+  outcome: 'win' | 'loss' | 'expired' | null;
+  realized_pnl: number | null;
+  realized_r: number | null;
+  council: {
+    apollo_bull?: string;
+    athena_bear?: string;
+    ares_catalyst?: string;
+    loki_redteam?: string;
+    zeus_macro?: string;
+  };
+  rationale: string | null;
+  resolution_basis?: 'option_price' | 'underlying_price';
+  council_metadata?: {
+    apollo?: AgentCallMetadata;
+    athena?: AgentCallMetadata;
+    ares?: AgentCallMetadata;
+    loki?: AgentCallMetadata;
+    zeus?: AgentCallMetadata;
+  };
+}
+
+export interface EquityPoint {
+  ts: string;
+  equity: number;
+  event?: 'start' | 'win' | 'loss' | 'expired' | 'snapshot';
+  ticker?: string;
+  r?: number;
+}
+
+export interface EdgeBar {
+  win_rate_30d: number;
+  avg_r_30d: number;
+  trade_count_30d: number;
+  win_rate_target: number;
+  avg_r_target: number;
+  trade_count_target: number;
+  edge_bar_hit: boolean;
+}
+
+export interface AgentActivity {
+  agent: AgentName;
+  last_action: string;
+  last_action_ts: string;
+  calls_today: number;
+  provider_last: 'cerebras' | 'gemini' | 'groq' | 'deepseek' | null;
+  status: 'active' | 'idle' | 'error';
+}
+
+export interface OlympusState {
+  ts: string;
+  current_equity: number;
+  starting_equity: number;
+  total_realized_pnl: number;
+  total_unrealized_pnl: number;
+  open_positions_count: number;
+  edge_bar: EdgeBar;
+  equity_curve: EquityPoint[];
+  decisions: {
+    candidates: Decision[];
+    approved: Decision[];
+    rejected: Decision[];
+    resolved: Decision[];
+  };
+  agents: AgentActivity[];
+}

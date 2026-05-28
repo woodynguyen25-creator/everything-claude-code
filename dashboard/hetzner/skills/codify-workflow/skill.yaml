@@ -1,0 +1,15 @@
+name: codify-workflow
+version: 0.1.0
+description: >
+  Cooper's talk-and-codify ritual automated. Reads the last 7 days of the
+  AIOS-ACTIVITY-LOG plus recent BATON handoffs, identifies repeated task
+  patterns, and proposes new skills to codify them. Drafts skill markdown
+  for review.
+trigger:
+  type: explicit
+  command: /codify-workflow
+runtime: python3.11
+env_required:
+  - ECC_BRIDGE_URL
+  - ECC_BRIDGE_TOKEN
+entrypoint: main.py:run

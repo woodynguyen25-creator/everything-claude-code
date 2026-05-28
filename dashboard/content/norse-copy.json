@@ -1,0 +1,403 @@
+{
+  "$schema": "norse-copy-schema-v1",
+  "version": "1.0.0",
+  "lastUpdated": "2026-05-18",
+  "purpose": "Centralized Norse-themed UX copy for Woody's Realm AIOS dashboard. Empty states, errors, loading messages, success confirmations, tooltips, microcopy. Each entry honors the Theros × Hades × Norse skin without breaking immersion.",
+  "voice": {
+    "tone": "Mythic, weighty, occasionally wry. Speaks to Lord Woody as a sovereign, not a user. Never breaks the fourth wall with words like 'click', 'tap', 'browser'.",
+    "rules": [
+      "Address as Lord Woody (or just 'my Lord' in shorter strings)",
+      "Use Norse vocabulary where natural: Wyrd, Hoard, Forge, Saga, Mímir, Heimdall, Hugin, Munin, Bifrost, Yggdrasil",
+      "Avoid contractions in dramatic copy ('do not' over 'don't'). Allow contractions in conversational microcopy.",
+      "No exclamation points except in errors of consequence",
+      "No emojis in body copy. Reserve emoji for icon slots only.",
+      "Short and weighted. A single Norse phrase outranks three modern sentences."
+    ]
+  },
+
+  "empty": {
+    "memory": {
+      "title": "The well is dry",
+      "body": "No memories yet. Live, work, and Mímir will fill it."
+    },
+    "memorySearch": {
+      "title": "Mímir does not know that",
+      "body": "Try different words. The well answers what the wise can name."
+    },
+    "memoryFilter": {
+      "title": "None under this watch",
+      "body": "Try broader filters. Even Heimdall narrows his eye too far."
+    },
+    "activity": {
+      "title": "Heimdall sees only stillness",
+      "body": "No events crossed the bridge today. The realm rests."
+    },
+    "tasks": {
+      "title": "The slate is clean",
+      "body": "No tasks await. Forge new ones or move with the day."
+    },
+    "trading": {
+      "title": "No slate cut yet",
+      "body": "Perseus has not cast today. The boards are quiet."
+    },
+    "doctor": {
+      "title": "The realm sleeps",
+      "body": "Doctor has not run today. Wake him when you need a reading."
+    },
+    "ravensMemory": {
+      "title": "Munin remembers nothing of this",
+      "body": "No matching memory in the well. Try different words."
+    },
+    "ravensFiles": {
+      "title": "No files cross the Bifrost",
+      "body": "Nothing in the codebase matches that name."
+    },
+    "ravensRecent": {
+      "title": "No recent counsel",
+      "body": "Your first question is yet to be asked."
+    },
+    "skills": {
+      "title": "Yggdrasil is bare",
+      "body": "No skills planted yet. Each branch grows when you summon it."
+    },
+    "saga": {
+      "title": "The saga is unwritten",
+      "body": "Nothing recorded today. The chronicle waits for your hand."
+    },
+    "hoard": {
+      "title": "The hoard is empty",
+      "body": "No treasure tallied yet. Add your first rune."
+    },
+    "forge": {
+      "title": "The forge is cold",
+      "body": "No work in the fire. Set something to hammer."
+    },
+    "dailyRites": {
+      "title": "No rites yet",
+      "body": "Even the gods begin with one small offering."
+    },
+    "notifications": {
+      "title": "No tidings",
+      "body": "The ravens have flown without word."
+    }
+  },
+
+  "loading": {
+    "default": "The Norns are weaving…",
+    "memory": "Mímir consults the well…",
+    "activity": "Heimdall scans the bridge…",
+    "trading": "Perseus reads the boards…",
+    "doctor": "Doctor walks the halls…",
+    "skills": "Yggdrasil rustles…",
+    "agentSummon": "The ravens take flight…",
+    "agentLebot": "👑 The All-Father considers it.",
+    "agentThor": "⚡ Thunder gathers…",
+    "agentPerseus": "💰 Perseus weighs the boards…",
+    "agentFenrir": "🐺 Fenrir circles the forge…",
+    "agentSauron": "👁 The Eye turns its gaze…",
+    "search": "Searching the runes…",
+    "saving": "Inscribing the saga…",
+    "pinning": "Setting the rune in stone…",
+    "deleting": "Releasing it to the wind…"
+  },
+
+  "error": {
+    "generic": {
+      "title": "The runes are silent",
+      "body": "Something failed. Try again, or check the Doctor's log."
+    },
+    "network": {
+      "title": "The Bifrost falters",
+      "body": "Cannot reach the bridge. The connection broke."
+    },
+    "auth": {
+      "title": "Heimdall denies the crossing",
+      "body": "Permission refused. The keys do not match the gate."
+    },
+    "notFound": {
+      "title": "Lost beyond the maps",
+      "body": "Nothing dwells at that path. Return to the realm hall."
+    },
+    "agentOffline": {
+      "title": "The agent sleeps",
+      "body": "Claude is not configured. Set up the `claude` CLI to wake them."
+    },
+    "agentRateLimited": {
+      "title": "The wells are dry",
+      "body": "The agent paused for breath. Try again in a moment."
+    },
+    "saveFailure": {
+      "title": "The saga did not take ink",
+      "body": "Save failed. Check the vault path and try again."
+    },
+    "deleteFailure": {
+      "title": "It clings to the world",
+      "body": "Delete failed. The file resists its end."
+    },
+    "tradingStale": {
+      "title": "The boards are cold",
+      "body": "Trading signal has not refreshed today. Run the morning brief."
+    },
+    "doctorStale": {
+      "title": "Doctor has not walked",
+      "body": "The system has not been checked recently. Wake Doctor."
+    },
+    "doctorCritical": {
+      "title": "The realm bleeds",
+      "body": "Doctor flagged a critical finding. Address it before continuing."
+    }
+  },
+
+  "success": {
+    "pinned": "Pinned to memory. Munin will recall it.",
+    "savedSaga": "Inscribed in today's saga.",
+    "archived": "Moved to the deep archive. Out of sight, not lost.",
+    "deleted": "Released. The wind carries it.",
+    "copied": "Copied to the rune-stone.",
+    "summoned": "The agent has spoken.",
+    "doctorPassed": "The realm holds.",
+    "tradingSlateLocked": "Slate locked. Lock range observed.",
+    "tradingReviewed": "Slate reviewed and approved.",
+    "memoryPromoted": "Raised into the curated index. MEMORY.md updated."
+  },
+
+  "confirm": {
+    "deleteMemory": {
+      "title": "Release this memory?",
+      "body": "It will be removed from the well and the index. This cannot be undone.",
+      "confirmLabel": "Release it",
+      "cancelLabel": "Keep it"
+    },
+    "deleteTask": {
+      "title": "Strike this from the slate?",
+      "body": "The task will be removed entirely. Done tasks should be marked done, not deleted.",
+      "confirmLabel": "Strike it",
+      "cancelLabel": "Keep it"
+    },
+    "costThreshold": {
+      "title": "Confirm the offering",
+      "body": "This consultation is estimated to cost beyond the line. The All-Father asks before spending past it.",
+      "confirmLabel": "Proceed",
+      "cancelLabel": "Cancel"
+    },
+    "archiveOlder": {
+      "title": "Send to the deep archive?",
+      "body": "Items archived can still be recovered later. They simply pass beyond the active watch.",
+      "confirmLabel": "Archive",
+      "cancelLabel": "Keep active"
+    },
+    "logoutSession": {
+      "title": "Close the watch?",
+      "body": "The session will end. Unsaved drafts will be released.",
+      "confirmLabel": "Close",
+      "cancelLabel": "Stay"
+    }
+  },
+
+  "placeholder": {
+    "search": "Search the realm…",
+    "searchMemory": "Search the well…",
+    "searchActivity": "Search the watch…",
+    "searchSkills": "Find a branch of Yggdrasil…",
+    "ravensQuery": {
+      "dawn": "What do you seek, Lord Woody?",
+      "day": "Speak it, my Lord.",
+      "dusk": "What rises before nightfall?",
+      "night": "What stirs in the dark?"
+    },
+    "taskTitle": "What needs forging?",
+    "memoryTitle": "What is the rune called?",
+    "memoryBody": "Inscribe the memory in plain words. Mímir will weigh it later.",
+    "sagaEntry": "Mark the day. What will you remember of it?",
+    "ritualName": "Name the rite…",
+    "agentPrompt": "Ask the agent…"
+  },
+
+  "tooltip": {
+    "pin": "Pin as a memory rune",
+    "unpin": "Release from the index",
+    "archive": "Send to the deep archive",
+    "delete": "Release it forever",
+    "open": "Open the full text",
+    "copy": "Copy to clipboard",
+    "edit": "Edit in VS Code",
+    "crossRef": "Find related memories",
+    "summon": "Summon the agent",
+    "summonRavens": "Open the Ravens (⌘K)",
+    "doctorRun": "Run Doctor now",
+    "tradingRefresh": "Refresh the boards",
+    "skillsTree": "Browse Yggdrasil",
+    "nextAction": "Take the next step",
+    "memoryWell": "Mímir's Well — your memory across sessions",
+    "activityWatch": "Heimdall's Watch — what crossed the bridge today",
+    "saga": "Today's saga — what was written this day"
+  },
+
+  "button": {
+    "summon": "Summon",
+    "askAgent": "Ask the agent",
+    "askLebot": "Ask Lebot",
+    "askThor": "Ask Thor",
+    "askPerseus": "Ask Perseus",
+    "askFenrir": "Ask Fenrir",
+    "askSauron": "Ask Sauron",
+    "pinAsMemory": "Pin as memory",
+    "saveToSaga": "Save to Saga",
+    "openInCode": "Open in VS Code",
+    "viewMemory": "View memory",
+    "viewActivity": "View activity",
+    "viewSkills": "View skills",
+    "runDoctor": "Run Doctor",
+    "openSlate": "Open slate",
+    "moveWithDay": "Move with the day",
+    "confirm": "Proceed",
+    "cancel": "Hold",
+    "save": "Inscribe",
+    "delete": "Release",
+    "archive": "To the archive",
+    "loadMore": "More tidings",
+    "retry": "Try again",
+    "close": "Close",
+    "back": "Back",
+    "next": "Onward",
+    "previous": "Back the way",
+    "promote": "Raise to index",
+    "demote": "Lower from index"
+  },
+
+  "status": {
+    "fresh": "Fresh from the boards",
+    "stale": "The wind has stilled",
+    "live": "Live and watching",
+    "offline": "Silent",
+    "critical": "The realm bleeds",
+    "warning": "The wind shifts",
+    "ok": "All well",
+    "running": "In progress",
+    "paused": "Held",
+    "blocked": "Barred",
+    "done": "Sealed",
+    "onTrack": "Bound for harbor",
+    "drifting": "Off course",
+    "marketOpen": "The boards are open",
+    "marketClosed": "The boards are dark",
+    "weekend": "The bridge is quiet"
+  },
+
+  "label": {
+    "council": "COUNCIL",
+    "nav": "NAV",
+    "memory": "MEMORY",
+    "activity": "ACTIVITY",
+    "skills": "SKILLS",
+    "trading": "TRADING",
+    "tasks": "TASKS",
+    "doctor": "AIOS DOCTOR",
+    "nextAction": "NEXT ACTION",
+    "currentSession": "CURRENT SESSION",
+    "voice": "VOICE",
+    "mythology": "MYTHOLOGY",
+    "route": "ROUTE",
+    "awaiting": "AWAITING THE RAVENS",
+    "ritual": "TODAY'S RITES",
+    "wyrd": "TODAY'S WYRD",
+    "saga": "TODAY'S SAGA",
+    "hoard": "THE HOARD",
+    "forge": "THE FORGE",
+    "operator": "OPERATOR",
+    "lastSync": "LAST SYNC",
+    "freshness": "FRESHNESS",
+    "source": "SOURCE",
+    "type": "TYPE"
+  },
+
+  "greeting": {
+    "birthday": "Happy birthday, Lord Woody",
+    "monday": "Rise well, Lord Woody",
+    "friday": "Friday favors the bold, Lord Woody",
+    "weekend": {
+      "dawn": "{day} morning, Lord Woody",
+      "day": "{day} afternoon, Lord Woody",
+      "dusk": "{day} evening, Lord Woody",
+      "night": "{day} night, Lord Woody"
+    },
+    "weekday": {
+      "dawn": "Good morning, Lord Woody",
+      "day": "Strength to you, Lord Woody",
+      "dusk": "Welcome back, Lord Woody",
+      "night": "Evening, Realm Lord"
+    },
+    "newSession": "The realm receives you",
+    "returnToSession": "Where the saga rests",
+    "longAbsence": "The watch waited",
+    "afterCritical": "The storm has passed"
+  },
+
+  "agent": {
+    "lebotJames": {
+      "summoning": "👑 The All-Father considers it.",
+      "responding": "Lebot speaks:",
+      "offline": "The All-Father rests."
+    },
+    "thor": {
+      "summoning": "⚡ Thunder gathers…",
+      "responding": "Thor strikes:",
+      "offline": "Thunder is silent."
+    },
+    "perseus": {
+      "summoning": "💰 Perseus weighs the boards…",
+      "responding": "Perseus reports:",
+      "offline": "Perseus is at sea."
+    },
+    "fenrir": {
+      "summoning": "🐺 Fenrir circles the forge…",
+      "responding": "Fenrir growls:",
+      "offline": "Fenrir prowls elsewhere."
+    },
+    "sauron": {
+      "summoning": "👁 The Eye turns its gaze…",
+      "responding": "Sauron sees:",
+      "offline": "The Eye is closed."
+    }
+  },
+
+  "modal": {
+    "ravens": {
+      "title": "The Ravens",
+      "subtitle": "Hugin and Munin listen at the bridge.",
+      "search": "Search the realm…",
+      "footer": "Esc to close · ⌘K to reopen"
+    },
+    "mimir": {
+      "title": "Mímir's Well",
+      "subtitle": "What the wise know, others have forgotten. Drink and recall."
+    },
+    "heimdall": {
+      "title": "Heimdall's Watch",
+      "subtitle": "All that crossed the bridge today."
+    },
+    "yggdrasil": {
+      "title": "Yggdrasil",
+      "subtitle": "The world-tree. Each branch a domain of craft."
+    }
+  },
+
+  "achievement": {
+    "firstMemory": "First rune in the well",
+    "firstSaga": "The saga begins",
+    "weekStreak": "Seven days unbroken",
+    "monthStreak": "A moon's watch held",
+    "tradingFirstWin": "First plunder logged",
+    "doctorPerfectWeek": "The realm held for seven days",
+    "memoryHundred": "A hundred runes inscribed",
+    "agentUsedAll": "Every member of the Council summoned",
+    "lateNight": "Burning the midnight torch",
+    "earlyRise": "Rose with the dawn"
+  },
+
+  "footer": {
+    "tagline": "Woody's Realm — Where mind, market, and craft meet.",
+    "localhost": "localhost:3737",
+    "version": "v1.5 Ravens"
+  }
+}

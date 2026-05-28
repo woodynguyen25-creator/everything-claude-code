@@ -1,0 +1,23 @@
+[
+  {
+    "id": "aios",
+    "label": "AIOS power-up",
+    "sigil": "⚲",
+    "status": "on-track",
+    "next": "God Mode + Codex handoff"
+  },
+  {
+    "id": "lucky-dog",
+    "label": "Lucky Dog launch",
+    "sigil": "◆",
+    "status": "paused",
+    "next": "final flower shape (match v2.html)"
+  },
+  {
+    "id": "consulting",
+    "label": "AI consulting",
+    "sigil": "✷",
+    "status": "next",
+    "next": "outreach scripts"
+  }
+]

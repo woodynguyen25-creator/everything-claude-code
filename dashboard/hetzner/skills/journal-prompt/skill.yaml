@@ -1,0 +1,15 @@
+name: journal-prompt
+version: 0.1.0
+description: >
+  Daily reflection prompt. Pulls today's activity log + open tasks +
+  yesterday's trades, generates a personal reflection prompt in a Buddhist-
+  aware tone Woody prefers (impermanence, attention, what you actually
+  controlled vs reacted to). Optionally saves to Daily Notes.
+trigger:
+  type: explicit
+  command: /journal
+runtime: python3.11
+env_required:
+  - ECC_BRIDGE_URL
+  - ECC_BRIDGE_TOKEN
+entrypoint: main.py:run

@@ -1,0 +1,84 @@
+{
+  "generatedAt": "2026-05-23T22:38:45.416Z",
+  "deepseek": {
+    "spentUsd": 0.0013,
+    "dailyCapUsd": 1.5,
+    "balanceUsd": 5
+  },
+  "free": {
+    "usagePercent": 15,
+    "callsToday": 3
+  },
+  "runs": [
+    {
+      "ts": "2026-05-23T22:38:45.416Z",
+      "action": "council-deep",
+      "stage": "final-review",
+      "provider": "claude-cli",
+      "model": "claude-opus-4-7",
+      "costUsd": 0
+    },
+    {
+      "ts": "2026-05-23T22:38:45.415Z",
+      "action": "council-deep",
+      "stage": "worker",
+      "provider": "deepseek",
+      "model": "deepseek-chat",
+      "costUsd": 0.0005
+    },
+    {
+      "ts": "2026-05-21T04:01:23.050Z",
+      "action": "plan-today",
+      "stage": "thinker-classifier",
+      "provider": "cerebras",
+      "model": "llama3.1-8b",
+      "costUsd": 0
+    },
+    {
+      "ts": "2026-05-21T04:01:09.149Z",
+      "action": "plan-today",
+      "stage": "final-review",
+      "provider": "claude-cli",
+      "model": "claude-cli",
+      "costUsd": 0
+    },
+    {
+      "ts": "2026-05-21T04:00:50.730Z",
+      "action": "plan-today",
+      "stage": "worker",
+      "provider": "deepseek",
+      "model": "deepseek-chat",
+      "costUsd": 0.0009
+    },
+    {
+      "ts": "2026-05-21T04:00:44.469Z",
+      "action": "plan-today",
+      "stage": "thinker-classifier",
+      "provider": "cerebras",
+      "model": "llama3.1-8b",
+      "costUsd": 0
+    },
+    {
+      "ts": "2026-05-21T03:54:30.973Z",
+      "action": "plan-today",
+      "stage": "thinker-classifier",
+      "provider": "cerebras",
+      "model": "llama3.1-8b",
+      "costUsd": 0
+    },
+    {
+      "ts": "2026-05-21T03:49:35.739Z",
+      "action": "plan-today",
+      "provider": "deepseek",
+      "model": "deepseek-chat",
+      "costUsd": 0.001
+    },
+    {
+      "ts": "2026-05-21T03:48:51.815Z",
+      "action": "plan-today",
+      "provider": "deepseek",
+      "model": "deepseek-chat",
+      "costUsd": 0.0008
+    }
+  ]
+}

@@ -1,0 +1,14 @@
+name: aios-status
+version: 0.1.0
+description: >
+  On-demand AIOS health check via Telegram. Pings PC bridge, reports
+  DeepSeek spend, lists last 5 scheduled jobs that ran, summarizes idle ones.
+  Use when away from PC and want a quick "is everything alive" answer.
+trigger:
+  type: explicit
+  command: /aios-status
+runtime: python3.11
+env_required:
+  - ECC_BRIDGE_URL
+  - ECC_BRIDGE_TOKEN
+entrypoint: main.py:status

@@ -1,0 +1,645 @@
+{
+  "ts": "2026-05-27T14:35:00-05:00",
+  "current_equity": 10247.5,
+  "starting_equity": 10000,
+  "total_realized_pnl": 312.5,
+  "total_unrealized_pnl": -65,
+  "open_positions_count": 5,
+  "edge_bar": {
+    "win_rate_30d": 0.5,
+    "avg_r_30d": 1.18,
+    "trade_count_30d": 8,
+    "win_rate_target": 0.5,
+    "avg_r_target": 1.5,
+    "trade_count_target": 30,
+    "edge_bar_hit": false
+  },
+  "equity_curve": [
+    { "ts": "2026-04-28T16:15:00-05:00", "equity": 10000, "event": "start" },
+    { "ts": "2026-04-29T16:15:00-05:00", "equity": 10028, "event": "snapshot" },
+    { "ts": "2026-04-30T16:15:00-05:00", "equity": 10012, "event": "loss", "ticker": "TSLA", "r": -0.4 },
+    { "ts": "2026-05-01T16:15:00-05:00", "equity": 10066, "event": "win", "ticker": "SPY", "r": 0.8 },
+    { "ts": "2026-05-04T16:15:00-05:00", "equity": 10044, "event": "snapshot" },
+    { "ts": "2026-05-05T16:15:00-05:00", "equity": 10091, "event": "win", "ticker": "QQQ", "r": 0.7 },
+    { "ts": "2026-05-06T16:15:00-05:00", "equity": 10074, "event": "loss", "ticker": "AMD", "r": -0.3 },
+    { "ts": "2026-05-07T16:15:00-05:00", "equity": 10110, "event": "snapshot" },
+    { "ts": "2026-05-08T16:15:00-05:00", "equity": 10142, "event": "win", "ticker": "META", "r": 0.5 },
+    { "ts": "2026-05-11T16:15:00-05:00", "equity": 10118, "event": "snapshot" },
+    { "ts": "2026-05-12T16:15:00-05:00", "equity": 10156, "event": "snapshot" },
+    { "ts": "2026-05-13T16:15:00-05:00", "equity": 10133, "event": "expired", "ticker": "AAPL", "r": 0 },
+    { "ts": "2026-05-14T16:15:00-05:00", "equity": 10182, "event": "win", "ticker": "MSFT", "r": 0.75 },
+    { "ts": "2026-05-15T16:15:00-05:00", "equity": 10149, "event": "loss", "ticker": "NVDA", "r": -0.5 },
+    { "ts": "2026-05-18T16:15:00-05:00", "equity": 10192, "event": "snapshot" },
+    { "ts": "2026-05-19T16:15:00-05:00", "equity": 10208, "event": "snapshot" },
+    { "ts": "2026-05-20T16:15:00-05:00", "equity": 10188, "event": "snapshot" },
+    { "ts": "2026-05-21T16:15:00-05:00", "equity": 10232, "event": "snapshot" },
+    { "ts": "2026-05-22T16:15:00-05:00", "equity": 10274, "event": "win", "ticker": "SPY", "r": 0.65 },
+    { "ts": "2026-05-25T16:15:00-05:00", "equity": 10236, "event": "loss", "ticker": "TSLA", "r": -0.55 },
+    { "ts": "2026-05-26T10:30:00-05:00", "equity": 10251, "event": "snapshot" },
+    { "ts": "2026-05-26T16:15:00-05:00", "equity": 10268, "event": "snapshot" },
+    { "ts": "2026-05-27T10:30:00-05:00", "equity": 10231, "event": "snapshot" },
+    { "ts": "2026-05-27T12:45:00-05:00", "equity": 10258, "event": "snapshot" },
+    { "ts": "2026-05-27T14:35:00-05:00", "equity": 10247.5, "event": "snapshot" }
+  ],
+  "decisions": {
+    "candidates": [
+      {
+        "decision_id": "cand-spy-20260527-001",
+        "ticker": "SPY",
+        "strike": 595,
+        "right": "call",
+        "expiry": "2026-06-05",
+        "conviction": 7.1,
+        "status": "candidate",
+        "target_price": 6.2,
+        "stop_price": 3.05,
+        "entry_price": 4.15,
+        "exit_price": null,
+        "approved_at": null,
+        "resolved_at": null,
+        "outcome": null,
+        "realized_pnl": null,
+        "realized_r": null,
+        "council": {
+          "zeus_macro": "Macro tape supports risk-on continuation while yields remain contained.",
+          "apollo_bull": "Flow is leaning into upside continuation above the prior high.",
+          "athena_bear": "Chase risk is real if SPY loses VWAP before lunch."
+        },
+        "council_metadata": {
+          "zeus": { "provider": "gemini", "ts": "2026-05-27T14:01:05-05:00", "input_tokens": 612, "output_tokens": 298 },
+          "apollo": { "provider": "gemini", "ts": "2026-05-27T14:01:18-05:00", "input_tokens": 574, "output_tokens": 241 },
+          "athena": { "provider": "gemini", "ts": "2026-05-27T14:01:34-05:00", "input_tokens": 588, "output_tokens": 267 }
+        },
+        "rationale": "Pending Loki red-team before Thor finalizes.",
+        "resolution_basis": "option_price"
+      },
+      {
+        "decision_id": "cand-meta-20260527-002",
+        "ticker": "META",
+        "strike": 680,
+        "right": "call",
+        "expiry": "2026-06-12",
+        "conviction": 6.4,
+        "status": "candidate",
+        "target_price": 9.5,
+        "stop_price": 4.4,
+        "entry_price": 6.1,
+        "exit_price": null,
+        "approved_at": null,
+        "resolved_at": null,
+        "outcome": null,
+        "realized_pnl": null,
+        "realized_r": null,
+        "council": {
+          "ares_catalyst": "Ad checks and AI capex narrative remain the near-term catalyst stack.",
+          "apollo_bull": "Relative strength versus QQQ is holding cleanly."
+        },
+        "council_metadata": {
+          "ares": { "provider": "cerebras", "ts": "2026-05-27T14:10:02-05:00", "input_tokens": 501, "output_tokens": 188 },
+          "apollo": { "provider": "gemini", "ts": "2026-05-27T14:10:19-05:00", "input_tokens": 543, "output_tokens": 214 }
+        },
+        "rationale": "Candidate awaiting Athena downside review.",
+        "resolution_basis": "option_price"
+      },
+      {
+        "decision_id": "cand-amd-20260527-003",
+        "ticker": "AMD",
+        "strike": 180,
+        "right": "put",
+        "expiry": "2026-06-05",
+        "conviction": 5.9,
+        "status": "candidate",
+        "target_price": 5.8,
+        "stop_price": 2.15,
+        "entry_price": 3.25,
+        "exit_price": null,
+        "approved_at": null,
+        "resolved_at": null,
+        "outcome": null,
+        "realized_pnl": null,
+        "realized_r": null,
+        "council": {
+          "athena_bear": "Semis are extended and AMD is lagging the group on rebounds.",
+          "loki_redteam": "Short side can get steamrolled if NVDA sympathy bid returns."
+        },
+        "council_metadata": {
+          "athena": { "provider": "gemini", "ts": "2026-05-27T14:18:44-05:00", "input_tokens": 623, "output_tokens": 289 },
+          "loki": { "provider": "groq", "ts": "2026-05-27T14:19:01-05:00", "input_tokens": 465, "output_tokens": 203 }
+        },
+        "rationale": "Needs Zeus regime check.",
+        "resolution_basis": "option_price"
+      }
+    ],
+    "approved": [
+      {
+        "decision_id": "act-qqq-20260527-011",
+        "ticker": "QQQ",
+        "strike": 525,
+        "right": "call",
+        "expiry": "2026-06-05",
+        "conviction": 8.2,
+        "status": "active",
+        "target_price": 7.8,
+        "stop_price": 3.6,
+        "entry_price": 5.05,
+        "exit_price": null,
+        "approved_at": "2026-05-27T09:42:00-05:00",
+        "resolved_at": null,
+        "outcome": null,
+        "realized_pnl": null,
+        "realized_r": null,
+        "council": {
+          "zeus_macro": "Liquidity backdrop is constructive.",
+          "apollo_bull": "Clean momentum continuation setup.",
+          "athena_bear": "Stop must be honored under opening range.",
+          "loki_redteam": "Do not add if breadth fades."
+        },
+        "council_metadata": {
+          "zeus": { "provider": "gemini", "ts": "2026-05-27T09:36:12-05:00", "input_tokens": 708, "output_tokens": 312 },
+          "apollo": { "provider": "gemini", "ts": "2026-05-27T09:36:28-05:00", "input_tokens": 643, "output_tokens": 271 },
+          "athena": { "provider": "gemini", "ts": "2026-05-27T09:36:44-05:00", "input_tokens": 655, "output_tokens": 288 },
+          "loki": { "provider": "gemini", "ts": "2026-05-27T09:37:05-05:00", "input_tokens": 590, "output_tokens": 247 }
+        },
+        "rationale": "Thor approved after Poseidon passed risk limits.",
+        "resolution_basis": "option_price"
+      },
+      {
+        "decision_id": "act-nvda-20260527-012",
+        "ticker": "NVDA",
+        "strike": 142,
+        "right": "call",
+        "expiry": "2026-06-12",
+        "conviction": 7.8,
+        "status": "active",
+        "target_price": 11.4,
+        "stop_price": 5.2,
+        "entry_price": 7.65,
+        "exit_price": null,
+        "approved_at": "2026-05-27T10:08:00-05:00",
+        "resolved_at": null,
+        "outcome": null,
+        "realized_pnl": null,
+        "realized_r": null,
+        "council": {
+          "ares_catalyst": "AI supply-chain momentum remains bid.",
+          "apollo_bull": "Call sweep hit above ask with follow-through.",
+          "athena_bear": "Gamma can reverse sharply after morning squeeze."
+        },
+        "council_metadata": {
+          "ares": { "provider": "cerebras", "ts": "2026-05-27T10:02:08-05:00", "input_tokens": 518, "output_tokens": 196 },
+          "apollo": { "provider": "gemini", "ts": "2026-05-27T10:02:22-05:00", "input_tokens": 629, "output_tokens": 258 },
+          "athena": { "provider": "gemini", "ts": "2026-05-27T10:02:38-05:00", "input_tokens": 641, "output_tokens": 274 }
+        },
+        "rationale": "Approved with reduced size due to premium expansion.",
+        "resolution_basis": "option_price"
+      },
+      {
+        "decision_id": "act-aapl-20260527-013",
+        "ticker": "AAPL",
+        "strike": 205,
+        "right": "put",
+        "expiry": "2026-06-05",
+        "conviction": 6.8,
+        "status": "active",
+        "target_price": 4.6,
+        "stop_price": 1.7,
+        "entry_price": 2.65,
+        "exit_price": null,
+        "approved_at": "2026-05-27T10:31:00-05:00",
+        "resolved_at": null,
+        "outcome": null,
+        "realized_pnl": null,
+        "realized_r": null,
+        "council": {
+          "zeus_macro": "Mega-cap dispersion favors relative weakness shorts.",
+          "athena_bear": "Failed breakout creates asymmetric downside.",
+          "loki_redteam": "Risk is headline buyback bid."
+        },
+        "council_metadata": {
+          "zeus": { "provider": "gemini", "ts": "2026-05-27T10:25:14-05:00", "input_tokens": 694, "output_tokens": 305 },
+          "athena": { "provider": "gemini", "ts": "2026-05-27T10:25:31-05:00", "input_tokens": 672, "output_tokens": 293 },
+          "loki": { "provider": "groq", "ts": "2026-05-27T10:25:48-05:00", "input_tokens": 487, "output_tokens": 221 }
+        },
+        "rationale": "Thor approved only while AAPL remains below reclaimed supply.",
+        "resolution_basis": "option_price"
+      },
+      {
+        "decision_id": "act-msft-20260527-014",
+        "ticker": "MSFT",
+        "strike": 480,
+        "right": "call",
+        "expiry": "2026-06-19",
+        "conviction": 7.4,
+        "status": "active",
+        "target_price": 8.25,
+        "stop_price": 3.8,
+        "entry_price": 5.45,
+        "exit_price": null,
+        "approved_at": "2026-05-27T11:12:00-05:00",
+        "resolved_at": null,
+        "outcome": null,
+        "realized_pnl": null,
+        "realized_r": null,
+        "council": {
+          "apollo_bull": "Cloud leadership and clean trend support continuation.",
+          "athena_bear": "Slower grind can bleed theta.",
+          "ares_catalyst": "AI infrastructure commentary still active."
+        },
+        "council_metadata": {
+          "apollo": { "provider": "gemini", "ts": "2026-05-27T11:06:22-05:00", "input_tokens": 617, "output_tokens": 256 },
+          "athena": { "provider": "gemini", "ts": "2026-05-27T11:06:38-05:00", "input_tokens": 634, "output_tokens": 269 },
+          "ares": { "provider": "cerebras", "ts": "2026-05-27T11:06:51-05:00", "input_tokens": 524, "output_tokens": 201 }
+        },
+        "rationale": "Approved as slower, higher-quality momentum exposure.",
+        "resolution_basis": "option_price"
+      },
+      {
+        "decision_id": "act-tsla-20260527-015",
+        "ticker": "TSLA",
+        "strike": 345,
+        "right": "put",
+        "expiry": "2026-06-05",
+        "conviction": 6.6,
+        "status": "active",
+        "target_price": 6.9,
+        "stop_price": 2.55,
+        "entry_price": 4.05,
+        "exit_price": null,
+        "approved_at": "2026-05-27T12:04:00-05:00",
+        "resolved_at": null,
+        "outcome": null,
+        "realized_pnl": null,
+        "realized_r": null,
+        "council": {
+          "athena_bear": "Repeated rejection at supply and weak relative tape.",
+          "loki_redteam": "Short squeeze risk remains high on any delivery headline."
+        },
+        "council_metadata": {
+          "athena": { "provider": "gemini", "ts": "2026-05-27T11:58:17-05:00", "input_tokens": 659, "output_tokens": 281 },
+          "loki": { "provider": "groq", "ts": "2026-05-27T11:58:34-05:00", "input_tokens": 473, "output_tokens": 215 }
+        },
+        "rationale": "Approved with hard stop only.",
+        "resolution_basis": "option_price"
+      }
+    ],
+    "rejected": [
+      {
+        "decision_id": "rej-nvda-20260527-021",
+        "ticker": "NVDA",
+        "strike": 130,
+        "right": "put",
+        "expiry": "2026-05-29",
+        "conviction": 4.2,
+        "status": "rejected",
+        "target_price": 3.2,
+        "stop_price": 1.1,
+        "entry_price": 1.85,
+        "exit_price": null,
+        "approved_at": null,
+        "resolved_at": null,
+        "outcome": null,
+        "realized_pnl": null,
+        "realized_r": null,
+        "council": {
+          "loki_redteam": "This is fighting the dominant tape."
+        },
+        "council_metadata": {
+          "loki": { "provider": "groq", "ts": "2026-05-27T08:14:22-05:00", "input_tokens": 441, "output_tokens": 187 }
+        },
+        "rationale": "Rejected: low DTE put against strong sector momentum.",
+        "resolution_basis": "option_price"
+      },
+      {
+        "decision_id": "rej-spy-20260527-022",
+        "ticker": "SPY",
+        "strike": 585,
+        "right": "put",
+        "expiry": "2026-05-30",
+        "conviction": 5.1,
+        "status": "rejected",
+        "target_price": 4.1,
+        "stop_price": 1.5,
+        "entry_price": 2.45,
+        "exit_price": null,
+        "approved_at": null,
+        "resolved_at": null,
+        "outcome": null,
+        "realized_pnl": null,
+        "realized_r": null,
+        "council": {
+          "zeus_macro": "Macro regime does not support aggressive downside.",
+          "athena_bear": "Bear case exists but timing is poor."
+        },
+        "council_metadata": {
+          "zeus": { "provider": "gemini", "ts": "2026-05-27T08:28:04-05:00", "input_tokens": 683, "output_tokens": 301 },
+          "athena": { "provider": "gemini", "ts": "2026-05-27T08:28:19-05:00", "input_tokens": 661, "output_tokens": 278 }
+        },
+        "rationale": "Rejected: macro filter disagreed with direction.",
+        "resolution_basis": "option_price"
+      },
+      {
+        "decision_id": "rej-amd-20260527-023",
+        "ticker": "AMD",
+        "strike": 190,
+        "right": "call",
+        "expiry": "2026-06-05",
+        "conviction": 5.5,
+        "status": "rejected",
+        "target_price": 5.9,
+        "stop_price": 2.2,
+        "entry_price": 3.35,
+        "exit_price": null,
+        "approved_at": null,
+        "resolved_at": null,
+        "outcome": null,
+        "realized_pnl": null,
+        "realized_r": null,
+        "council": {
+          "apollo_bull": "Bull thesis did not clear Athena's laggard objection.",
+          "athena_bear": "AMD is not the cleanest semiconductor expression."
+        },
+        "council_metadata": {
+          "apollo": { "provider": "gemini", "ts": "2026-05-27T08:41:11-05:00", "input_tokens": 598, "output_tokens": 244 },
+          "athena": { "provider": "gemini", "ts": "2026-05-27T08:41:28-05:00", "input_tokens": 612, "output_tokens": 261 }
+        },
+        "rationale": "Rejected: better edge exists in NVDA and QQQ.",
+        "resolution_basis": "option_price"
+      },
+      {
+        "decision_id": "rej-meta-20260527-024",
+        "ticker": "META",
+        "strike": 640,
+        "right": "put",
+        "expiry": "2026-06-05",
+        "conviction": 4.9,
+        "status": "rejected",
+        "target_price": 3.9,
+        "stop_price": 1.35,
+        "entry_price": 2.3,
+        "exit_price": null,
+        "approved_at": null,
+        "resolved_at": null,
+        "outcome": null,
+        "realized_pnl": null,
+        "realized_r": null,
+        "council": {
+          "loki_redteam": "Narrative risk makes this a poor short.",
+          "ares_catalyst": "Catalysts lean bullish, not bearish."
+        },
+        "council_metadata": {
+          "loki": { "provider": "groq", "ts": "2026-05-27T08:53:09-05:00", "input_tokens": 456, "output_tokens": 194 },
+          "ares": { "provider": "cerebras", "ts": "2026-05-27T08:53:25-05:00", "input_tokens": 508, "output_tokens": 182 }
+        },
+        "rationale": "Rejected: catalyst stack invalidated the put idea.",
+        "resolution_basis": "option_price"
+      }
+    ],
+    "resolved": [
+      {
+        "decision_id": "res-spy-20260522-031",
+        "ticker": "SPY",
+        "strike": 585,
+        "right": "call",
+        "expiry": "2026-05-22",
+        "conviction": 7.6,
+        "status": "win",
+        "target_price": 5.8,
+        "stop_price": 2.35,
+        "entry_price": 3.7,
+        "exit_price": 5.95,
+        "approved_at": "2026-05-22T09:48:00-05:00",
+        "resolved_at": "2026-05-22T15:40:00-05:00",
+        "outcome": "win",
+        "realized_pnl": 225,
+        "realized_r": 1.15,
+        "council": {
+          "apollo_bull": "Momentum resolved cleanly into the close.",
+          "zeus_macro": "Risk-on tape held through session.",
+          "athena_bear": "Theta drag was manageable given IV crush timing."
+        },
+        "council_metadata": {
+          "zeus": { "provider": "gemini", "ts": "2026-05-22T09:41:14-05:00", "input_tokens": 701, "output_tokens": 318 },
+          "apollo": { "provider": "gemini", "ts": "2026-05-22T09:41:30-05:00", "input_tokens": 657, "output_tokens": 274 },
+          "athena": { "provider": "gemini", "ts": "2026-05-22T09:41:47-05:00", "input_tokens": 643, "output_tokens": 261 }
+        },
+        "rationale": "Target hit on option-price basis.",
+        "resolution_basis": "option_price"
+      },
+      {
+        "decision_id": "res-tsla-20260525-032",
+        "ticker": "TSLA",
+        "strike": 330,
+        "right": "put",
+        "expiry": "2026-05-29",
+        "conviction": 6.1,
+        "status": "loss",
+        "target_price": 6.1,
+        "stop_price": 2.25,
+        "entry_price": 3.8,
+        "exit_price": 2.2,
+        "approved_at": "2026-05-25T10:20:00-05:00",
+        "resolved_at": "2026-05-25T13:02:00-05:00",
+        "outcome": "loss",
+        "realized_pnl": -160,
+        "realized_r": -0.55,
+        "council": {
+          "loki_redteam": "Headline squeeze risk manifested quickly.",
+          "athena_bear": "Bearish thesis was structurally correct, execution timing off."
+        },
+        "council_metadata": {
+          "athena": { "provider": "gemini", "ts": "2026-05-25T10:13:22-05:00", "input_tokens": 668, "output_tokens": 287 },
+          "loki": { "provider": "groq", "ts": "2026-05-25T10:13:39-05:00", "input_tokens": 462, "output_tokens": 208 }
+        },
+        "rationale": "Stop hit after reversal through supply.",
+        "resolution_basis": "option_price"
+      },
+      {
+        "decision_id": "res-msft-20260521-033",
+        "ticker": "MSFT",
+        "strike": 470,
+        "right": "call",
+        "expiry": "2026-05-29",
+        "conviction": 7.3,
+        "status": "win",
+        "target_price": 7.1,
+        "stop_price": 3.1,
+        "entry_price": 4.55,
+        "exit_price": 7.35,
+        "approved_at": "2026-05-21T11:01:00-05:00",
+        "resolved_at": "2026-05-21T15:50:00-05:00",
+        "outcome": "win",
+        "realized_pnl": 280,
+        "realized_r": 1.25,
+        "council": {
+          "zeus_macro": "Quality megacap bid held.",
+          "apollo_bull": "Trend continuation played out as modeled.",
+          "ares_catalyst": "Azure cloud beat narrative was the fuel."
+        },
+        "council_metadata": {
+          "zeus": { "provider": "gemini", "ts": "2026-05-21T10:54:08-05:00", "input_tokens": 715, "output_tokens": 322 },
+          "apollo": { "provider": "gemini", "ts": "2026-05-21T10:54:25-05:00", "input_tokens": 638, "output_tokens": 263 },
+          "ares": { "provider": "cerebras", "ts": "2026-05-21T10:54:40-05:00", "input_tokens": 511, "output_tokens": 195 }
+        },
+        "rationale": "Target hit after continuation.",
+        "resolution_basis": "option_price"
+      },
+      {
+        "decision_id": "res-aapl-20260520-034",
+        "ticker": "AAPL",
+        "strike": 200,
+        "right": "call",
+        "expiry": "2026-05-23",
+        "conviction": 5.8,
+        "status": "expired",
+        "target_price": 3.9,
+        "stop_price": 1.4,
+        "entry_price": 2.35,
+        "exit_price": 2.1,
+        "approved_at": "2026-05-20T10:05:00-05:00",
+        "resolved_at": "2026-05-23T16:15:00-05:00",
+        "outcome": "expired",
+        "realized_pnl": -25,
+        "realized_r": 0,
+        "council": {
+          "athena_bear": "Theta decay outweighed the thesis.",
+          "loki_redteam": "Warned about range-bound tape — played out."
+        },
+        "council_metadata": {
+          "athena": { "provider": "gemini", "ts": "2026-05-20T09:58:41-05:00", "input_tokens": 649, "output_tokens": 275 },
+          "loki": { "provider": "groq", "ts": "2026-05-20T09:58:58-05:00", "input_tokens": 450, "output_tokens": 197 }
+        },
+        "rationale": "Expired without target or stop.",
+        "resolution_basis": "option_price"
+      },
+      {
+        "decision_id": "res-meta-20260517-035",
+        "ticker": "META",
+        "strike": 660,
+        "right": "call",
+        "expiry": "2026-05-22",
+        "conviction": 6.9,
+        "status": "win",
+        "target_price": 6.5,
+        "stop_price": 2.6,
+        "entry_price": 4.05,
+        "exit_price": 6.7,
+        "approved_at": "2026-05-17T09:55:00-05:00",
+        "resolved_at": "2026-05-17T14:36:00-05:00",
+        "outcome": "win",
+        "realized_pnl": 265,
+        "realized_r": 1.05,
+        "council": {
+          "ares_catalyst": "Ad-tech read-through gave the move fuel.",
+          "apollo_bull": "Breakout was clean, no distribution.",
+          "zeus_macro": "No headwinds from macro that session."
+        },
+        "council_metadata": {
+          "zeus": { "provider": "gemini", "ts": "2026-05-17T09:48:12-05:00", "input_tokens": 692, "output_tokens": 309 },
+          "apollo": { "provider": "gemini", "ts": "2026-05-17T09:48:28-05:00", "input_tokens": 641, "output_tokens": 257 },
+          "ares": { "provider": "cerebras", "ts": "2026-05-17T09:48:43-05:00", "input_tokens": 527, "output_tokens": 199 }
+        },
+        "rationale": "Target hit.",
+        "resolution_basis": "option_price"
+      },
+      {
+        "decision_id": "res-amd-20260515-036",
+        "ticker": "AMD",
+        "strike": 170,
+        "right": "call",
+        "expiry": "2026-05-22",
+        "conviction": 6.2,
+        "status": "loss",
+        "target_price": 4.9,
+        "stop_price": 1.8,
+        "entry_price": 2.9,
+        "exit_price": 1.75,
+        "approved_at": "2026-05-15T10:15:00-05:00",
+        "resolved_at": "2026-05-15T12:44:00-05:00",
+        "outcome": "loss",
+        "realized_pnl": -115,
+        "realized_r": -0.5,
+        "council": {
+          "athena_bear": "Laggard warning proved correct.",
+          "loki_redteam": "Warned about sector rotation — no follow-through."
+        },
+        "council_metadata": {
+          "athena": { "provider": "gemini", "ts": "2026-05-15T10:08:33-05:00", "input_tokens": 645, "output_tokens": 271 },
+          "loki": { "provider": "groq", "ts": "2026-05-15T10:08:50-05:00", "input_tokens": 457, "output_tokens": 193 }
+        },
+        "rationale": "Stop hit.",
+        "resolution_basis": "option_price"
+      },
+      {
+        "decision_id": "res-qqq-20260513-037",
+        "ticker": "QQQ",
+        "strike": 510,
+        "right": "call",
+        "expiry": "2026-05-16",
+        "conviction": 7,
+        "status": "win",
+        "target_price": 5.2,
+        "stop_price": 2.1,
+        "entry_price": 3.3,
+        "exit_price": 5.35,
+        "approved_at": "2026-05-13T09:45:00-05:00",
+        "resolved_at": "2026-05-13T15:21:00-05:00",
+        "outcome": "win",
+        "realized_pnl": 205,
+        "realized_r": 0.95,
+        "council": {
+          "apollo_bull": "Trend day carried the setup.",
+          "zeus_macro": "VIX compression continued, supportive regime."
+        },
+        "council_metadata": {
+          "zeus": { "provider": "gemini", "ts": "2026-05-13T09:38:55-05:00", "input_tokens": 688, "output_tokens": 304 },
+          "apollo": { "provider": "gemini", "ts": "2026-05-13T09:39:11-05:00", "input_tokens": 624, "output_tokens": 252 }
+        },
+        "rationale": "Target hit before close.",
+        "resolution_basis": "option_price"
+      },
+      {
+        "decision_id": "res-nvda-20260510-038",
+        "ticker": "NVDA",
+        "strike": 136,
+        "right": "call",
+        "expiry": "2026-05-15",
+        "conviction": 6.7,
+        "status": "loss",
+        "target_price": 8.8,
+        "stop_price": 3.25,
+        "entry_price": 5.4,
+        "exit_price": 3.2,
+        "approved_at": "2026-05-10T10:02:00-05:00",
+        "resolved_at": "2026-05-10T13:55:00-05:00",
+        "outcome": "loss",
+        "realized_pnl": -220,
+        "realized_r": -0.65,
+        "council": {
+          "loki_redteam": "Premium was too hot at entry.",
+          "athena_bear": "Warned about vol crush post-event.",
+          "ares_catalyst": "Catalyst had already been priced in by open."
+        },
+        "council_metadata": {
+          "ares": { "provider": "cerebras", "ts": "2026-05-10T09:55:04-05:00", "input_tokens": 514, "output_tokens": 191 },
+          "athena": { "provider": "gemini", "ts": "2026-05-10T09:55:20-05:00", "input_tokens": 651, "output_tokens": 279 },
+          "loki": { "provider": "groq", "ts": "2026-05-10T09:55:37-05:00", "input_tokens": 469, "output_tokens": 210 }
+        },
+        "rationale": "Stop hit on volatility crush.",
+        "resolution_basis": "option_price"
+      }
+    ]
+  },
+  "agents": [
+    { "agent": "zeus", "last_action": "framed macro tape as constructive", "last_action_ts": "2026-05-27T14:15:00-05:00", "calls_today": 4, "provider_last": "gemini", "status": "active" },
+    { "agent": "poseidon", "last_action": "passed QQQ call with size guard", "last_action_ts": "2026-05-27T14:18:00-05:00", "calls_today": 11, "provider_last": null, "status": "active" },
+    { "agent": "artemis", "last_action": "flagged SPY upside sweep", "last_action_ts": "2026-05-27T14:22:00-05:00", "calls_today": 16, "provider_last": null, "status": "active" },
+    { "agent": "apollo", "last_action": "built bull case for META", "last_action_ts": "2026-05-27T14:23:00-05:00", "calls_today": 5, "provider_last": "gemini", "status": "active" },
+    { "agent": "athena", "last_action": "warned about AAPL rebound risk", "last_action_ts": "2026-05-27T14:24:00-05:00", "calls_today": 5, "provider_last": "gemini", "status": "active" },
+    { "agent": "ares", "last_action": "mapped META catalyst stack", "last_action_ts": "2026-05-27T14:20:00-05:00", "calls_today": 4, "provider_last": "gemini", "status": "active" },
+    { "agent": "loki", "last_action": "red-teamed NVDA chase risk", "last_action_ts": "2026-05-27T14:19:00-05:00", "calls_today": 4, "provider_last": "groq", "status": "active" },
+    { "agent": "thor", "last_action": "approved five active positions", "last_action_ts": "2026-05-27T14:26:00-05:00", "calls_today": 7, "provider_last": "deepseek", "status": "active" },
+    { "agent": "hades", "last_action": "awaiting cleanup window", "last_action_ts": "2026-05-27T08:00:00-05:00", "calls_today": 0, "provider_last": null, "status": "idle" },
+    { "agent": "hephaestus", "last_action": "resolved prior SPY winner", "last_action_ts": "2026-05-27T16:15:00-05:00", "calls_today": 1, "provider_last": null, "status": "idle" },
+    { "agent": "calliope", "last_action": "journaled council decisions", "last_action_ts": "2026-05-27T14:27:00-05:00", "calls_today": 2, "provider_last": "gemini", "status": "active" }
+  ]
+}

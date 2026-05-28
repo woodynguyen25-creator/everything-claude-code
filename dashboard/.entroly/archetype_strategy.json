@@ -1,0 +1,62 @@
+{
+  "js_frontend": {
+    "weights": {
+      "w_recency": 0.4,
+      "w_frequency": 0.2,
+      "w_semantic": 0.25,
+      "w_entropy": 0.15,
+      "w_resonance": 0.05,
+      "decay_half_life": 10.0,
+      "min_relevance": 0.06,
+      "exploration_rate": 0.12
+    },
+    "sample_count": 0,
+    "confidence": 0.5,
+    "created_at": 1779129096.8734305,
+    "fingerprint": {
+      "lang_python": 0.0,
+      "lang_rust": 0.0,
+      "lang_js_ts": 0.5892857142857143,
+      "lang_other": 0.4107142857142857,
+      "avg_file_size": 0.6730728511189145,
+      "func_density": 0.1881884937897241,
+      "class_ratio": 0.0,
+      "import_density": 0.22675371445213421,
+      "test_ratio": 0.03571428571428571,
+      "module_count": 0.6098681622198213,
+      "ffi_ratio": 0.0,
+      "entropy_mean": 0.5440037264602611,
+      "entropy_var": 0.015906186036696805
+    }
+  },
+  "js_general": {
+    "weights": {
+      "w_recency": 0.3,
+      "w_frequency": 0.25,
+      "w_semantic": 0.25,
+      "w_entropy": 0.2,
+      "w_resonance": 0.1,
+      "decay_half_life": 15.0,
+      "min_relevance": 0.05,
+      "exploration_rate": 0.1
+    },
+    "sample_count": 0,
+    "confidence": 0.5,
+    "created_at": 1779823578.1538234,
+    "fingerprint": {
+      "lang_python": 0.1452513966480447,
+      "lang_rust": 0.0,
+      "lang_js_ts": 0.44972067039106145,
+      "lang_other": 0.40502793296089384,
+      "avg_file_size": 0.6933604972171163,
+      "func_density": 0.3674345216090915,
+      "class_ratio": 0.06390328151986183,
+      "import_density": 0.31610228462343937,
+      "test_ratio": 0.0893854748603352,
+      "module_count": 0.6712040604371053,
+      "ffi_ratio": 0.002793296089385475,
+      "entropy_mean": 0.5303625991391634,
+      "entropy_var": 0.02375921730138616
+    }
+  }
+}

@@ -1,0 +1,12 @@
+name: skill-eval
+version: 0.1.0
+description: >
+  Runs every installed skill's pytest suite, aggregates pass/fail counts,
+  surfaces failing skills with one-line summaries. Telegram-friendly health
+  check for the skill catalog. Read-only.
+trigger:
+  type: explicit
+  command: /skill-eval
+runtime: python3.11
+env_required: []
+entrypoint: main.py:run

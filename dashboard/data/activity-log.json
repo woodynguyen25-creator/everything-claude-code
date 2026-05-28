@@ -1,0 +1,57 @@
+[
+  {
+    "timestamp": "2026-05-23T22:59:17.931Z",
+    "action": "whisper-dictate-v3-shipped",
+    "agent": "claude-opus-4-7",
+    "status": "completed",
+    "note": "Groq whisper-large-v3-turbo as primary transcription. Long-clip latency ~2s -> ~0.5s. See data/memory/whisper-dictate-progress.md"
+  },
+  {
+    "timestamp": "2026-05-22T18:41:14.955Z",
+    "action": "refresh-metrics",
+    "agent": null,
+    "status": "completed"
+  },
+  {
+    "timestamp": "2026-05-22T18:41:12.771Z",
+    "action": "run-doctor",
+    "agent": null,
+    "status": "completed"
+  },
+  {
+    "timestamp": "2026-05-22T18:41:12.733Z",
+    "action": "run-doctor",
+    "agent": null,
+    "status": "started"
+  },
+  {
+    "timestamp": "2026-05-22T18:41:12.670Z",
+    "action": "refresh-metrics",
+    "agent": null,
+    "status": "started"
+  },
+  {
+    "timestamp": "2026-05-21T15:24:44.573Z",
+    "action": "run-doctor",
+    "agent": null,
+    "status": "completed"
+  },
+  {
+    "timestamp": "2026-05-21T15:24:44.528Z",
+    "action": "run-doctor",
+    "agent": null,
+    "status": "started"
+  },
+  {
+    "timestamp": "2026-05-21T14:54:24.323Z",
+    "action": "run-doctor",
+    "agent": null,
+    "status": "completed"
+  },
+  {
+    "timestamp": "2026-05-21T14:54:24.179Z",
+    "action": "run-doctor",
+    "agent": null,
+    "status": "started"
+  }
+]

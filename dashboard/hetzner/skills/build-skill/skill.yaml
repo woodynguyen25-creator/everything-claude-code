@@ -1,0 +1,16 @@
+name: build-skill
+version: 0.1.0
+description: >
+  Meta-skill. Takes a natural-language description and an existing skill as
+  the template, calls Claude Max with extended thinking to generate the
+  skill.yaml + main.py for a new Hermes skill. Writes the proposed files to
+  AIOS/Reports/build-skill-{name}/ for review — does NOT auto-install.
+  Pattern from AI Masterclass video #25 (Agent Builds Teams of Agents).
+trigger:
+  type: explicit
+  command: /build-skill
+runtime: python3.11
+env_required:
+  - ECC_BRIDGE_URL
+  - ECC_BRIDGE_TOKEN
+entrypoint: main.py:run

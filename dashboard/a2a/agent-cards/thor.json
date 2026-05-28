@@ -1,0 +1,48 @@
+{
+  "name": "Thor",
+  "displayName": "Thor — God of Thunder",
+  "description": "AIOS Council trading specialist. Handles stocks, options, swing trade analysis, morning brief generation, and all market-related decisions. Primary analyst for equities watchlist: NVDA, META, MSFT, PLTR, HOOD, TSLA, AAPL, AMZN.",
+  "version": "1.0",
+  "url": "http://127.0.0.1:3737/api/agents/thor",
+  "documentationUrl": "http://127.0.0.1:3737/thor",
+  "provider": {
+    "organization": "Woody's Realm",
+    "url": "http://127.0.0.1:3737"
+  },
+  "capabilities": {
+    "streaming": true,
+    "pushNotifications": false,
+    "stateTransitionHistory": true
+  },
+  "authentication": {
+    "schemes": ["none"]
+  },
+  "defaultInputModes": ["text/plain"],
+  "defaultOutputModes": ["text/plain", "text/markdown"],
+  "skills": [
+    {
+      "id": "trade-analysis",
+      "name": "Swing Trade Analysis",
+      "description": "RSI/Stoch/EMA analysis on watchlist tickers, quant score ranking, setup identification",
+      "tags": ["trading", "equities", "technical-analysis"]
+    },
+    {
+      "id": "options-flow",
+      "name": "Options Flow Analysis",
+      "description": "ATM IV%, DTE selection, options chain scanning, swing options setups",
+      "tags": ["options", "iv", "flow"]
+    },
+    {
+      "id": "morning-brief",
+      "name": "Morning Brief Generation",
+      "description": "Full morning brief with market snapshot, sector heat, watchlist quant scores, options flow",
+      "tags": ["morning-brief", "market", "daily"]
+    },
+    {
+      "id": "debate-bear",
+      "name": "Bear Case — NOFX Pattern",
+      "description": "Generate the bear case argument for any ticker: resistance levels, divergences, overbought signals",
+      "tags": ["bear", "debate", "risk"]
+    }
+  ]
+}
