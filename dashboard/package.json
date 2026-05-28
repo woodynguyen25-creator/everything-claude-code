@@ -13,6 +13,7 @@
     "sync:obsidian": "node scripts/sync-workouts-obsidian.js"
   },
   "dependencies": {
+    "@number-flow/react": "^0.6.0",
     "better-sqlite3": "^11.3.0",
     "class-variance-authority": "^0.7.1",
     "lucide-react": "^1.16.0",

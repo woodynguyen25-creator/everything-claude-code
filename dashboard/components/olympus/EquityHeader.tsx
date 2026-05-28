@@ -1,10 +1,10 @@
 'use client';
 
 import { useEffect, useState } from 'react';
+import NumberFlow from '@number-flow/react';
 import { CostBurnWidget } from '@/components/olympus/CostBurnWidget';
 import { EdgeBarWidget } from '@/components/olympus/EdgeBarWidget';
 import { EquitySparkline } from '@/components/olympus/EquitySparkline';
-import { NumberTicker } from '@/components/twentyfirst/NumberTicker';
 import type { OlympusState } from '@/lib/olympus/types';
 
 type EquityMode = 'paper' | 'real' | 'both';
@@ -75,13 +75,13 @@ export function EquityHeader({ state }: EquityHeaderProps) {
             </div>
           </div>
 
-          {/* Animated equity number */}
+          {/* Animated equity number — @number-flow/react per-digit spring animation */}
           <div className="mt-3">
             {showPaper ? (
-              <NumberTicker
+              <NumberFlow
                 value={state.current_equity}
-                format={currency}
-                className="font-mono text-4xl font-semibold tracking-wide text-white"
+                format={{ style: 'currency', currency: 'USD', minimumFractionDigits: 2 }}
+                className="font-mono text-4xl font-semibold tracking-wide text-white tabular-nums"
               />
             ) : (
               <span className="font-mono text-2xl italic text-white/25">
@@ -112,10 +112,14 @@ export function EquityHeader({ state }: EquityHeaderProps) {
 
           <div className="mt-3 flex flex-wrap gap-2 text-[10px] uppercase tracking-[0.16em] text-white/45">
             <span className="rounded-full border border-white/[0.08] px-2 py-1">
-              {state.open_positions_count} open
+              <NumberFlow value={state.open_positions_count} className="tabular-nums" /> open
             </span>
             <span className="rounded-full border border-white/[0.08] px-2 py-1">
-              {currency(state.total_unrealized_pnl)} unrealized
+              <NumberFlow
+                value={state.total_unrealized_pnl}
+                format={{ style: 'currency', currency: 'USD', minimumFractionDigits: 0 }}
+                className="tabular-nums"
+              /> unrealized
             </span>
           </div>
           <div className="mt-3 text-[10px] text-white/30 tracking-wide">
