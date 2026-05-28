@@ -123,6 +123,20 @@ export interface MacroBrief {
   author: 'zeus';
 }
 
+export interface StrategicAction {
+  action_id: string;
+  decision_id: string;
+  ticker: string;
+  owner: string;
+  action_type: 'ENTER' | 'EXIT' | 'HOLD' | 'WATCH' | 'RESEARCH';
+  description: string;
+  dollar_impact_est: number | null;
+  timeline: 'now' | 'open' | 'EOD' | 'this_week';
+  priority: number;
+  completed: boolean;
+  ts: string;
+}
+
 export interface OlympusState {
   ts: string;
   current_equity: number;
@@ -142,4 +156,5 @@ export interface OlympusState {
   whale_flow?: WhaleFlowItem[];
   trading_bots?: TradingBot[];
   macro_brief?: MacroBrief | null;
+  strategic_actions?: StrategicAction[];
 }

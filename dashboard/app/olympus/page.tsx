@@ -2,6 +2,7 @@
 
 import { Suspense, useCallback, useEffect, useRef, useState } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
+import { ActionBoard } from '@/components/olympus/ActionBoard';
 import { ApprovedPositions } from '@/components/olympus/ApprovedPositions';
 import { AgentLegend } from '@/components/olympus/AgentLegend';
 import { CouncilFlowBeam } from '@/components/olympus/CouncilFlowBeam';
@@ -152,6 +153,7 @@ function OlympusInner() {
             </div>
 
             <div className="space-y-5 xl:order-3">
+              <ActionBoard actions={state.strategic_actions ?? []} />
               <WhaleHunting flow={state.whale_flow ?? []} />
               <TradingBotsStatus bots={state.trading_bots ?? []} />
               <LivePortfolioSnapshot />
