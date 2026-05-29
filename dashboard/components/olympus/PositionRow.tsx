@@ -55,14 +55,24 @@ export function PositionRow({ decision, isTopConviction = false, isLive = false 
     <button
       type="button"
       onClick={handleClick}
-      className={`group grid w-full grid-cols-[1fr_auto_auto_auto_auto] items-center gap-3 rounded-xl bg-white/[0.025] px-3 py-2.5 text-left transition-all ${
+      className={`group relative grid w-full grid-cols-[1fr_auto_auto_auto_auto] items-center gap-3 overflow-hidden rounded-xl bg-white/[0.025] px-3 py-2.5 text-left transition-all duration-150 ${
         isTopConviction
           ? 'border border-transparent'
-          : 'border border-white/[0.06] hover:border-[#C9A96155] hover:bg-[#C9A96108]'
+          : 'border border-white/[0.06] hover:border-[#C9A961]/25 hover:bg-[#C9A961]/[0.04] hover:shadow-[0_2px_12px_rgba(0,0,0,0.35)]'
       }`}
     >
+      {/* Left gold accent line — reveals on hover */}
+      {!isTopConviction && (
+        <span
+          aria-hidden
+          className="pointer-events-none absolute inset-y-0 left-0 w-0.5 rounded-full bg-[#C9A961] opacity-0 transition-opacity duration-150 group-hover:opacity-60"
+        />
+      )}
+
       <div className="flex items-baseline gap-2 overflow-hidden">
-        <span className="font-sans text-base font-bold tracking-wide text-white">{decision.ticker}</span>
+        <span className="font-sans text-base font-bold tracking-wide text-white transition-colors duration-150 group-hover:text-[#C9A961]">
+          {decision.ticker}
+        </span>
         <span
           className={`rounded-full border px-1.5 py-0.5 text-[9px] font-semibold uppercase tracking-[0.14em] ${
             isCall
@@ -74,17 +84,24 @@ export function PositionRow({ decision, isTopConviction = false, isLive = false 
         >
           {decision.right}
         </span>
-        {/* LIVE badge — shown when this position exists in real Robinhood portfolio */}
+        {/* LIVE badge — pulsing glow when position exists in real Robinhood portfolio */}
         {isLive && (
-          <span className="rounded-full border border-emerald-400/40 bg-emerald-400/10 px-1.5 py-0.5 text-[9px] font-semibold uppercase tracking-[0.14em] text-emerald-300">
+          <span className="relative inline-flex items-center rounded-full border border-emerald-400/40 bg-emerald-400/10 px-1.5 py-0.5 text-[9px] font-semibold uppercase tracking-[0.14em] text-emerald-300">
+            <span
+              aria-hidden
+              className="absolute inset-0 animate-ping rounded-full bg-emerald-400/20"
+              style={{ animationDuration: '2s' }}
+            />
             live
           </span>
         )}
       </div>
 
-      <span className="font-mono text-xs text-white/72">${decision.strike}</span>
+      <span className="font-mono text-xs text-white/70 transition-colors group-hover:text-white/90">
+        ${decision.strike}
+      </span>
 
-      <span className="font-mono text-[10px] uppercase tracking-[0.12em] text-white/45">
+      <span className="font-mono text-[10px] uppercase tracking-[0.12em] text-white/40 transition-colors group-hover:text-white/60">
         {shortExpiry(decision.expiry)}
       </span>
 
@@ -95,11 +112,13 @@ export function PositionRow({ decision, isTopConviction = false, isLive = false 
           return (
             <span
               key={key}
-              className="h-1.5 w-1.5 rounded-full transition-opacity"
+              className="rounded-full transition-all duration-150 group-hover:scale-110"
               style={{
+                width: '6px',
+                height: '6px',
                 background: voted ? color.hex : 'transparent',
                 border: voted ? 'none' : `1px solid ${color.hex}40`,
-                opacity: voted ? 0.95 : 0.4,
+                opacity: voted ? 0.95 : 0.35,
               }}
               aria-label={`${color.label}: ${voted ? 'voted' : 'no vote'}`}
             />
