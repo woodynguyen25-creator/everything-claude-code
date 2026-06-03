@@ -2,144 +2,62 @@
 
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { useEffect, useState } from 'react';
-import AgentCard from '@/components/AgentCard';
 import ConnectionsStrip from '@/components/ConnectionsStrip';
 import RealmMark from '@/components/RealmMark';
-import type { AgentStatus } from '@/lib/agent-status';
-
-type HealthStatus = 'ok' | 'fallback' | 'offline';
-type HealthMap = Record<string, HealthStatus>;
 
 type SidebarProps = {
-  agentStatuses: AgentStatus[];
   operatorDateLabel: string;
 };
 
-type NavItem = { href: string; label: string };
+type NavItem = { href: string; label: string; icon: string };
 
-const OLYMPUS_PANTHEON = [
-  { slug: 'anubis', emoji: '⚖️', codename: 'ANUBIS', role: 'Chairman' },
-  { slug: 'zeus', emoji: '⚡', codename: 'ZEUS', role: 'Macro' },
-  { slug: 'apollo', emoji: '☀️', codename: 'APOLLO', role: 'Bull' },
-  { slug: 'athena', emoji: '🦉', codename: 'ATHENA', role: 'Bear' },
-  { slug: 'ares', emoji: '⚔️', codename: 'ARES', role: 'Catalyst' },
-  { slug: 'loki', emoji: '🔥', codename: 'LOKI', role: 'Red Team' },
-  { slug: 'poseidon', emoji: '🌊', codename: 'POSEIDON', role: 'Risk' },
-  { slug: 'artemis', emoji: '🏹', codename: 'ARTEMIS', role: 'Scanner' },
-  { slug: 'hephaestus', emoji: '🔨', codename: 'HEPHAESTUS', role: 'Resolver' },
-  { slug: 'hades', emoji: '💀', codename: 'HADES', role: 'Janitor' },
-  { slug: 'calliope', emoji: '🎭', codename: 'CALLIOPE', role: 'Reporter' },
-];
-
-const TRADING_BOTS = [
-  { slug: 'hermes-btc', emoji: '₿', codename: 'HERMES BTC', status: 'paper' },
-  { slug: 'hermes-eth', emoji: 'Ξ', codename: 'HERMES ETH', status: 'paper' },
-  { slug: 'hermes-spy', emoji: '🇺🇸', codename: 'HERMES SPY', status: 'paper' },
-  { slug: 'parlay', emoji: '🎲', codename: 'PARLAYBOT', status: 'idle' },
-];
-
-// Pinned AIOS council members — Perseus and Fenrir are visible on Mission Control only
-const PINNED_COUNCIL_SLUGS = ['lebot-james', 'thor', 'sauron'];
-
+// One navigation system. Every item is a real route — no duplicates, no top-tabs.
 const NAV: NavItem[] = [
-  { href: '/', label: '🏛️ Home' },
-  { href: '/activity', label: '📊 Activity' },
-  { href: '/memory', label: '🧠 Memory' },
-  { href: '/olympus', label: '⚡ Olympus Fund' },
-  { href: '/mission-control', label: '🎛️ Mission Control' },
-  { href: '/hermes', label: '🪶 Hermes' },
-  { href: '/skills', label: '🛠️ Skills' },
+  { href: '/', label: 'Command', icon: '🏛️' },
+  { href: '/war-room', label: 'War Room', icon: '👁️' },
+  { href: '/throne', label: 'The Throne', icon: '♛' },
+  { href: '/olympus', label: 'Olympus', icon: '⚡' },
+  { href: '/memory', label: 'Memory', icon: '🧠' },
+  { href: '/skills', label: 'Skills', icon: '🌳' },
+  { href: '/activity', label: 'Saga', icon: '📜' },
+  { href: '/hermes', label: 'Hermes', icon: '🪶' },
+  { href: '/odysseus', label: 'Odysseus', icon: '🧭' },
 ];
 
-function useLocalToggle(key: string, defaultOpen: boolean) {
-  const [open, setOpen] = useState(defaultOpen);
-
-  useEffect(() => {
-    try {
-      const stored = window.localStorage.getItem(key);
-      if (stored !== null) setOpen(stored === 'true');
-    } catch {}
-  }, [key]);
-
-  const toggle = () => {
-    setOpen((prev) => {
-      const next = !prev;
-      try { window.localStorage.setItem(key, String(next)); } catch {}
-      return next;
-    });
-  };
-
-  return [open, toggle] as const;
-}
-
-export default function Sidebar({ agentStatuses, operatorDateLabel }: SidebarProps) {
+export default function Sidebar({ operatorDateLabel }: SidebarProps) {
   const pathname = usePathname();
   const isActive = (href: string) => (href === '/' ? pathname === '/' : pathname.startsWith(href));
-  const [healthMap, setHealthMap] = useState<HealthMap>({});
-  const [olympusOpen, toggleOlympus] = useLocalToggle('sidebar.olympus.open', false);
-  const [botsOpen, toggleBots] = useLocalToggle('sidebar.bots.open', false);
-
-  useEffect(() => {
-    let cancelled = false;
-    const load = async () => {
-      try {
-        const res = await fetch('/api/doctor/agents', { cache: 'no-store' });
-        const data = await res.json() as Array<{ slug: string; status: HealthStatus }>;
-        if (!cancelled) {
-          const map: HealthMap = {};
-          data.forEach((d) => { map[d.slug] = d.status; });
-          setHealthMap(map);
-        }
-      } catch {
-        // fail silently — dots just won't render
-      }
-    };
-    load();
-    const t = setInterval(load, 60_000);
-    return () => { cancelled = true; clearInterval(t); };
-  }, []);
-
-  const pinnedAgents = agentStatuses.filter((a) => PINNED_COUNCIL_SLUGS.includes(a.slug));
 
   return (
-    <aside className="relative z-20 flex min-h-screen w-72 shrink-0 flex-col border-r border-border-subtle bg-bg-panel">
-      <div className="border-b border-border-subtle px-5 py-6">
-        <div className="flex items-start gap-3">
-          <RealmMark size={24} className="shrink-0" />
-          <div>
-            <div className="font-display text-2xl uppercase tracking-[0.2em] text-rune-gold">Woody&apos;s Realm</div>
-            <div className="mt-1 font-mono text-[11px] text-text-muted">Operator · {operatorDateLabel}</div>
+    <aside className="relative z-20 flex min-h-screen w-56 shrink-0 flex-col border-r border-border-subtle bg-bg-panel">
+      {/* Brand */}
+      <div className="border-b border-border-subtle px-4 py-5">
+        <div className="flex items-center gap-2.5">
+          <RealmMark size={22} className="shrink-0" />
+          <div className="min-w-0">
+            <div className="truncate font-display text-lg uppercase tracking-[0.18em] text-rune-gold">Woody&apos;s Realm</div>
+            <div className="font-mono text-[10px] text-text-muted">{operatorDateLabel}</div>
           </div>
-          <button
-            type="button"
-            onClick={() => window.dispatchEvent(new CustomEvent('ravens:open', { detail: {} }))}
-            aria-label="Open the Ravens"
-            className="ml-auto rounded-full border border-border-subtle bg-bg-panel px-3 py-2 font-numeric text-[11px] text-text-muted transition-colors hover:border-rune-gold hover:text-rune-gold"
-            title="Open the Ravens"
-          >
-            ⌘K
-          </button>
         </div>
       </div>
 
-      {/* NAV */}
-      <nav className="px-3 py-5">
-        <div className="mb-2 px-2 text-rune text-[10px] tracking-[0.3em] text-text-muted">NAV</div>
-        <ul className="space-y-1">
+      {/* Nav */}
+      <nav className="flex-1 px-2.5 py-4">
+        <ul className="space-y-0.5">
           {NAV.map((item) => {
             const active = isActive(item.href);
             return (
               <li key={item.href}>
                 <Link
                   href={item.href}
-                  className={`block rounded border-l-2 px-3 py-2 text-sm transition-colors ${
+                  className={`flex items-center gap-2.5 rounded-md border-l-2 px-3 py-2 text-[13px] transition-colors ${
                     active
                       ? 'border-rune-gold bg-bg-hover text-text-primary'
                       : 'border-l-transparent text-text-secondary hover:bg-bg-hover hover:text-text-primary'
                   }`}
                 >
-                  {item.label}
+                  <span className="text-[15px] leading-none" aria-hidden>{item.icon}</span>
+                  <span className="font-medium tracking-wide">{item.label}</span>
                 </Link>
               </li>
             );
@@ -147,107 +65,25 @@ export default function Sidebar({ agentStatuses, operatorDateLabel }: SidebarPro
         </ul>
       </nav>
 
-      <div className="flex-1 overflow-y-auto px-3 pb-4">
-        {/* AIOS COUNCIL — pinned 3 */}
-        <div className="mb-2 px-2 text-rune text-[10px] tracking-[0.3em] text-text-muted">COUNCIL</div>
-        <ul className="space-y-2">
-          {pinnedAgents.map((agent) => (
-            <li key={agent.slug}>
-              <AgentCard
-                href={agent.href}
-                codename={agent.codename}
-                persona={agent.persona}
-                accent={agent.accent}
-                tone={agent.tone}
-                symbol={agent.symbol}
-                imageSrc={agent.imageSrc}
-                active={isActive(agent.href)}
-                healthStatus={healthMap[agent.slug] ?? null}
-              />
-            </li>
-          ))}
-        </ul>
-
-        {/* OLYMPUS COUNCIL — collapsible drawer */}
-        <div className="mt-4">
-          <button
-            type="button"
-            onClick={toggleOlympus}
-            className="flex w-full items-center justify-between rounded px-2 py-1.5 text-[10px] tracking-[0.3em] text-text-muted transition-colors hover:bg-bg-hover hover:text-text-primary"
-            aria-expanded={olympusOpen}
-          >
-            <span className="text-rune">⚡ OLYMPUS COUNCIL</span>
-            <span className="font-mono text-[10px] text-text-muted">
-              {olympusOpen ? '▲' : '▼'} ({OLYMPUS_PANTHEON.length})
-            </span>
-          </button>
-          {olympusOpen && (
-            <div className="mt-1 overflow-hidden">
-              <div className="mb-1.5 px-2 text-[10px] text-text-muted">
-                Chaired by ⚖️ Anubis · Voiced by ⚒️ Thor
-              </div>
-              <ul className="space-y-0.5">
-                {OLYMPUS_PANTHEON.map((agent) => (
-                  <li key={agent.slug}>
-                    <Link
-                      href={`/olympus?agent=${agent.slug}`}
-                      className="flex items-center gap-2 rounded px-2 py-1.5 text-[12px] text-text-secondary transition-colors hover:bg-bg-hover hover:text-text-primary"
-                    >
-                      <span className="text-base">{agent.emoji}</span>
-                      <span className="font-mono uppercase tracking-wider">{agent.codename}</span>
-                      <span className="ml-auto text-[10px] text-text-muted">{agent.role}</span>
-                    </Link>
-                  </li>
-                ))}
-              </ul>
-            </div>
-          )}
-        </div>
-
-        {/* TRADING BOTS — collapsible drawer */}
-        <div className="mt-3 mb-4">
-          <button
-            type="button"
-            onClick={toggleBots}
-            className="flex w-full items-center justify-between rounded px-2 py-1.5 text-[10px] tracking-[0.3em] text-text-muted transition-colors hover:bg-bg-hover hover:text-text-primary"
-            aria-expanded={botsOpen}
-          >
-            <span className="text-rune">🤖 TRADING BOTS</span>
-            <span className="font-mono text-[10px] text-text-muted">
-              {botsOpen ? '▲' : '▼'} ({TRADING_BOTS.length})
-            </span>
-          </button>
-          {botsOpen && (
-            <div className="mt-1 overflow-hidden">
-              <div className="mb-1.5 px-2 text-[10px] text-text-muted">
-                Operated by ⚒️ Thor
-              </div>
-              <ul className="space-y-0.5">
-                {TRADING_BOTS.map((bot) => (
-                  <li key={bot.slug}>
-                    <Link
-                      href={`/olympus?bot=${bot.slug}`}
-                      className="flex items-center gap-2 rounded px-2 py-1.5 text-[12px] text-text-secondary transition-colors hover:bg-bg-hover hover:text-text-primary"
-                    >
-                      <span className="text-base">{bot.emoji}</span>
-                      <span className="font-mono uppercase tracking-wider">{bot.codename}</span>
-                      <span className="ml-auto text-[10px] text-text-muted">{bot.status}</span>
-                    </Link>
-                  </li>
-                ))}
-              </ul>
-            </div>
-          )}
-        </div>
-      </div>
-
-      <div className="border-t border-border-subtle px-5 py-4 text-[10px] text-text-muted">
-        <div className="mb-3">
+      {/* Footer */}
+      <div className="border-t border-border-subtle px-4 py-3">
+        <div className="mb-2.5">
           <ConnectionsStrip />
         </div>
-        <div className="flex items-center gap-2">
-          <span className="h-1.5 w-1.5 rounded-full bg-bifrost animate-ember-pulse" />
-          <span>localhost:3737</span>
+        <div className="flex items-center justify-between">
+          <span className="flex items-center gap-1.5 font-mono text-[10px] text-text-muted">
+            <span className="h-1.5 w-1.5 rounded-full bg-bifrost animate-ember-pulse" />
+            localhost:3737
+          </span>
+          <button
+            type="button"
+            onClick={() => window.dispatchEvent(new CustomEvent('ravens:open', { detail: {} }))}
+            aria-label="Open the Ravens command palette"
+            title="Open the Ravens (⌘K)"
+            className="rounded-md border border-border-subtle px-2 py-1 font-mono text-[10px] text-text-muted transition-colors hover:border-rune-gold hover:text-rune-gold"
+          >
+            ⌘K
+          </button>
         </div>
       </div>
     </aside>
