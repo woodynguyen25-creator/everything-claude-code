@@ -29,6 +29,10 @@ const NewsFeedPanel = dynamicImport(() => import('@/components/NewsFeedPanel'), 
 const OlympusIntelPanel = dynamicImport(() => import('@/components/OlympusIntelPanel'), {
   loading: () => <PanelSkeleton className="mx-12 h-64" />,
 });
+const TriadCostMeter = dynamicImport(
+  () => import('@/components/TriadCostMeter').then((m) => m.TriadCostMeter),
+  { ssr: false, loading: () => <PanelSkeleton className="h-40" /> },
+);
 
 export const dynamic = 'force-dynamic';
 
@@ -98,6 +102,11 @@ export default function Home() {
       <SectionLabel label="NEXT ACTION" />
       <div className="mx-12 mb-8">
         <NextActionCard />
+      </div>
+
+      <SectionLabel label="AI SPEND" meta="Council triad · daily metered" />
+      <div className="mx-12 mb-8 max-w-xl">
+        <TriadCostMeter />
       </div>
 
       <SectionLabel label="SYSTEM PULSE" />
