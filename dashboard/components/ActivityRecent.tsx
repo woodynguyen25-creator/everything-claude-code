@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useLiveResource } from '@/lib/useLiveResource';
 
 interface ActivityRow {
   timestamp: string;
@@ -49,34 +49,16 @@ interface ActivityRecentProps {
 }
 
 export function ActivityRecent({ limit = 8 }: ActivityRecentProps) {
-  const [rows, setRows] = useState<ActivityRow[] | null>(null);
-  const [error, setError] = useState<string | null>(null);
+  const { data, error: networkError } = useLiveResource<ApiResponse<{ rows: ActivityRow[]; total: number }>>(
+    `/api/activity-recent?limit=${limit}`,
+    { intervalMs: 60_000 },
+  );
 
-  useEffect(() => {
-    let cancelled = false;
-    const load = async () => {
-      try {
-        const response = await fetch(`/api/activity-recent?limit=${limit}`, { cache: 'no-store' });
-        const json = (await response.json()) as ApiResponse<{ rows: ActivityRow[]; total: number }>;
-        if (cancelled) return;
-        if (json.success && json.data) {
-          setRows(json.data.rows);
-          setError(null);
-        } else {
-          setError(json.error ?? 'failed to load activity');
-        }
-      } catch (err) {
-        if (cancelled) return;
-        setError(err instanceof Error ? err.message : 'fetch failed');
-      }
-    };
-    load();
-    const interval = setInterval(load, 60_000);
-    return () => {
-      cancelled = true;
-      clearInterval(interval);
-    };
-  }, [limit]);
+  const rows: ActivityRow[] | null =
+    data && data.success && data.data ? (data.data.rows ?? []) : null;
+  const apiError =
+    data && !(data.success && data.data) ? (data.error ?? 'failed to load activity') : null;
+  const error = networkError ?? apiError;
 
   if (error) {
     return (
