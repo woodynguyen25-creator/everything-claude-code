@@ -1,6 +1,6 @@
 'use client';
 
-import { useCallback, useEffect, useState } from 'react';
+import { useLiveResource } from '@/lib/useLiveResource';
 import { DataFooter, type DataState } from '@/components/ui/DataFooter';
 import type { OlympusIntelPayload, WhaleAsset, Decision, ActivityRow } from '@/app/api/olympus-intel/route';
 
@@ -108,31 +108,17 @@ function ActivityItem({ row }: { row: ActivityRow }) {
 // ─── Panel ─────────────────────────────────────────────────────────────────────
 
 export default function OlympusIntelPanel() {
-  const [data, setData] = useState<OlympusIntelPayload | null>(null);
-  const [state, setState] = useState<DataState>('loading');
-  const [at, setAt] = useState<number | null>(null);
-
-  const load = useCallback(async () => {
-    try {
-      const res = await fetch('/api/olympus-intel', { cache: 'no-store' });
-      if (!res.ok) { setState('error'); return; }
-      const payload = (await res.json()) as OlympusIntelPayload;
-      setData(payload);
-      setAt(Date.now());
-      setState(payload.droplet_status === 'online' ? 'live' : 'stale');
-    } catch {
-      setState('error');
-      setAt(Date.now());
-    }
-  }, []);
-
-  useEffect(() => {
-    load();
-    const id = window.setInterval(load, POLL_MS);
-    return () => window.clearInterval(id);
-  }, [load]);
-
-  const ageSec = at ? Math.round((Date.now() - at) / 1000) : null;
+  const { data, loading, error, lastUpdated } = useLiveResource<OlympusIntelPayload>('/api/olympus-intel', {
+    intervalMs: POLL_MS,
+  });
+  const state: DataState = loading
+    ? 'loading'
+    : error
+      ? 'error'
+      : data?.droplet_status === 'online'
+        ? 'live'
+        : 'stale';
+  const ageSec = lastUpdated ? Math.round((Date.now() - lastUpdated) / 1000) : null;
   const whaleEntries = data?.whale_oi ? Object.entries(data.whale_oi) : [];
   const decisions = data?.decisions ?? [];
   const activity = data?.activity ?? [];

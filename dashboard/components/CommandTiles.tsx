@@ -1,7 +1,7 @@
 'use client';
 
 import Link from 'next/link';
-import { useCallback, useEffect, useState } from 'react';
+import { useLiveResource } from '@/lib/useLiveResource';
 import { DataFooter, type DataState } from '@/components/ui/DataFooter';
 
 type Health = { slug: string; status: 'ok' | 'fallback' | 'offline' };
@@ -22,38 +22,27 @@ const HABIT_LABELS: Record<string, string> = {
 };
 
 export default function CommandTiles() {
-  const [olympus, setOlympus] = useState<Fetched<Record<string, number>>>({ data: null, at: null, state: 'loading' });
-  const [health, setHealth] = useState<Fetched<Health[]>>({ data: null, at: null, state: 'loading' });
-  const [habits, setHabits] = useState<Fetched<Habits>>({ data: null, at: null, state: 'loading' });
-  const [tasks, setTasks] = useState<Fetched<Task[]>>({ data: null, at: null, state: 'loading' });
+  // Four independent endpoints, each on the shared spine (dedupes with any other poller of the same URL).
+  const olympusR = useLiveResource<Record<string, number>>('/api/olympus/state', { intervalMs: 60_000 });
+  const healthR = useLiveResource<Health[]>('/api/doctor/agents', { intervalMs: 60_000 });
+  const habitsR = useLiveResource<Habits>('/api/habits', { intervalMs: 60_000 });
+  const tasksR = useLiveResource<Task[]>('/api/tasks', { intervalMs: 60_000 });
 
-  const load = useCallback(async () => {
-    const get = async <T,>(url: string): Promise<Fetched<T>> => {
-      try {
-        const res = await fetch(url, { cache: 'no-store' });
-        if (!res.ok) return { data: null, at: Date.now(), state: 'error' };
-        return { data: (await res.json()) as T, at: Date.now(), state: 'live' };
-      } catch {
-        return { data: null, at: Date.now(), state: 'error' };
-      }
-    };
-    const [o, h, hb, t] = await Promise.all([
-      get<Record<string, number>>('/api/olympus/state'),
-      get<Health[]>('/api/doctor/agents'),
-      get<Habits>('/api/habits'),
-      get<Task[]>('/api/tasks'),
-    ]);
-    setOlympus(o);
-    setHealth(h);
-    setHabits(hb);
-    setTasks(t);
-  }, []);
-
-  useEffect(() => {
-    load();
-    const timer = window.setInterval(load, 60_000);
-    return () => window.clearInterval(timer);
-  }, [load]);
+  // Adapt the hook snapshot to the existing { data, at, state } shape so the JSX below is untouched.
+  const adapt = <T,>(r: {
+    data: T | null;
+    loading: boolean;
+    error: string | null;
+    lastUpdated: number;
+  }): Fetched<T> => ({
+    data: r.data,
+    at: r.lastUpdated || null,
+    state: r.loading ? 'loading' : r.error ? 'error' : 'live',
+  });
+  const olympus = adapt(olympusR);
+  const health = adapt(healthR);
+  const habits = adapt(habitsR);
+  const tasks = adapt(tasksR);
 
   const age = (at: number | null) => (at ? Math.round((Date.now() - at) / 1000) : null);
 
