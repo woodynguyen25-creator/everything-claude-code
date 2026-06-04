@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useLiveResource } from '@/lib/useLiveResource';
 import NumberFlow from '@number-flow/react';
 
 interface RhPosition {
@@ -53,26 +53,20 @@ function PnlChip({ value }: { value: number }) {
 }
 
 export function LivePortfolioSnapshot() {
-  const [data, setData] = useState<RhPortfolio | null>(null);
-  const [status, setStatus] = useState<'loading' | 'ready' | 'not_configured' | 'error'>('loading');
-
-  useEffect(() => {
-    let cancelled = false;
-    function load() {
-      fetch('/api/portfolio/robinhood/state')
-        .then((r) => r.json() as Promise<RhPortfolio>)
-        .then((d) => {
-          if (cancelled) return;
-          if (d.status === 'not_configured') { setStatus('not_configured'); return; }
-          setData(d);
-          setStatus('ready');
-        })
-        .catch(() => { if (!cancelled) setStatus('error'); });
-    }
-    load();
-    const t = window.setInterval(load, 60_000);
-    return () => { cancelled = true; clearInterval(t); };
-  }, []);
+  const { data: raw, loading, error } = useLiveResource<RhPortfolio>('/api/portfolio/robinhood/state', {
+    intervalMs: 60_000,
+  });
+  // not_configured is a valid (non-error) payload status — keep it distinct from a fetch error.
+  const status: 'loading' | 'ready' | 'not_configured' | 'error' = loading
+    ? 'loading'
+    : error
+      ? 'error'
+      : raw?.status === 'not_configured'
+        ? 'not_configured'
+        : raw
+          ? 'ready'
+          : 'loading';
+  const data = status === 'ready' ? raw : null;
 
   const topMovers = [...(data?.stocks ?? [])]
     .sort((a, b) => Math.abs(b.unrealized_pnl) - Math.abs(a.unrealized_pnl))
@@ -168,9 +162,9 @@ export function LivePortfolioSnapshot() {
             <div>
               <div className="mb-1.5 text-[9px] uppercase tracking-[0.24em] text-white/30">Top Movers</div>
               <div className="space-y-1">
-                {topMovers.map((pos) => (
+                {topMovers.map((pos, i) => (
                   <div
-                    key={pos.ticker}
+                    key={`${pos.ticker}-${i}`}
                     className="flex items-center justify-between rounded-lg border border-white/[0.04] bg-white/[0.015] px-2.5 py-1.5 transition-colors hover:bg-white/[0.03]"
                   >
                     <div>
