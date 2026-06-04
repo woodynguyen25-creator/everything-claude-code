@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useLiveResource } from '@/lib/useLiveResource';
 
 interface TriadStatus {
   date: string;
@@ -31,34 +31,14 @@ function formatUsd(n: number): string {
 }
 
 export function TriadCostMeter() {
-  const [status, setStatus] = useState<TriadStatus | null>(null);
-  const [error, setError] = useState<string | null>(null);
+  const { data, error: networkError } = useLiveResource<ApiResponse<TriadStatus>>('/api/triad', {
+    intervalMs: 60_000,
+  });
 
-  useEffect(() => {
-    let cancelled = false;
-    const load = async () => {
-      try {
-        const response = await fetch('/api/triad', { cache: 'no-store' });
-        const json = (await response.json()) as ApiResponse<TriadStatus>;
-        if (cancelled) return;
-        if (json.success && json.data) {
-          setStatus(json.data);
-          setError(null);
-        } else {
-          setError(json.error ?? 'Failed to load triad status');
-        }
-      } catch (err) {
-        if (cancelled) return;
-        setError(err instanceof Error ? err.message : 'fetch failed');
-      }
-    };
-    load();
-    const interval = setInterval(load, 60_000);
-    return () => {
-      cancelled = true;
-      clearInterval(interval);
-    };
-  }, []);
+  const status: TriadStatus | null = data && data.success && data.data ? data.data : null;
+  const error =
+    networkError ??
+    (data && !(data.success && data.data) ? (data.error ?? 'Failed to load triad status') : null);
 
   if (error) {
     return (

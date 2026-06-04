@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useLiveResource } from '@/lib/useLiveResource';
 
 interface CostState {
   monthly_cap: number;
@@ -27,29 +27,8 @@ function Skeleton() {
 }
 
 export function CostBurnWidget() {
-  const [cost, setCost] = useState<CostState | null>(null);
-
-  useEffect(() => {
-    let cancelled = false;
-
-    const load = async () => {
-      try {
-        const res = await fetch('/api/cost/state', { cache: 'no-store' });
-        if (res.ok && !cancelled) {
-          setCost(await res.json());
-        }
-      } catch {
-        // Silent fallback keeps the mock-first UI stable.
-      }
-    };
-
-    load();
-    const timer = setInterval(load, 30_000);
-    return () => {
-      cancelled = true;
-      clearInterval(timer);
-    };
-  }, []);
+  // Silent fallback keeps the mock-first UI stable; errors leave `cost` null -> Skeleton.
+  const { data: cost } = useLiveResource<CostState>('/api/cost/state', { intervalMs: 30_000 });
 
   if (!cost) return <Skeleton />;
 

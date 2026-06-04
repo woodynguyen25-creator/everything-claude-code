@@ -82,6 +82,11 @@ async function fetchNow(entry: ResourceEntry): Promise<void> {
   entry.lastFetched = Date.now();
   try {
     const response = await fetch(entry.url, { cache: 'no-store', signal: controller.signal });
+    if (!response.ok) {
+      if (controller.signal.aborted) return;
+      patchSnapshot(entry, { error: `HTTP ${response.status}`, loading: false });
+      return;
+    }
     const json = (await response.json()) as unknown;
     if (controller.signal.aborted) return;
     patchSnapshot(entry, { data: json, error: null, loading: false });
