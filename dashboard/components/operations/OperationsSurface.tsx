@@ -102,18 +102,25 @@ export function OperationsSurface({ domains, dreams }: Props) {
   const tracked = domains.flatMap((d) => d.members).filter((m) => m.healthSlug);
   const online = tracked.filter((m) => healthMap[m.healthSlug as string] === 'ok').length;
 
-  // LeBot only sounds the alarm on real trouble (down beats blocked). With no fires he calls it
-  // green instead of nagging idle sessions — a CEO celebrates a clean floor.
-  const trouble = sessions.find((s) => s.status === 'error') ?? sessions.find((s) => s.status === 'blocked');
-  const leCall = trouble
-    ? VERDICTS[trouble.status](trouble.persona)
-    : !loaded
-      ? 'Reading the room…'
-      : sessions.length === 0
-        ? "Quiet house — nobody's on the floor. Roster's on standby."
-        : grinding > 0
-          ? `${grinding} on the floor and no fires. Stay green.`
-          : 'Everybody catching a breather — nothing broken, just quiet.';
+  // LeBot's call factors BOTH live sessions and worker health. Priority: a downed session,
+  // then an offline worker, then a blocked session. No fires → he calls a clean floor green.
+  function leBotCall(): string {
+    const downSession = sessions.find((s) => s.status === 'error');
+    if (downSession) return VERDICTS.error(downSession.persona);
+
+    const offline = tracked.filter((m) => healthMap[m.healthSlug as string] === 'offline');
+    if (offline.length === 1) return `${offline[0].loreName}'s gone dark — that's a man down. Get the worker back up.`;
+    if (offline.length > 1) return `${offline[0].loreName} and ${offline.length - 1} more workers are dark — get the bench healthy.`;
+
+    const blockedSession = sessions.find((s) => s.status === 'blocked');
+    if (blockedSession) return VERDICTS.blocked(blockedSession.persona);
+
+    if (!loaded) return 'Reading the room…';
+    if (sessions.length === 0) return "Quiet house — nobody's on the floor. Roster's on standby.";
+    if (grinding > 0) return `${grinding} on the floor, ${online}/${tracked.length} workers up. No fires — stay green.`;
+    return 'Everybody catching a breather — nothing broken, just quiet.';
+  }
+  const leCall = leBotCall();
 
   // render any department that has live sessions or workers (council domains always have workers)
   const sections = DEPARTMENTS.filter(
@@ -162,8 +169,11 @@ export function OperationsSurface({ domains, dreams }: Props) {
         {sections.map((d) => {
           const a = accentClasses(d.accent);
           const sess = byDept.get(d.key) ?? [];
-          const workers = councilDomain(d.key)?.members.length ?? 0;
-          const trouble = sess.some((s) => s.status === 'blocked' || s.status === 'error');
+          const deptWorkers = councilDomain(d.key)?.members ?? [];
+          const workers = deptWorkers.length;
+          const trouble =
+            sess.some((s) => s.status === 'blocked' || s.status === 'error') ||
+            deptWorkers.some((m) => m.healthSlug && healthMap[m.healthSlug] === 'offline');
           return (
             <a
               key={d.key}

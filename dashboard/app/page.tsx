@@ -1,20 +1,14 @@
 import dynamicImport from 'next/dynamic';
-import AgenticOsTabs from '@/components/AgenticOsTabs';
 import AmbientEmbers from '@/components/AmbientEmbers';
-import DailyRitesPanel from '@/components/DailyRitesPanel';
-import DreamingSurfaces from '@/components/DreamingSurfaces';
+import CommandTiles from '@/components/CommandTiles';
 import HeroBand from '@/components/HeroBand';
 import NextActionCard from '@/components/NextActionCard';
+import OdysseusGateway from '@/components/OdysseusGateway';
 import SectionLabel from '@/components/SectionLabel';
 import SideBySide from '@/components/SideBySide';
 import SystemPulseStrip from '@/components/SystemPulseStrip';
-import { ActivityRecent } from '@/components/ActivityRecent';
-import { TriadCostMeter } from '@/components/TriadCostMeter';
-import { TradingAgentsPanel } from '@/components/TradingAgentsPanel';
-import { PantheonCouncil } from '@/components/PantheonCouncil';
-import { AtlasStatus } from '@/components/atlas/AtlasStatus';
+import DailyRitesPanel from '@/components/DailyRitesPanel';
 import { getActiveInternshipCounts } from '@/lib/internships';
-import { getRealmStatus } from '@/lib/realm-status';
 
 const MarketPulseBar = dynamicImport(() => import('@/components/MarketPulseBar'), { ssr: false });
 const InternshipPanel = dynamicImport(() => import('@/components/InternshipPanel'), {
@@ -31,6 +25,9 @@ const UnusualOptionsPanel = dynamicImport(() => import('@/components/UnusualOpti
 });
 const NewsFeedPanel = dynamicImport(() => import('@/components/NewsFeedPanel'), {
   loading: () => <PanelSkeleton className="h-56" />,
+});
+const OlympusIntelPanel = dynamicImport(() => import('@/components/OlympusIntelPanel'), {
+  loading: () => <PanelSkeleton className="mx-12 h-64" />,
 });
 
 export const dynamic = 'force-dynamic';
@@ -49,8 +46,7 @@ function PanelSkeleton({ className }: { className?: string }) {
   );
 }
 
-export default async function Home() {
-  await getRealmStatus();
+export default function Home() {
   const { active, interview } = getActiveInternshipCounts();
   const today = new Date().toLocaleDateString('en-US', {
     timeZone: 'America/Chicago',
@@ -59,19 +55,24 @@ export default async function Home() {
     day: 'numeric',
   });
 
-  const realmContent = (
+  return (
     <>
       <AmbientEmbers />
       <MarketPulseBar />
 
       <HeroBand />
 
-      <div className="mx-12 mb-4">
-        <AtlasStatus />
-      </div>
+      {/* Command surface — what needs me right now */}
+      <CommandTiles />
 
+      {/* Odysseus — the AI workspace gateway (every model, on every device) */}
+      <OdysseusGateway />
+
+      {/* Personal-life hub */}
       <SectionLabel label="TODAY" meta={today} />
-      <DailyRitesPanel />
+      <div id="today" className="scroll-mt-6">
+        <DailyRitesPanel />
+      </div>
 
       <SectionLabel
         label="INTERNSHIP HUNT"
@@ -91,8 +92,8 @@ export default async function Home() {
         <NewsFeedPanel />
       </SideBySide>
 
-      <SectionLabel label="COUNCIL'S DREAMS" />
-      <DreamingSurfaces />
+      <SectionLabel label="OLYMPUS INTEL" meta="Live council intelligence" />
+      <OlympusIntelPanel />
 
       <SectionLabel label="NEXT ACTION" />
       <div className="mx-12 mb-8">
@@ -102,16 +103,7 @@ export default async function Home() {
       <SectionLabel label="SYSTEM PULSE" />
       <SystemPulseStrip />
 
-      <SectionLabel label="TRADING DESK" meta="Thor's 3 paper workers · COUNCIL tab for full pantheon" />
-      <TradingAgentsPanel />
-
-      <SectionLabel label="HERMES" />
-      <div className="mx-12 mb-12 grid grid-cols-1 gap-4 md:grid-cols-2">
-        <TriadCostMeter />
-        <ActivityRecent limit={8} />
-      </div>
+      <div className="h-12" />
     </>
   );
-
-  return <AgenticOsTabs realm={realmContent} />;
 }

@@ -1,9 +1,8 @@
 import './globals.css';
 import type { Metadata } from 'next';
-import { Cinzel, Inter, JetBrains_Mono, IBM_Plex_Mono } from 'next/font/google';
+import { Cinzel, Inter, JetBrains_Mono } from 'next/font/google';
 import Sidebar from '@/components/Sidebar';
 import RavensRoot from '@/components/RavensRoot';
-import { getAgentStatuses } from '@/lib/agent-status';
 
 export const metadata: Metadata = {
   title: 'AIOS - Command Center',
@@ -22,20 +21,14 @@ const bodyFont = Inter({
   variable: '--font-body',
 });
 
+// One monospace serves both code and numerics (font diet — dropped IBM Plex Mono).
 const monoFont = JetBrains_Mono({
   subsets: ['latin'],
   weight: ['400', '500'],
   variable: '--font-mono',
 });
 
-const numericFont = IBM_Plex_Mono({
-  subsets: ['latin'],
-  weight: ['400', '500'],
-  variable: '--font-numeric',
-});
-
-export default async function RootLayout({ children }: { children: React.ReactNode }) {
-  const agentStatuses = await getAgentStatuses();
+export default function RootLayout({ children }: { children: React.ReactNode }) {
   const operatorDateLabel = new Intl.DateTimeFormat('en-US', {
     timeZone: 'America/Chicago',
     month: 'short',
@@ -44,7 +37,10 @@ export default async function RootLayout({ children }: { children: React.ReactNo
 
   return (
     <html lang="en">
-      <body className={`${displayFont.variable} ${bodyFont.variable} ${monoFont.variable} ${numericFont.variable} min-h-screen font-body`}>
+      <body
+        className={`${displayFont.variable} ${bodyFont.variable} ${monoFont.variable} min-h-screen font-body`}
+        style={{ ['--font-numeric' as string]: 'var(--font-mono)' }}
+      >
         <div className="sm:hidden flex min-h-screen items-center justify-center px-6">
           <div className="panel max-w-md p-8 text-center">
             <div className="text-rune text-[10px] tracking-[0.3em] text-text-muted">REALM LOCK</div>
@@ -55,7 +51,7 @@ export default async function RootLayout({ children }: { children: React.ReactNo
           </div>
         </div>
         <div className="hidden sm:flex min-h-screen">
-          <Sidebar agentStatuses={agentStatuses} operatorDateLabel={operatorDateLabel} />
+          <Sidebar operatorDateLabel={operatorDateLabel} />
           <main className="relative z-10 flex-1 flex flex-col overflow-x-hidden">
             <div className="flex-1">{children}</div>
           </main>

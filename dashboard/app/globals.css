@@ -26,8 +26,23 @@ body::before {
   z-index: 0;
   pointer-events: none;
   background-image:
-    radial-gradient(ellipse at 20% 10%, oklch(var(--color-rune-gold) / 0.04) 0%, transparent 50%),
-    radial-gradient(ellipse at 80% 90%, oklch(var(--color-bifrost) / 0.03) 0%, transparent 50%);
+    radial-gradient(ellipse at 20% 10%, oklch(var(--color-rune-gold) / 0.055) 0%, transparent 48%),
+    radial-gradient(ellipse at 80% 90%, oklch(var(--color-bifrost) / 0.04) 0%, transparent 50%),
+    radial-gradient(ellipse at 60% 40%, oklch(var(--color-blood) / 0.018) 0%, transparent 40%);
+}
+
+/* Grain texture overlay — adds parchment depth without color noise */
+body::after {
+  content: '';
+  position: fixed;
+  inset: 0;
+  z-index: 1;
+  pointer-events: none;
+  opacity: 0.028;
+  background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='1'/%3E%3C/svg%3E");
+  background-size: 256px 256px;
+  background-repeat: repeat;
+  mix-blend-mode: overlay;
 }
 
 @keyframes home-fade-up {
@@ -240,7 +255,98 @@ body::before {
   100% { transform: translateX(0); }
 }
 
+/* Realm Map topology — animated data-flow edges + live node halos */
+@keyframes realm-edge-flow {
+  to { stroke-dashoffset: -24; }
+}
+
+@keyframes realm-node-halo {
+  0%, 100% { opacity: 0.30; transform: scale(1); }
+  50% { opacity: 0.85; transform: scale(1.08); }
+}
+
+.realm-edge {
+  stroke-dasharray: 3 9;
+  animation: realm-edge-flow 1.3s linear infinite;
+}
+
+.realm-node-halo {
+  transform-box: fill-box;
+  transform-origin: center;
+  animation: realm-node-halo 3.2s ease-in-out infinite;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .realm-edge { animation: none; }
+  .realm-node-halo { animation: none; opacity: 0.5; }
+}
+
+/* The Throne — agents at work */
+@keyframes throne-bob {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(-5px); }
+}
+
+@keyframes throne-hearth {
+  0%, 100% { opacity: 0.5; }
+  50% { opacity: 0.85; }
+}
+
+@keyframes throne-aisle {
+  0% { background-position: 0 0; }
+  100% { background-position: 0 -200px; }
+}
+
+.throne-working { animation: throne-bob 2.6s ease-in-out infinite; }
+.throne-hearth { animation: throne-hearth 4s ease-in-out infinite; }
+.throne-aisle { animation: throne-aisle 6s linear infinite; }
+
+@media (prefers-reduced-motion: reduce) {
+  .throne-working, .throne-hearth, .throne-aisle { animation: none; }
+}
+
 @keyframes river-fade-in {
   from { opacity: 0; transform: translateY(-4px); }
   to   { opacity: 1; transform: translateY(0); }
+}
+
+/* Sigil glow — a slow radial breath around the Vegvisir / RealmMark */
+@keyframes sigil-glow-pulse {
+  0%, 100% { opacity: 0.18; transform: scale(1); }
+  50%       { opacity: 0.42; transform: scale(1.12); }
+}
+
+/* Portal threshold — the Odysseus gateway arc animation */
+@keyframes portal-arc-rotate {
+  from { transform: rotate(0deg); }
+  to   { transform: rotate(360deg); }
+}
+
+@keyframes portal-arc-counter {
+  from { transform: rotate(0deg); }
+  to   { transform: rotate(-360deg); }
+}
+
+/* Rune inscription — slow character reveal on mount */
+@keyframes rune-inscription {
+  from { opacity: 0; letter-spacing: 0.6em; }
+  to   { opacity: 1; letter-spacing: 0.3em; }
+}
+
+.sigil-glow-ring {
+  animation: sigil-glow-pulse 6s ease-in-out infinite;
+}
+
+.portal-arc {
+  animation: portal-arc-rotate 28s linear infinite;
+}
+
+.portal-arc-inner {
+  animation: portal-arc-counter 18s linear infinite;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .sigil-glow-ring { animation: none; opacity: 0.22; }
+  .portal-arc { animation: none; }
+  .portal-arc-inner { animation: none; }
 }
