@@ -1,6 +1,7 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useMemo, useState } from 'react';
+import { useLiveResource } from '@/lib/useLiveResource';
 import type { CouncilDomain } from '@/lib/council-roster';
 import { DEPARTMENTS, departmentForSession, councilDomain, type DepartmentKey } from '@/lib/operations-taxonomy';
 import { accentClasses } from '@/components/council/accents';
@@ -22,67 +23,25 @@ type DoctorAgent = { slug: string; status: HealthStatus };
 // belongs to. Sessions and workers sit side by side per department; the company
 // pulse + CEO verdict ride on top.
 export function OperationsSurface({ domains, dreams }: Props) {
-  const [sessions, setSessions] = useState<Heartbeat[]>([]);
-  const [loaded, setLoaded] = useState(false);
-  const [healthMap, setHealthMap] = useState<Record<string, HealthStatus>>({});
+  // Sessions + worker health ride the shared polling spine. Sessions at 5s (fast floor
+  // telemetry), worker health at 60s. Each keeps its last-good payload through a transient
+  // failure, and the spine pauses polling while the tab is hidden.
+  const { data: sessionsData, loading: sessionsLoading } = useLiveResource<{ sessions?: Heartbeat[] }>(
+    '/api/sessions',
+    { intervalMs: 5_000 },
+  );
+  const sessions = useMemo<Heartbeat[]>(() => sessionsData?.sessions ?? [], [sessionsData]);
+  const loaded = !sessionsLoading;
+
+  const { data: doctorData } = useLiveResource<DoctorAgent[]>('/api/doctor/agents', { intervalMs: 60_000 });
+  const healthMap = useMemo<Record<string, HealthStatus>>(() => {
+    const map: Record<string, HealthStatus> = {};
+    for (const d of doctorData ?? []) map[d.slug] = d.status;
+    return map;
+  }, [doctorData]);
+
+  // local remount counter — bumped when a worker card reports fresh activity
   const [activityKey, setActivityKey] = useState(0);
-
-  // live sessions — poll every 5s, cancel in-flight so a slow request can't clobber newer state
-  useEffect(() => {
-    let active = true;
-    let controller: AbortController | null = null;
-    const load = async () => {
-      controller?.abort();
-      controller = new AbortController();
-      try {
-        const res = await fetch('/api/sessions', { cache: 'no-store', signal: controller.signal });
-        const data = (await res.json()) as { sessions?: Heartbeat[] };
-        if (active) {
-          setSessions(data.sessions ?? []);
-          setLoaded(true);
-        }
-      } catch {
-        if (active) setLoaded(true);
-      }
-    };
-    load();
-    const id = setInterval(load, 5000);
-    return () => {
-      active = false;
-      controller?.abort();
-      clearInterval(id);
-    };
-  }, []);
-
-  // worker health — slower 60s cadence, with the same active/abort guard as the session poll
-  useEffect(() => {
-    let active = true;
-    let controller: AbortController | null = null;
-    const load = async () => {
-      controller?.abort();
-      controller = new AbortController();
-      try {
-        const res = await fetch('/api/doctor/agents', { cache: 'no-store', signal: controller.signal });
-        if (!res.ok) return;
-        const data = (await res.json()) as DoctorAgent[];
-        if (!active) return;
-        const map: Record<string, HealthStatus> = {};
-        data.forEach((d) => {
-          map[d.slug] = d.status;
-        });
-        setHealthMap(map);
-      } catch {
-        // keep last-known health
-      }
-    };
-    load();
-    const t = window.setInterval(load, 60_000);
-    return () => {
-      active = false;
-      controller?.abort();
-      window.clearInterval(t);
-    };
-  }, []);
 
   // group sessions by canonical department
   const byDept = new Map<DepartmentKey, Heartbeat[]>();

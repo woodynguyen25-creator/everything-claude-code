@@ -1,7 +1,8 @@
 'use client';
 
-import { Suspense, useCallback, useEffect, useRef, useState } from 'react';
+import { Suspense, useCallback, useEffect, useRef } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
+import { useLiveResource } from '@/lib/useLiveResource';
 import { ActionBoard } from '@/components/olympus/ActionBoard';
 import { ApprovedPositions } from '@/components/olympus/ApprovedPositions';
 import { AgentLegend } from '@/components/olympus/AgentLegend';
@@ -44,8 +45,11 @@ function buildDecisionMap(decisions: OlympusState['decisions']): Map<string, Dec
 function OlympusInner() {
   const router = useRouter();
   const searchParams = useSearchParams();
-  const [state, setState] = useState<OlympusState>(INITIAL_STATE);
-  const [error, setError] = useState<string | null>(null);
+  const { data, error: networkError } = useLiveResource<OlympusState>('/api/olympus/state', {
+    intervalMs: 30_000,
+  });
+  const state = data ?? INITIAL_STATE;
+  const error = networkError;
 
   // Win confetti
   const confettiCanvasRef = useRef<HTMLCanvasElement>(null);
@@ -64,40 +68,20 @@ function OlympusInner() {
     router.replace(qs ? `/olympus?${qs}` : '/olympus', { scroll: false });
   }, [router, searchParams]);
 
+  // Detect new WIN resolutions off the shared spine's payload (skip the first settled
+  // load to avoid a confetti storm on cached history).
   useEffect(() => {
-    let cancelled = false;
-
-    async function load() {
-      try {
-        const res = await fetch('/api/olympus/state', { cache: 'no-store' });
-        if (!res.ok) throw new Error(`state ${res.status}`);
-        const next = (await res.json()) as OlympusState;
-        if (!cancelled) {
-          // Detect new WIN resolutions (skip on first load to avoid confetti storm)
-          for (const d of next.decisions.resolved) {
-            if (d.outcome === 'win') {
-              if (!isFirstLoad.current && !seenWinIds.current.has(d.decision_id)) {
-                fireConfetti();
-              }
-              seenWinIds.current.add(d.decision_id);
-            }
-          }
-          isFirstLoad.current = false;
-          setState(next);
-          setError(null);
+    if (!data) return;
+    for (const d of data.decisions.resolved) {
+      if (d.outcome === 'win') {
+        if (!isFirstLoad.current && !seenWinIds.current.has(d.decision_id)) {
+          fireConfetti();
         }
-      } catch (err) {
-        if (!cancelled) setError(err instanceof Error ? err.message : 'state unavailable');
+        seenWinIds.current.add(d.decision_id);
       }
     }
-
-    load();
-    const timer = window.setInterval(load, 30_000);
-    return () => {
-      cancelled = true;
-      window.clearInterval(timer);
-    };
-  }, [fireConfetti]);
+    isFirstLoad.current = false;
+  }, [data, fireConfetti]);
 
   return (
     <>
