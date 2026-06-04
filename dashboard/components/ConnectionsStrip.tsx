@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useLiveResource } from '@/lib/useLiveResource';
 
 type LiveStatus = 'online' | 'offline' | 'degraded' | 'checking';
 
@@ -36,31 +36,22 @@ function normalize(raw: string): LiveStatus {
 }
 
 export default function ConnectionsStrip() {
-  const [droplet, setDroplet] = useState<LiveStatus>('checking');
-  const [odysseus, setOdysseus] = useState<LiveStatus>('checking');
-  const [lastChecked, setLastChecked] = useState<string>('');
+  // Shared spine: this Sidebar strip and the home OdysseusGateway both poll
+  // /api/odysseus-health, so the hook fetches it once instead of twice per 30s.
+  const dropletR = useLiveResource<{ status: string }>('/api/droplet-health', { intervalMs: POLL_INTERVAL });
+  const odysseusR = useLiveResource<{ status: string }>('/api/odysseus-health', { intervalMs: POLL_INTERVAL });
 
-  const check = async () => {
-    try {
-      const res = await fetch('/api/droplet-health', { cache: 'no-store' });
-      setDroplet(res.ok ? normalize(((await res.json()) as { status: string }).status) : 'offline');
-    } catch {
-      setDroplet('offline');
-    }
-    try {
-      const res = await fetch('/api/odysseus-health', { cache: 'no-store' });
-      setOdysseus(res.ok ? normalize(((await res.json()) as { status: string }).status) : 'offline');
-    } catch {
-      setOdysseus('offline');
-    }
-    setLastChecked(new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }));
+  const toStatus = (r: { loading: boolean; error: string | null; data: { status: string } | null }): LiveStatus =>
+    r.loading ? 'checking' : r.error ? 'offline' : normalize(r.data?.status ?? '');
+  const droplet = toStatus(dropletR);
+  const odysseus = toStatus(odysseusR);
+  const refresh = () => {
+    dropletR.refresh();
+    odysseusR.refresh();
   };
 
-  useEffect(() => {
-    check();
-    const id = setInterval(check, POLL_INTERVAL);
-    return () => clearInterval(id);
-  }, []);
+  const lastMs = Math.max(dropletR.lastUpdated, odysseusR.lastUpdated);
+  const lastChecked = lastMs ? new Date(lastMs).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : '';
 
   const dropletTitle =
     droplet === 'online'   ? `Hermes Droplet — online (Tailscale) · ${lastChecked}` :
@@ -78,7 +69,7 @@ export default function ConnectionsStrip() {
       {/* Live Tailscale / Droplet status */}
       <button
         type="button"
-        onClick={check}
+        onClick={refresh}
         title={dropletTitle}
         className={`flex w-full items-center gap-2 rounded border px-2.5 py-1.5 transition-colors ${STATUS_STYLES[droplet]}`}
       >
@@ -94,7 +85,7 @@ export default function ConnectionsStrip() {
       {/* Live Odysseus workspace status */}
       <button
         type="button"
-        onClick={check}
+        onClick={refresh}
         title={odysseusTitle}
         className={`flex w-full items-center gap-2 rounded border px-2.5 py-1.5 transition-colors ${STATUS_STYLES[odysseus]}`}
       >

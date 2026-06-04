@@ -1,7 +1,7 @@
 'use client';
 
 import Link from 'next/link';
-import { useEffect, useState } from 'react';
+import { useLiveResource } from '@/lib/useLiveResource';
 import { ODYSSEUS_URL } from '@/lib/odysseus';
 
 type Status = 'online' | 'offline' | 'checking';
@@ -10,26 +10,11 @@ type Status = 'online' | 'offline' | 'checking';
 // workspace (every model, your memory, deep research), live on the Droplet
 // and on mobile. Polls /api/odysseus-health for a live status pip.
 export default function OdysseusGateway() {
-  const [status, setStatus] = useState<Status>('checking');
-
-  useEffect(() => {
-    let active = true;
-    const check = async () => {
-      try {
-        const res = await fetch('/api/odysseus-health', { cache: 'no-store' });
-        const data = (await res.json()) as { status: string };
-        if (active) setStatus(data.status === 'online' ? 'online' : 'offline');
-      } catch {
-        if (active) setStatus('offline');
-      }
-    };
-    check();
-    const id = setInterval(check, 30_000);
-    return () => {
-      active = false;
-      clearInterval(id);
-    };
-  }, []);
+  // Shares the /api/odysseus-health poll with the Sidebar's ConnectionsStrip via the spine.
+  const { data, loading, error } = useLiveResource<{ status: string }>('/api/odysseus-health', {
+    intervalMs: 30_000,
+  });
+  const status: Status = loading ? 'checking' : error ? 'offline' : data?.status === 'online' ? 'online' : 'offline';
 
   const live = status === 'online';
 
