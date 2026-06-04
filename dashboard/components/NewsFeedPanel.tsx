@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState, useCallback } from 'react';
+import { useLiveResource } from '@/lib/useLiveResource';
 import type { NewsItem } from '@/app/api/news/route';
 
 function timeAgo(dateStr: string): string {
@@ -9,31 +9,18 @@ function timeAgo(dateStr: string): string {
 }
 
 export default function NewsFeedPanel() {
-  const [items, setItems] = useState<NewsItem[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [age, setAge] = useState<string>('—');
-
-  const refresh = useCallback(async () => {
-    try {
-      setLoading(true);
-      const res = await fetch('/api/news', { cache: 'no-store' });
-      const json = await res.json();
-      setItems(json.items ?? []);
-      setAge(new Date().toLocaleTimeString('en-US', {
-        hour: '2-digit', minute: '2-digit', timeZone: 'America/Chicago'
-      }) + ' CT');
-    } catch {
-      // silent
-    } finally {
-      setLoading(false);
-    }
-  }, []);
-
-  useEffect(() => {
-    refresh();
-    const t = setInterval(refresh, 10 * 60 * 1000); // every 10 min
-    return () => clearInterval(t);
-  }, [refresh]);
+  const { data, loading, isFetching, lastUpdated, refresh } = useLiveResource<{ items: NewsItem[] }>(
+    '/api/news',
+    { intervalMs: 10 * 60 * 1000 },
+  );
+  const items = data?.items ?? [];
+  const age = lastUpdated
+    ? new Date(lastUpdated).toLocaleTimeString('en-US', {
+        hour: '2-digit',
+        minute: '2-digit',
+        timeZone: 'America/Chicago',
+      }) + ' CT'
+    : '—';
 
   return (
     <section className="mb-0 overflow-hidden rounded-3xl border border-white/[0.07] bg-gradient-to-br from-white/[0.05] to-transparent shadow-[0_8px_40px_rgba(0,0,0,0.45),inset_0_1px_0_rgba(255,255,255,0.07)] backdrop-blur-2xl">
@@ -48,10 +35,10 @@ export default function NewsFeedPanel() {
           <button
             type="button"
             onClick={refresh}
-            disabled={loading}
+            disabled={isFetching}
             className="rounded border border-border-subtle px-2 py-0.5 font-mono text-[9px] text-text-muted transition-colors hover:border-bifrost hover:text-bifrost disabled:opacity-40 cursor-pointer"
           >
-            {loading ? '...' : 'REFRESH'}
+            {isFetching ? '...' : 'REFRESH'}
           </button>
         </div>
       </header>

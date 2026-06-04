@@ -19,7 +19,12 @@ import { useCallback, useSyncExternalStore } from 'react';
 export interface LiveSnapshot<T> {
   data: T | null;
   error: string | null;
+  /** True only until the first settle (success or error). Drives initial skeletons. */
   loading: boolean;
+  /** True whenever a request is in flight — initial load, background poll, or manual refresh. Drives per-refresh spinners. */
+  isFetching: boolean;
+  /** Epoch ms of the last successful load (0 if never). For data-age labels. */
+  lastUpdated: number;
 }
 
 export interface LiveResourceOptions {
@@ -39,7 +44,7 @@ interface ResourceEntry {
   lastFetched: number;
 }
 
-const INITIAL: LiveSnapshot<unknown> = { data: null, error: null, loading: true };
+const INITIAL: LiveSnapshot<unknown> = { data: null, error: null, loading: true, isFetching: false, lastUpdated: 0 };
 const registry = new Map<string, ResourceEntry>();
 let visibilityBound = false;
 
@@ -80,20 +85,21 @@ async function fetchNow(entry: ResourceEntry): Promise<void> {
   const controller = new AbortController();
   entry.controller = controller;
   entry.lastFetched = Date.now();
+  patchSnapshot(entry, { isFetching: true });
   try {
     const response = await fetch(entry.url, { cache: 'no-store', signal: controller.signal });
     if (!response.ok) {
       if (controller.signal.aborted) return;
-      patchSnapshot(entry, { error: `HTTP ${response.status}`, loading: false });
+      patchSnapshot(entry, { error: `HTTP ${response.status}`, loading: false, isFetching: false });
       return;
     }
     const json = (await response.json()) as unknown;
     if (controller.signal.aborted) return;
-    patchSnapshot(entry, { data: json, error: null, loading: false });
+    patchSnapshot(entry, { data: json, error: null, loading: false, isFetching: false, lastUpdated: Date.now() });
   } catch (err) {
     if (controller.signal.aborted || (err instanceof Error && err.name === 'AbortError')) return;
     // Keep the last good `data` so a transient failure doesn't blank the UI.
-    patchSnapshot(entry, { error: err instanceof Error ? err.message : 'fetch failed', loading: false });
+    patchSnapshot(entry, { error: err instanceof Error ? err.message : 'fetch failed', loading: false, isFetching: false });
   }
 }
 

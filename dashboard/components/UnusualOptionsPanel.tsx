@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState, useCallback } from 'react';
+import { useLiveResource } from '@/lib/useLiveResource';
 import type { UnusualOptionsData, UnusualRow } from '@/app/api/trading/unusual/route';
 
 function formatPremium(k: number): string {
@@ -82,27 +82,10 @@ function RowItem({ row }: { row: UnusualRow }) {
 }
 
 export default function UnusualOptionsPanel() {
-  const [data, setData] = useState<UnusualOptionsData | null>(null);
-  const [loading, setLoading] = useState(true);
-
-  const refresh = useCallback(async () => {
-    try {
-      setLoading(true);
-      const res = await fetch('/api/trading/unusual', { cache: 'no-store' });
-      const json = await res.json();
-      setData(json);
-    } catch {
-      // silent — show stale or empty
-    } finally {
-      setLoading(false);
-    }
-  }, []);
-
-  useEffect(() => {
-    refresh();
-    const timer = setInterval(refresh, 5 * 60 * 1000); // refresh every 5 min
-    return () => clearInterval(timer);
-  }, [refresh]);
+  const { data, loading, isFetching, refresh } = useLiveResource<UnusualOptionsData>(
+    '/api/trading/unusual',
+    { intervalMs: 5 * 60 * 1000 },
+  );
 
   const rows: UnusualRow[] = data?.rows ?? [];
   const age = formatAge(data?.generatedAt ?? null);
@@ -122,10 +105,10 @@ export default function UnusualOptionsPanel() {
           <button
             type="button"
             onClick={refresh}
-            disabled={loading}
+            disabled={isFetching}
             className="rounded border border-border-subtle px-2 py-0.5 font-mono text-[9px] text-text-muted transition-colors hover:border-emerald-400 hover:text-emerald-400 disabled:opacity-40 cursor-pointer"
           >
-            {loading ? '...' : 'SCAN'}
+            {isFetching ? '...' : 'SCAN'}
           </button>
         </div>
       </header>

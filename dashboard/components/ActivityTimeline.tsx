@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useMemo, useState } from 'react';
+import { useLiveResource } from '@/lib/useLiveResource';
 import InlineMarkdown from '@/components/InlineMarkdown';
 import type { ActivityEvent, ActivityKind } from '@/lib/activity';
 
@@ -61,50 +62,37 @@ function summarize(events: ActivityEvent[]) {
 }
 
 export default function ActivityTimeline() {
-  const [items, setItems] = useState<ActivityEvent[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
   const [kind, setKind] = useState<ActivityKind | 'all'>('all');
   const [agent, setAgent] = useState<string>('all');
   const [windowValue, setWindowValue] = useState('today');
   const [selectedIndex, setSelectedIndex] = useState(0);
   const [expandedId, setExpandedId] = useState<string | null>(null);
 
+  const activityUrl = useMemo(() => {
+    const params = new URLSearchParams();
+    if (kind !== 'all') params.set('kind', kind);
+    if (agent !== 'all') params.set('agent', agent);
+    const since = sinceForWindow(windowValue);
+    if (since) params.set('since', since);
+    params.set('limit', '120');
+    return `/api/activity?${params.toString()}`;
+  }, [kind, agent, windowValue]);
+
+  const { data, loading, error: networkError } = useLiveResource<ActivityEvent[]>(activityUrl, {
+    intervalMs: 30000,
+  });
+  const items = useMemo(() => data ?? [], [data]);
+  const error = networkError ? 'Heimdall lost the trail for a moment.' : null;
+
   const agentOptions = useMemo(() => {
     const values = Array.from(new Set(items.map((item) => item.agent).filter(Boolean))) as string[];
     return values.sort();
   }, [items]);
 
+  // Reset the cursor whenever a fresh batch of events arrives (matches the prior per-poll behavior).
   useEffect(() => {
-    async function load() {
-      setLoading(true);
-      try {
-        setError(null);
-        const url = new URL('/api/activity', window.location.origin);
-        if (kind !== 'all') url.searchParams.set('kind', kind);
-        if (agent !== 'all') url.searchParams.set('agent', agent);
-        const since = sinceForWindow(windowValue);
-        if (since) url.searchParams.set('since', since);
-        url.searchParams.set('limit', '120');
-        const res = await fetch(url.toString());
-        if (!res.ok) {
-          throw new Error('Heimdall lost the trail for a moment.');
-        }
-        const data = (await res.json()) as ActivityEvent[];
-        setItems(data);
-        setSelectedIndex(0);
-      } catch (err) {
-        setItems([]);
-        setError(err instanceof Error ? err.message : 'Heimdall lost the trail.');
-      } finally {
-        setLoading(false);
-      }
-    }
-
-    void load();
-    const timer = window.setInterval(load, 30000);
-    return () => window.clearInterval(timer);
-  }, [kind, agent, windowValue]);
+    setSelectedIndex(0);
+  }, [items]);
 
   useEffect(() => {
     const onKey = (event: KeyboardEvent) => {
