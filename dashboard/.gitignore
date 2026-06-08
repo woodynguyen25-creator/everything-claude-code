@@ -20,3 +20,6 @@ data/*.db-journal
 Thumbs.db
 
 .ruff_cache/
+
+# runtime dev/start logs (Wave 1 cleanup 2026-06-07)
+*.log
