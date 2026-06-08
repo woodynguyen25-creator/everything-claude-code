@@ -205,7 +205,7 @@ export default function RavensRoot() {
         }}
         aria-label="Open the Ravens (⌘K)"
         title="Open the Ravens (⌘K)"
-        className="fixed right-6 top-6 z-30 rounded-full border border-border-subtle bg-bg-panel px-3 py-2 font-numeric text-[11px] text-text-muted transition-colors hover:border-rune-gold hover:text-rune-gold"
+        className="fixed right-6 top-6 z-30 hidden rounded-full border border-border-subtle bg-bg-panel px-3 py-2 font-numeric text-[11px] text-text-muted transition-colors hover:border-rune-gold hover:text-rune-gold sm:block"
       >
         <span aria-hidden="true">⌘K</span>
       </button>

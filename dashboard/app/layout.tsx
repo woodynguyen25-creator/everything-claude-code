@@ -1,12 +1,19 @@
 import './globals.css';
-import type { Metadata } from 'next';
+import type { Metadata, Viewport } from 'next';
 import { Cinzel, Inter, JetBrains_Mono } from 'next/font/google';
-import Sidebar from '@/components/Sidebar';
+import AppShell from '@/components/AppShell';
 import RavensRoot from '@/components/RavensRoot';
 
 export const metadata: Metadata = {
   title: 'AIOS - Command Center',
   description: "Woody's Norse-themed Claude Code OS",
+};
+
+export const viewport: Viewport = {
+  width: 'device-width',
+  initialScale: 1,
+  viewportFit: 'cover',
+  themeColor: '#0b0c10',
 };
 
 const displayFont = Cinzel({
@@ -41,22 +48,8 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
         className={`${displayFont.variable} ${bodyFont.variable} ${monoFont.variable} min-h-screen font-body`}
         style={{ ['--font-numeric' as string]: 'var(--font-mono)' }}
       >
-        <div className="sm:hidden flex min-h-screen items-center justify-center px-6">
-          <div className="panel max-w-md p-8 text-center">
-            <div className="text-rune text-[10px] tracking-[0.3em] text-text-muted">REALM LOCK</div>
-            <h1 className="mt-3 font-display text-3xl text-rune-gold">Desktop only, for now.</h1>
-            <p className="mt-4 text-sm italic text-text-secondary">
-              Woody&apos;s Realm is built for a wider screen. Open it from desktop or within Obsidian&apos;s Command Center pane.
-            </p>
-          </div>
-        </div>
-        <div className="hidden sm:flex min-h-screen">
-          <Sidebar operatorDateLabel={operatorDateLabel} />
-          <main className="relative z-10 flex-1 flex flex-col overflow-x-hidden">
-            <div className="flex-1">{children}</div>
-          </main>
-          <RavensRoot />
-        </div>
+        <AppShell operatorDateLabel={operatorDateLabel}>{children}</AppShell>
+        <RavensRoot />
       </body>
     </html>
   );

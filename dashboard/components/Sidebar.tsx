@@ -7,6 +7,10 @@ import RealmMark from '@/components/RealmMark';
 
 type SidebarProps = {
   operatorDateLabel: string;
+  /** Mobile drawer open state (ignored at sm+, where the sidebar is always visible). */
+  mobileOpen?: boolean;
+  /** Called when the mobile drawer should close (link tap or close button). */
+  onClose?: () => void;
 };
 
 type NavItem = { href: string; label: string; icon: string };
@@ -24,21 +28,36 @@ const NAV: NavItem[] = [
   { href: '/odysseus', label: 'Odysseus', icon: '🧭' },
 ];
 
-export default function Sidebar({ operatorDateLabel }: SidebarProps) {
+export default function Sidebar({ operatorDateLabel, mobileOpen = false, onClose }: SidebarProps) {
   const pathname = usePathname();
   const isActive = (href: string) => (href === '/' ? pathname === '/' : pathname.startsWith(href));
 
   return (
-    <aside className="relative z-20 flex min-h-screen w-56 shrink-0 flex-col border-r border-border-subtle bg-bg-panel">
+    <aside
+      className={`fixed inset-y-0 left-0 z-50 flex w-72 max-w-[82vw] shrink-0 transform flex-col overflow-y-auto border-r border-border-subtle bg-bg-panel transition-transform duration-300 ease-out sm:static sm:z-20 sm:w-56 sm:max-w-none sm:translate-x-0 ${
+        mobileOpen ? 'translate-x-0' : '-translate-x-full'
+      }`}
+    >
       {/* Brand */}
-      <div className="border-b border-border-subtle px-4 py-5">
-        <div className="flex items-center gap-2.5">
+      <div className="flex items-center justify-between border-b border-border-subtle px-4 py-5 pt-[max(1.25rem,env(safe-area-inset-top))]">
+        <div className="flex min-w-0 items-center gap-2.5">
           <RealmMark size={22} className="shrink-0" />
           <div className="min-w-0">
-            <div className="truncate font-display text-lg uppercase tracking-[0.18em] text-rune-gold">Woody&apos;s Realm</div>
+            <div className="truncate font-display text-lg uppercase tracking-[0.1em] text-rune-gold sm:tracking-[0.18em]">Woody&apos;s Realm</div>
             <div className="font-mono text-[10px] text-text-muted">{operatorDateLabel}</div>
           </div>
         </div>
+        {/* Close button — mobile drawer only */}
+        <button
+          type="button"
+          onClick={onClose}
+          aria-label="Close navigation"
+          className="flex h-9 w-9 shrink-0 items-center justify-center rounded-md border border-border-subtle text-text-muted transition-colors hover:border-rune-gold hover:text-rune-gold sm:hidden"
+        >
+          <span className="text-base leading-none" aria-hidden>
+            ✕
+          </span>
+        </button>
       </div>
 
       {/* Nav */}
@@ -50,7 +69,8 @@ export default function Sidebar({ operatorDateLabel }: SidebarProps) {
               <li key={item.href}>
                 <Link
                   href={item.href}
-                  className={`flex items-center gap-2.5 rounded-md border-l-2 px-3 py-2 text-[13px] transition-colors ${
+                  onClick={onClose}
+                  className={`flex min-h-[44px] items-center gap-2.5 rounded-md border-l-2 px-3 py-2.5 text-[13px] transition-colors sm:min-h-0 ${
                     active
                       ? 'border-rune-gold bg-bg-hover text-text-primary'
                       : 'border-l-transparent text-text-secondary hover:bg-bg-hover hover:text-text-primary'
@@ -66,7 +86,7 @@ export default function Sidebar({ operatorDateLabel }: SidebarProps) {
       </nav>
 
       {/* Footer */}
-      <div className="border-t border-border-subtle px-4 py-3">
+      <div className="border-t border-border-subtle px-4 py-3 pb-[max(0.75rem,env(safe-area-inset-bottom))]">
         <div className="mb-2.5">
           <ConnectionsStrip />
         </div>
