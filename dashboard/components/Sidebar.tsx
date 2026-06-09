@@ -19,8 +19,7 @@ type NavItem = { href: string; label: string; icon: string };
 const NAV: NavItem[] = [
   { href: '/', label: 'Command', icon: '🏛️' },
   { href: '/war-room', label: 'War Room', icon: '👁️' },
-  { href: '/throne', label: 'The Throne', icon: '♛' },
-  { href: '/olympus', label: 'Olympus', icon: '⚡' },
+  { href: '/olympus', label: 'Olympus Fund', icon: '⚡' },
   { href: '/memory', label: 'Memory', icon: '🧠' },
   { href: '/skills', label: 'Skills', icon: '🌳' },
   { href: '/activity', label: 'Saga', icon: '📜' },
