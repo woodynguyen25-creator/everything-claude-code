@@ -113,19 +113,21 @@ export default function UnusualOptionsPanel() {
         </div>
       </header>
 
-      <div className="divide-y divide-border-subtle/10 px-1 py-1">
-        {loading && visible.length === 0 ? (
-          <div className="py-4 text-center font-mono text-[11px] text-text-muted">Scanning...</div>
-        ) : visible.length === 0 ? (
-          <div className="py-4 text-center font-mono text-[11px] text-text-muted">
-            No signals.{' '}
-            <button onClick={refresh} className="text-rune-gold underline cursor-pointer">
-              Run scan
-            </button>
-          </div>
-        ) : (
-          visible.map((row, i) => <RowItem key={`${row.symbol}-${row.type}-${row.strike}-${row.exp}-${i}`} row={row} />)
-        )}
+      <div className="overflow-x-auto">
+        <div className="min-w-[36rem] divide-y divide-border-subtle/10 px-1 py-1">
+          {loading && visible.length === 0 ? (
+            <div className="py-4 text-center font-mono text-[11px] text-text-muted">Scanning...</div>
+          ) : visible.length === 0 ? (
+            <div className="py-4 text-center font-mono text-[11px] text-text-muted">
+              No signals.{' '}
+              <button onClick={refresh} className="text-rune-gold underline cursor-pointer">
+                Run scan
+              </button>
+            </div>
+          ) : (
+            visible.map((row, i) => <RowItem key={`${row.symbol}-${row.type}-${row.strike}-${row.exp}-${i}`} row={row} />)
+          )}
+        </div>
       </div>
 
       {rows.length > 0 && (

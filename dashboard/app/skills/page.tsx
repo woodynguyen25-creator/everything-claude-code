@@ -177,7 +177,7 @@ export default async function SkillsPage() {
           <Link
             key={realm.slug}
             href={realm.route}
-            className="group absolute block"
+            className="group absolute hidden md:block"
             style={{ left: realm.x, top: realm.y, width: '56px', height: '56px', transform: 'translate(-50%, -50%)' }}
           >
             <span className="absolute inset-0 rounded-full" aria-label={realm.name} />
@@ -190,6 +190,16 @@ export default async function SkillsPage() {
             </span>
           </Link>
         ))}
+        <div className="grid gap-3 p-4 md:hidden">
+          {realms.map((realm) => (
+            <Link key={realm.slug} href={realm.route} className="rounded-lg border border-border-subtle bg-bg-panel/90 p-3 shadow-panel">
+              <span className={`block text-base font-semibold ${realm.accent}`}>{realm.name}</span>
+              <span className="mt-1 block text-xs italic text-text-secondary">{realm.description}</span>
+              <span className="mt-2 block font-mono text-[11px] text-text-muted">{realm.size}</span>
+              <span className="mt-2 block text-xs text-text-secondary">{realm.status}</span>
+            </Link>
+          ))}
+        </div>
       </div>
     </div>
   );

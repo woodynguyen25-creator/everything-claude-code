@@ -62,7 +62,7 @@ export default function DailyRitesPanel() {
         </div>
 
         {/* 3-column: rings | habits | tasks */}
-        <div className="grid grid-cols-[auto_minmax(0,200px)_1fr] gap-5 items-start">
+        <div className="grid grid-cols-1 items-start gap-5 sm:grid-cols-[auto_minmax(0,200px)_1fr]">
           {/* Activity rings + labels */}
           <div className="flex flex-col items-center gap-3">
             <ActivityRings rings={rings} />

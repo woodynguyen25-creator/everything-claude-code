@@ -57,16 +57,6 @@ export default function MemoryWellClient() {
     syncedAt: null,
   });
 
-  const queryString = useMemo(() => {
-    const url = new URLSearchParams();
-    if (search.trim()) url.set('q', search.trim());
-    if (types.length) url.set('types', types.join(','));
-    if (sources.length) url.set('sources', sources.join(','));
-    url.set('limit', '12');
-    url.set('offset', String(offset));
-    return url.toString();
-  }, [search, types, sources, offset]);
-
   const lastSyncLabel = useRelativeMinutes(status.syncedAt);
   const resolvedFocusName = useMemo(() => {
     if (!focusName) return null;
@@ -77,7 +67,14 @@ export default function MemoryWellClient() {
   const load = useCallback(async (reset = false, nextOffset = offset) => {
     setLoading(true);
     try {
-      const res = await fetch(`/api/memory?${queryString.replace(`offset=${offset}`, `offset=${nextOffset}`)}`);
+      const params = new URLSearchParams();
+      if (search.trim()) params.set('q', search.trim());
+      if (types.length) params.set('types', types.join(','));
+      if (sources.length) params.set('sources', sources.join(','));
+      params.set('limit', '12');
+      params.set('offset', String(nextOffset));
+
+      const res = await fetch(`/api/memory?${params.toString()}`);
       const data = (await res.json()) as Memory[];
       const total = Number(res.headers.get('x-total-count') ?? '0');
       const syncedAt = res.headers.get('x-memory-sync');
@@ -91,7 +88,7 @@ export default function MemoryWellClient() {
     } finally {
       setLoading(false);
     }
-  }, [queryString, offset]);
+  }, [offset, search, sources, types]);
 
   useEffect(() => {
     const focus = searchParams.get('focus');

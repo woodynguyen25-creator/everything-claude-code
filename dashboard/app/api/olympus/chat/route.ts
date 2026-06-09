@@ -169,7 +169,8 @@ export async function POST(req: NextRequest) {
           signal: AbortSignal.timeout(6000),
         });
         if (sr.ok) state = (await sr.json()) as OlympusState;
-      } catch {
+      } catch (error) {
+        console.error('Failed to fetch Olympus live state:', error);
         // fall through to null state
       }
     }

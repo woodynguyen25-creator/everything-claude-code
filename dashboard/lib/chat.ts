@@ -89,12 +89,21 @@ function mapMessage(row: {
   llm_model: string | null;
   created_at: string;
 }): ChatMessageRecord {
+  let toolCalls: ToolCall[] | null = null;
+  if (row.tool_calls_json) {
+    try {
+      toolCalls = JSON.parse(row.tool_calls_json) as ToolCall[];
+    } catch {
+      toolCalls = null;
+    }
+  }
+
   return {
     id: row.id,
     threadId: row.thread_id,
     role: row.role,
     content: row.content,
-    toolCalls: row.tool_calls_json ? (JSON.parse(row.tool_calls_json) as ToolCall[]) : null,
+    toolCalls,
     costUsd: row.cost_usd ?? 0,
     llmProvider: row.llm_provider,
     llmModel: row.llm_model,

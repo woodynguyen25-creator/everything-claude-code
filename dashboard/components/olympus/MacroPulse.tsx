@@ -28,7 +28,7 @@ export function MacroPulse({ brief }: MacroPulseProps) {
         </div>
       ) : (
         <div className="rounded-xl border border-white/[0.06] bg-white/[0.025] p-4">
-          <div className="grid grid-cols-3 gap-2">
+          <div className="grid grid-cols-1 gap-2 sm:grid-cols-3">
             <div>
               <div className="text-[10px] uppercase tracking-[0.16em] text-white/34">Regime</div>
               <div className="mt-1 font-mono text-sm text-white/82">{brief.regime}</div>

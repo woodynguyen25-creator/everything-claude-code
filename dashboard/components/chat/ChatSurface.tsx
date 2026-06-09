@@ -87,6 +87,9 @@ export default function ChatSurface({
     const res = await fetch(
       `/api/chat/threads?agent=${encodeURIComponent(agent)}&q=${encodeURIComponent(nextQuery)}&limit=20&offset=${offset}`
     );
+    if (!res.ok) {
+      throw new Error('Failed to load councils.');
+    }
     const data = (await res.json()) as { items: ChatThreadRecord[]; total: number };
     setThreads((prev) => (append ? [...prev, ...data.items] : data.items));
     setTotalThreads(data.total);
@@ -94,6 +97,9 @@ export default function ChatSurface({
 
   async function refreshMessages(threadId: number) {
     const res = await fetch(`/api/chat/threads/${threadId}/messages`);
+    if (!res.ok) {
+      throw new Error('Failed to load council messages.');
+    }
     const data = (await res.json()) as { items: ChatMessageRecord[] };
     setMessages(data.items);
   }
@@ -104,6 +110,9 @@ export default function ChatSurface({
       headers: { 'content-type': 'application/json' },
       body: JSON.stringify({ agent, title: 'New Council' }),
     });
+    if (!res.ok) {
+      throw new Error('Failed to create council.');
+    }
     const thread = (await res.json()) as ChatThreadRecord;
     router.push(getCouncilRoute(agent, thread.id));
   }
@@ -138,6 +147,9 @@ export default function ChatSurface({
         headers: { 'content-type': 'application/json' },
         body: JSON.stringify({ agent, title: 'New Council' }),
       });
+      if (!res.ok) {
+        throw new Error('Failed to create council.');
+      }
       const thread = (await res.json()) as ChatThreadRecord;
       threadId = thread.id;
       setActiveThreadId(threadId);
@@ -197,12 +209,22 @@ export default function ChatSurface({
 
         for (const frame of frames) {
           if (!frame.startsWith('data: ')) continue;
-          const payload = JSON.parse(frame.slice(6)) as
+          let payload:
             | { type: 'thread'; threadId: number }
             | { type: 'meta'; meta: StreamMeta }
             | { type: 'token'; token: string }
             | { type: 'done'; fullText: string }
             | { type: 'error'; error: string };
+          try {
+            payload = JSON.parse(frame.slice(6)) as
+              | { type: 'thread'; threadId: number }
+              | { type: 'meta'; meta: StreamMeta }
+              | { type: 'token'; token: string }
+              | { type: 'done'; fullText: string }
+              | { type: 'error'; error: string };
+          } catch {
+            continue;
+          }
 
           if (payload.type === 'thread') {
             setActiveThreadId(payload.threadId);

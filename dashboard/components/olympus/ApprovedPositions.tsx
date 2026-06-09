@@ -38,7 +38,9 @@ export function ApprovedPositions({ decisions }: ApprovedPositionsProps) {
         </div>
       ) : (
         <>
-          <div className="mb-2 grid grid-cols-[1fr_auto_auto_auto_auto] items-center gap-3 px-3 text-[9px] uppercase tracking-[0.18em] text-white/30">
+          <div className="overflow-x-auto">
+            <div className="min-w-[36rem]">
+              <div className="mb-2 grid grid-cols-[1fr_auto_auto_auto_auto] items-center gap-3 px-3 text-[9px] uppercase tracking-[0.18em] text-white/30">
             <span>Position</span>
             <span>Strike</span>
             <span>Exp</span>
@@ -57,6 +59,8 @@ export function ApprovedPositions({ decisions }: ApprovedPositionsProps) {
                 isLive={false}
               />
             ))}
+          </div>
+            </div>
           </div>
         </>
       )}

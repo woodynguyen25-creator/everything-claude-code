@@ -116,13 +116,23 @@ export default function RavensRoot() {
     if (!open) return;
     const controller = new AbortController();
     const handle = window.setTimeout(async () => {
-      const url = new URL('/api/ravens', window.location.origin);
-      url.searchParams.set('q', query);
-      if (forcedAgent) url.searchParams.set('agent', forcedAgent);
-      const res = await fetch(url.toString(), { signal: controller.signal });
-      const data = (await res.json()) as RavensResults;
-      setResults(data);
-      setSelectedIndex(-1);
+      try {
+        const url = new URL('/api/ravens', window.location.origin);
+        url.searchParams.set('q', query);
+        if (forcedAgent) url.searchParams.set('agent', forcedAgent);
+        const res = await fetch(url.toString(), { signal: controller.signal });
+        if (!res.ok) {
+          throw new Error('Failed to search the ravens.');
+        }
+        const data = (await res.json()) as RavensResults;
+        setResults(data);
+        setSelectedIndex(-1);
+      } catch (error) {
+        if (controller.signal.aborted) return;
+        setResults(null);
+        setSelectedIndex(-1);
+        setActionStatus(error instanceof Error ? error.message : 'Failed to search the ravens.');
+      }
     }, 150);
 
     return () => {

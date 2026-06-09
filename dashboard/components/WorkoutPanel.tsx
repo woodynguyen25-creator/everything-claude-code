@@ -73,15 +73,20 @@ function fmtFull(dateStr: string): string {
 export default function WorkoutPanel() {
   const [log, setLog] = useState<WorkoutDay[]>([]);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
   const [pendingDate, setPendingDate] = useState<string | null>(null);
   const [hoverCell, setHoverCell] = useState<Cell | null>(null);
 
   const load = useCallback(async () => {
     try {
       const res = await fetch('/api/habits?habit=workout&days=91', { cache: 'no-store' });
+      if (!res.ok) {
+        throw new Error('Unable to load workout history.');
+      }
+      setError(null);
       setLog(await res.json());
-    } catch {
-      // silent
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Unable to load workout history.');
     } finally {
       setLoading(false);
     }
@@ -152,6 +157,17 @@ export default function WorkoutPanel() {
 
         {loading ? (
           <div className="flex h-24 items-center justify-center font-mono text-[11px] text-text-muted">Loading...</div>
+        ) : error ? (
+          <div className="flex min-h-24 flex-col items-center justify-center gap-3 rounded-2xl border border-rose-500/20 bg-rose-500/[0.05] px-4 py-4 text-center">
+            <div className="font-mono text-[10px] text-rose-300">{error}</div>
+            <button
+              type="button"
+              onClick={load}
+              className="rounded border border-rose-500/25 px-3 py-1 font-mono text-[10px] text-rose-200 transition-colors hover:border-rose-400 hover:text-rose-100"
+            >
+              RETRY
+            </button>
+          </div>
         ) : (
           <div>
             {/* Month labels */}

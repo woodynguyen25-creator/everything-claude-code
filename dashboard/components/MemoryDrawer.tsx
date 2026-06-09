@@ -81,7 +81,7 @@ export default function MemoryDrawer({ name, onClose, onRefresh }: Props) {
   return (
     <div className="fixed inset-0 z-50">
       <div className="absolute inset-0 bg-black/40 backdrop-blur-sm" onClick={onClose} />
-      <aside className="absolute right-0 top-0 h-full w-[600px] overflow-y-auto border-l border-border-subtle bg-bg-panel p-6">
+      <aside className="absolute right-0 top-0 h-full w-full overflow-y-auto border-l border-border-subtle bg-bg-panel p-6 md:w-[600px]">
         {memory ? (
           <>
             <div className="flex items-start justify-between gap-4">

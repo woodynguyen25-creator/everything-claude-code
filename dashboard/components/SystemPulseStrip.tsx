@@ -82,12 +82,12 @@ export default async function SystemPulseStrip() {
   return (
     <section className="mx-12 mb-12 flex flex-wrap items-center gap-x-6 gap-y-2 rounded-2xl border border-white/[0.05] bg-white/[0.02] px-5 py-3">
       {cells.map((cell) => (
-        <div key={cell.label} className="group relative cursor-default">
-          <div className="flex items-baseline gap-2 rounded-full border border-white/[0.05] px-3 py-1.5 transition-colors duration-200 hover:border-white/[0.12] hover:bg-white/[0.04]">
+        <div key={cell.label} className="group relative cursor-default focus:outline-none" tabIndex={0}>
+          <div className="flex items-baseline gap-2 rounded-full border border-white/[0.05] px-3 py-1.5 transition-colors duration-200 hover:border-white/[0.12] hover:bg-white/[0.04] group-focus-within:border-white/[0.12] group-focus-within:bg-white/[0.04]">
             <span className="font-mono text-[10px] text-text-muted">{cell.label}</span>
             <span className="font-numeric text-[12px] text-text-primary">{cell.value}</span>
           </div>
-          <div className="pointer-events-none absolute left-0 top-full z-10 mt-2 min-w-[12rem] rounded-xl border border-white/[0.08] bg-bg-panel/95 px-3 py-2 text-[10px] text-text-secondary opacity-0 shadow-[0_12px_24px_rgba(0,0,0,0.35)] transition-opacity duration-200 group-hover:opacity-100">
+          <div className="pointer-events-none absolute left-0 top-full z-10 mt-2 min-w-[12rem] rounded-xl border border-white/[0.08] bg-bg-panel/95 px-3 py-2 text-[10px] text-text-secondary opacity-0 shadow-[0_12px_24px_rgba(0,0,0,0.35)] transition-opacity duration-200 group-hover:opacity-100 group-focus-within:opacity-100">
             {cell.detail}
           </div>
         </div>

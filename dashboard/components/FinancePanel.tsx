@@ -31,6 +31,7 @@ function todayStr(): string {
 export default function FinancePanel() {
   const [data, setData] = useState<FinancesPayload | null>(null);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
   const [editingBudget, setEditingBudget] = useState<string | null>(null);
   const [budgetDraft, setBudgetDraft] = useState<string>('');
   const [editingSavings, setEditingSavings] = useState(false);
@@ -41,9 +42,13 @@ export default function FinancePanel() {
   const refresh = useCallback(async () => {
     try {
       const res = await fetch('/api/finances', { cache: 'no-store' });
+      if (!res.ok) {
+        throw new Error('Unable to load finances.');
+      }
+      setError(null);
       setData(await res.json());
-    } catch {
-      // silent
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Unable to load finances.');
     } finally {
       setLoading(false);
     }
@@ -128,10 +133,33 @@ export default function FinancePanel() {
 
         {loading ? (
           <div className="py-4 text-center font-mono text-[11px] text-text-muted">Loading...</div>
+        ) : error && !data ? (
+          <div className="rounded-2xl border border-rose-500/20 bg-rose-500/[0.05] px-4 py-4 text-center">
+            <div className="font-mono text-[10px] text-rose-300">{error}</div>
+            <button
+              type="button"
+              onClick={refresh}
+              className="mt-3 rounded border border-rose-500/25 px-3 py-1 font-mono text-[10px] text-rose-200 transition-colors hover:border-rose-400 hover:text-rose-100"
+            >
+              RETRY
+            </button>
+          </div>
         ) : (
           <>
             {/* Top metrics — 3 cards */}
-            <div className="mb-5 grid grid-cols-3 gap-3">
+            {error ? (
+              <div className="mb-4 flex items-center justify-between rounded-2xl border border-rose-500/20 bg-rose-500/[0.05] px-3 py-2">
+                <span className="font-mono text-[10px] text-rose-300">{error}</span>
+                <button
+                  type="button"
+                  onClick={refresh}
+                  className="rounded border border-rose-500/25 px-2 py-1 font-mono text-[9px] text-rose-200 transition-colors hover:border-rose-400 hover:text-rose-100"
+                >
+                  RETRY
+                </button>
+              </div>
+            ) : null}
+            <div className="mb-5 grid grid-cols-1 gap-3 sm:grid-cols-3">
               <div className="rounded-2xl border border-white/[0.06] bg-white/[0.03] p-3">
                 <div className="font-mono text-[9px] text-text-muted">THIS MONTH</div>
                 <div className="mt-1 font-numeric text-xl text-text-primary">{fmt(data?.currentMonthNet ?? 0)}</div>
@@ -159,7 +187,7 @@ export default function FinancePanel() {
                 <div className="font-mono text-[9px] tracking-[0.2em] text-text-muted">BUDGET CATEGORIES</div>
                 <div className="font-mono text-[9px] text-text-muted">{fmt(data?.totalBudget ?? 0)}/mo</div>
               </div>
-              <div className="grid grid-cols-2 gap-2">
+              <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
                 {Object.entries(data?.monthlyBudget ?? {}).map(([key, val]) => (
                   <div
                     key={key}

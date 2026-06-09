@@ -52,7 +52,7 @@ export default function ThreadSidebar({
   }, [search, onSearchChange]);
 
   return (
-    <aside className="flex h-full w-60 shrink-0 flex-col border-r border-border-subtle bg-bg-panel/95">
+    <aside className="hidden h-full shrink-0 flex-col border-r border-border-subtle bg-bg-panel/95 md:flex md:w-60">
       <div className="sticky top-0 z-10 border-b border-border-subtle bg-bg-panel/95 px-4 py-4 backdrop-blur-sm">
         <div className="text-rune text-[10px] tracking-[0.3em] text-text-muted">PAST SAGAS</div>
         <button
@@ -102,7 +102,7 @@ export default function ThreadSidebar({
                         </div>
                       </div>
                     </button>
-                    <div className="mt-3 hidden items-center gap-2 group-hover:flex">
+                    <div className="mt-3 flex items-center gap-2">
                       <button
                         type="button"
                         onClick={(event) => {
