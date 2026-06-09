@@ -1,4 +1,5 @@
 import fs from 'node:fs';
+import os from 'node:os';
 import path from 'node:path';
 import { spawn, spawnSync } from 'node:child_process';
 import { createRequire } from 'node:module';
@@ -10,7 +11,7 @@ const routerLib = require('../scripts/loops/lib/router.js') as {
   MODEL_MAP: Record<string, string>;
 };
 
-type ProviderKey = 'claude-cli' | 'cerebras' | 'groq' | 'gemini' | 'ollama' | 'deepseek';
+type ProviderKey = 'claude-cli' | 'codex-cli' | 'cerebras' | 'groq' | 'gemini' | 'ollama' | 'deepseek';
 
 type ProviderMeta = {
   provider: string;
@@ -31,13 +32,13 @@ const providerOrderByAgent: Record<CouncilAgent, ProviderKey[]> = {
   'lebot-james': ['claude-cli', 'cerebras', 'gemini'],
   thor: ['claude-cli', 'cerebras', 'groq', 'gemini'],
   perseus: ['deepseek', 'cerebras', 'groq', 'gemini', 'ollama'],
-  fenrir: ['claude-cli', 'cerebras', 'groq', 'gemini'],
+  fenrir: ['codex-cli', 'claude-cli', 'cerebras', 'groq', 'gemini'],
   sauron: ['gemini', 'cerebras', 'groq', 'ollama'],
 };
 
 const providerModelMap: Record<CouncilAgent, Partial<Record<ProviderKey, string>>> = {
   'lebot-james': {
-    'claude-cli': 'claude-opus-4-7',
+    'claude-cli': 'claude-fable-5',
     cerebras: routerLib.MODEL_MAP.cerebras,
     gemini: routerLib.MODEL_MAP.gemini,
   },
@@ -55,6 +56,7 @@ const providerModelMap: Record<CouncilAgent, Partial<Record<ProviderKey, string>
     ollama: routerLib.MODEL_MAP.ollama,
   },
   fenrir: {
+    'codex-cli': 'gpt-5.5',
     'claude-cli': 'claude-sonnet-4-6',
     cerebras: routerLib.MODEL_MAP.cerebras,
     groq: routerLib.MODEL_MAP.groqLlama,
@@ -84,10 +86,28 @@ function resolveClaudeBinary() {
   return null;
 }
 
+function resolveCodexBinary() {
+  const result = spawnSync('where', ['codex'], {
+    shell: true,
+    encoding: 'utf8',
+    timeout: 3000,
+  });
+  if (result.status === 0) {
+    const lines = result.stdout.split(/\r?\n/).filter(Boolean);
+    // `where` lists the extensionless bash shim first; cmd.exe can only run the .cmd one.
+    const cmdShim = lines.find(l => l.trim().toLowerCase().endsWith('.cmd'));
+    const first = cmdShim || lines[0];
+    if (first) return first.trim();
+  }
+  return null;
+}
+
 function providerAvailable(provider: ProviderKey) {
   switch (provider) {
     case 'claude-cli':
       return Boolean(resolveClaudeBinary());
+    case 'codex-cli':
+      return Boolean(resolveCodexBinary());
     case 'cerebras':
       return Boolean(process.env.CEREBRAS_API_KEY);
     case 'groq':
@@ -282,6 +302,114 @@ async function* streamClaudeCli(args: {
   }
 }
 
+async function runCodexCli(args: {
+  model: string;
+  system: string;
+  prompt: string;
+  signal: AbortSignal;
+}): Promise<string | null> {
+  const binary = resolveCodexBinary();
+  if (!binary) return null;
+
+  const tempDir = fs.mkdtempSync(path.join(os.tmpdir(), 'codex-cli-'));
+  const outputFile = path.join(tempDir, 'last-message.txt');
+  const compositePrompt = args.system ? `${args.system}\n\n${args.prompt}` : args.prompt;
+  // Prompt flows via stdin ('-'), never argv: shell:true (needed for the .cmd
+  // shim on Windows) would otherwise let quotes/&/| in chat input break out of
+  // the command line — command injection from the chat box.
+  const child = spawn(
+    binary,
+    [
+      'exec',
+      '--skip-git-repo-check',
+      '--color',
+      'never',
+      '--output-last-message',
+      outputFile,
+      '--model',
+      args.model,
+      '-',
+    ],
+    {
+      cwd: process.cwd(),
+      shell: true,
+      stdio: ['pipe', 'pipe', 'pipe'],
+      windowsHide: true,
+    }
+  );
+  child.stdin.write(compositePrompt);
+  child.stdin.end();
+
+  args.signal.addEventListener(
+    'abort',
+    () => {
+      child.kill();
+    },
+    { once: true }
+  );
+
+  let stdout = '';
+  let stderr = '';
+  let timedOut = false;
+  const timeout = setTimeout(() => {
+    timedOut = true;
+    child.kill();
+  }, 180_000);
+
+  try {
+    try {
+      child.stdout.on('data', (chunk) => {
+        stdout += chunk.toString();
+      });
+      child.stderr.on('data', (chunk) => {
+        stderr += chunk.toString();
+      });
+
+      await new Promise<void>((resolve, reject) => {
+        child.on('error', reject);
+        child.on('close', () => resolve());
+      });
+    } finally {
+      clearTimeout(timeout);
+    }
+
+    if (args.signal.aborted) {
+      throw new Error('aborted');
+    }
+    if (timedOut) {
+      return null;
+    }
+
+    try {
+      const text = fs.readFileSync(outputFile, 'utf8').trim();
+      if (text) return text;
+    } catch {
+      // Fall back to stdout parsing if the local CLI does not write the output file.
+    }
+
+    const fallbackText = stdout.trim();
+    if (fallbackText) return fallbackText;
+    if (stderr.trim()) return null;
+    return null;
+  } finally {
+    fs.rmSync(tempDir, { recursive: true, force: true });
+  }
+}
+
+async function* streamCodexCli(args: {
+  model: string;
+  system: string;
+  prompt: string;
+  signal: AbortSignal;
+}): AsyncGenerator<string> {
+  const text = await runCodexCli(args);
+  if (!text) throw new Error('codex cli failed');
+
+  for (const word of text.split(/(\s+)/).filter(Boolean)) {
+    yield word;
+  }
+}
+
 function extractToolCalls(text: string): ToolCall[] | null {
   const toolBlock = text.match(/```tool(?:call)?\s*([\s\S]*?)```/i) || text.match(/<tool_call>([\s\S]*?)<\/tool_call>/i);
   if (!toolBlock) return null;
@@ -362,6 +490,13 @@ export async function* streamCouncilResponse(input: {
                 prompt: input.prompt,
                 signal,
               })
+            : provider === 'codex-cli'
+              ? streamCodexCli({
+                  model: meta.model,
+                  system: input.system,
+                  prompt: input.prompt,
+                  signal,
+                })
             : provider === 'deepseek'
               ? streamOpenAiCompatible({
                   url: 'https://api.deepseek.com/v1/chat/completions',

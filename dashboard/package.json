@@ -5,7 +5,7 @@
   "description": "Woody's AIOS command center — Norse-themed Claude Code OS dashboard",
   "scripts": {
     "dev": "next dev -p 3737 -H 127.0.0.1",
-    "dev:tailscale": "next dev -p 3737 -H 0.0.0.0",
+    "dev:tailscale": "next dev -p 3737 -H 127.0.0.1",
     "build": "next build",
     "start": "next start -p 3737 -H 127.0.0.1",
     "typecheck": "tsc --noEmit -p tsconfig.typecheck.json",

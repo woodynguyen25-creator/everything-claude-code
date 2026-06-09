@@ -4,13 +4,13 @@ export type CouncilModelMode = 'normal' | 'supercharged';
 
 type CouncilModelConfig = {
   normal: {
-    provider: 'claude-cli' | 'deepseek' | 'gemini';
+    provider: 'claude-cli' | 'codex-cli' | 'deepseek' | 'gemini';
     model: string;
     label: string;
   };
   supercharged: {
     provider: 'claude-cli';
-    model: 'claude-opus-4-7';
+    model: 'claude-fable-5';
     label: string;
   };
   godModeLabel: string;
@@ -18,28 +18,28 @@ type CouncilModelConfig = {
 
 const COUNCIL_MODELS: Record<CouncilAgent, CouncilModelConfig> = {
   'lebot-james': {
-    normal: { provider: 'claude-cli', model: 'claude-sonnet-4-6', label: 'Claude CLI — Sonnet' },
-    supercharged: { provider: 'claude-cli', model: 'claude-opus-4-7', label: 'Claude CLI — Opus' },
+    normal: { provider: 'claude-cli', model: 'claude-fable-5', label: 'Claude CLI — Fable 5' },
+    supercharged: { provider: 'claude-cli', model: 'claude-fable-5', label: 'Claude CLI — Fable 5' },
     godModeLabel: 'All-Father Mode',
   },
   thor: {
     normal: { provider: 'claude-cli', model: 'claude-sonnet-4-6', label: 'Claude CLI — Sonnet' },
-    supercharged: { provider: 'claude-cli', model: 'claude-opus-4-7', label: 'Claude CLI — Opus' },
+    supercharged: { provider: 'claude-cli', model: 'claude-fable-5', label: 'Claude CLI — Fable 5' },
     godModeLabel: 'Thunder God Mode',
   },
   perseus: {
     normal: { provider: 'deepseek', model: 'deepseek-chat', label: 'DeepSeek — Chat' },
-    supercharged: { provider: 'claude-cli', model: 'claude-opus-4-7', label: 'Claude CLI — Opus' },
+    supercharged: { provider: 'claude-cli', model: 'claude-fable-5', label: 'Claude CLI — Fable 5' },
     godModeLabel: 'Oracle Mode',
   },
   fenrir: {
-    normal: { provider: 'claude-cli', model: 'claude-sonnet-4-6', label: 'Claude CLI — Sonnet' },
-    supercharged: { provider: 'claude-cli', model: 'claude-opus-4-7', label: 'Claude CLI — Opus' },
+    normal: { provider: 'codex-cli', model: 'gpt-5.5', label: 'GPT-5.5 Codex' },
+    supercharged: { provider: 'claude-cli', model: 'claude-fable-5', label: 'Claude CLI — Fable 5' },
     godModeLabel: 'Fenrir Unchained',
   },
   sauron: {
     normal: { provider: 'gemini', model: 'gemini-2.5-flash', label: 'Gemini 2.5 Flash' },
-    supercharged: { provider: 'claude-cli', model: 'claude-opus-4-7', label: 'Claude CLI — Opus' },
+    supercharged: { provider: 'claude-cli', model: 'claude-fable-5', label: 'Claude CLI — Fable 5' },
     godModeLabel: 'The Eye Opens',
   },
 };

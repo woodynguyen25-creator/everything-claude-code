@@ -5,7 +5,7 @@ export const COUNCIL_AGENTS = ['lebot-james', 'thor', 'perseus', 'fenrir', 'saur
 
 export type CouncilAgent = (typeof COUNCIL_AGENTS)[number];
 export type CouncilRole = 'planner' | 'critic' | 'bulkExecutor';
-export type CouncilProvider = 'claude-cli' | 'deepseek' | 'gemini';
+export type CouncilProvider = 'claude-cli' | 'codex-cli' | 'deepseek' | 'gemini';
 
 type CouncilConfig = {
   slug: CouncilAgent;
@@ -45,8 +45,8 @@ const CONFIG: Record<CouncilAgent, CouncilConfig> = {
     sigilSrc: '/art/agents/sigils/lebot-james.webp',
     chain: 'planner',
     primaryProvider: 'claude-cli',
-    primaryModel: 'claude-opus-4-7',
-    modelLabel: 'Claude CLI — Opus',
+    primaryModel: 'claude-fable-5',
+    modelLabel: 'Claude CLI — Fable 5',
     summonLabel: String(copy.button.summon),
     emptyHeading: 'Speak it, my Lord.',
     thinking: String(copy.loading.agentLebot),
@@ -104,9 +104,9 @@ const CONFIG: Record<CouncilAgent, CouncilConfig> = {
     heroSrc: '/art/agents/heroes/fenrir.webp',
     sigilSrc: '/art/agents/sigils/fenrir.webp',
     chain: 'critic',
-    primaryProvider: 'claude-cli',
-    primaryModel: 'claude-sonnet-4-6',
-    modelLabel: 'Claude CLI — Sonnet',
+    primaryProvider: 'codex-cli',
+    primaryModel: 'gpt-5.5',
+    modelLabel: 'GPT-5.5 Codex',
     summonLabel: String(copy.button.summon),
     emptyHeading: 'Fenrir growls',
     thinking: String(copy.loading.agentFenrir),
