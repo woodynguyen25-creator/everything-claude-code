@@ -8,6 +8,7 @@ import { accentClasses } from '@/components/council/accents';
 import { CouncilAgentCard, type HealthStatus } from '@/components/council/CouncilAgentCard';
 import { RealmMap } from '@/components/council/RealmMap';
 import { ActivityRecent } from '@/components/ActivityRecent';
+import CouncilLedgerPanel from '@/components/CouncilLedgerPanel';
 import { SessionCard } from './SessionCard';
 import { type Heartbeat, VERDICTS, PRIORITY } from './sessionFormat';
 
@@ -121,6 +122,11 @@ export function OperationsSurface({ domains, dreams }: Props) {
       <div className="mb-6 rounded-lg border border-rune-gold/20 bg-rune-gold/5 px-4 py-3">
         <span className="font-display text-rune-gold">♛ LeBot&apos;s call: </span>
         <span className="text-text-primary">{leCall}</span>
+      </div>
+
+      {/* council AI drawdown — what every paid seat actually did today */}
+      <div className="mb-8">
+        <CouncilLedgerPanel />
       </div>
 
       {/* department jump-pills */}

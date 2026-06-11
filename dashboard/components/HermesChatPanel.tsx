@@ -27,18 +27,28 @@ export default function HermesChatPanel() {
       if (stored) setMessages(JSON.parse(stored) as Message[]);
       const sess = window.localStorage.getItem(SESSION_KEY);
       if (sess) setSessionId(sess);
-    } catch {
-      // ignore
+    } catch (error) {
+      console.error('Failed to restore Hermes chat state.', error);
     }
   }, []);
 
   // Persist on change
   useEffect(() => {
-    try { window.localStorage.setItem(STORAGE_KEY, JSON.stringify(messages.slice(-50))); } catch {}
+    try {
+      window.localStorage.setItem(STORAGE_KEY, JSON.stringify(messages.slice(-50)));
+    } catch (error) {
+      console.error('Failed to persist Hermes chat history.', error);
+    }
   }, [messages]);
 
   useEffect(() => {
-    if (sessionId) try { window.localStorage.setItem(SESSION_KEY, sessionId); } catch {}
+    if (sessionId) {
+      try {
+        window.localStorage.setItem(SESSION_KEY, sessionId);
+      } catch (error) {
+        console.error('Failed to persist Hermes chat session.', error);
+      }
+    }
   }, [sessionId]);
 
   // Auto-scroll
@@ -91,7 +101,9 @@ export default function HermesChatPanel() {
     try {
       window.localStorage.removeItem(STORAGE_KEY);
       window.localStorage.removeItem(SESSION_KEY);
-    } catch {}
+    } catch (error) {
+      console.error('Failed to clear Hermes chat state.', error);
+    }
   };
 
   return (

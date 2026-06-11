@@ -41,6 +41,7 @@ function buildMemoryQuery(messages: ChatMessageRecord[]) {
 export default function ScryingPool({ open, onToggle, agent, personaMarkdown, messages, tab, onTabChange }: Props) {
   const [memoryItems, setMemoryItems] = useState<Memory[]>([]);
   const [memoryLoading, setMemoryLoading] = useState(false);
+  const [memoryError, setMemoryError] = useState<string | null>(null);
   const [memoryName, setMemoryName] = useState<string | null>(null);
   const [actionStatus, setActionStatus] = useState<string | null>(null);
   const query = useMemo(() => buildMemoryQuery(messages), [messages]);
@@ -53,32 +54,50 @@ export default function ScryingPool({ open, onToggle, agent, personaMarkdown, me
     if (!query) {
       setMemoryItems([]);
       setMemoryLoading(false);
+      setMemoryError(null);
       return;
     }
+    const controller = new AbortController();
     void (async () => {
       setMemoryLoading(true);
-      const res = await fetch(`/api/memory?q=${encodeURIComponent(query)}&limit=5`);
-      const data = (await res.json()) as Memory[];
-      setMemoryItems(data);
-      setMemoryLoading(false);
+      setMemoryError(null);
+      try {
+        const res = await fetch(`/api/memory?q=${encodeURIComponent(query)}&limit=5`, {
+          signal: controller.signal,
+        });
+        if (!res.ok) throw new Error('Mimir could not search the well.');
+        const data = (await res.json()) as Memory[];
+        setMemoryItems(data);
+      } catch (error) {
+        if (controller.signal.aborted) return;
+        setMemoryItems([]);
+        setMemoryError(error instanceof Error ? error.message : 'Mimir could not search the well.');
+      } finally {
+        if (!controller.signal.aborted) setMemoryLoading(false);
+      }
     })();
+    return () => controller.abort();
   }, [query, tab]);
 
   async function performAction(kind: 'pin' | 'save-saga') {
     if (!lastUser || !lastAssistant) return;
     setActionStatus(kind === 'pin' ? 'Setting the rune in stone…' : 'Inscribing the saga…');
-    const res = await fetch('/api/ravens/actions', {
-      method: 'POST',
-      headers: { 'content-type': 'application/json' },
-      body: JSON.stringify({
-        kind,
-        agent,
-        query: lastUser.content,
-        response: lastAssistant.content,
-      }),
-    });
-    const data = (await res.json()) as { message?: string; error?: string };
-    setActionStatus(data.message ?? data.error ?? 'Done.');
+    try {
+      const res = await fetch('/api/ravens/actions', {
+        method: 'POST',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({
+          kind,
+          agent,
+          query: lastUser.content,
+          response: lastAssistant.content,
+        }),
+      });
+      const data = (await res.json()) as { message?: string; error?: string };
+      setActionStatus(res.ok ? data.message ?? 'Done.' : data.error ?? 'Action failed.');
+    } catch (error) {
+      setActionStatus(error instanceof Error ? error.message : 'Action failed.');
+    }
     window.setTimeout(() => setActionStatus(null), 4000);
   }
 
@@ -129,6 +148,8 @@ export default function ScryingPool({ open, onToggle, agent, personaMarkdown, me
                         <div className="mt-3 h-3 w-full rounded bg-bg-deep shimmer" />
                       </div>
                     ))
+                  ) : memoryError ? (
+                    <div className="text-sm italic text-blood">{memoryError}</div>
                   ) : memoryItems.length ? (
                     memoryItems.map((memory) => (
                       <button

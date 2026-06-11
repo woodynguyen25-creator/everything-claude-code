@@ -42,10 +42,12 @@ export default function MemoryWellClient() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const inputRef = useRef<HTMLInputElement | null>(null);
+  const loadControllerRef = useRef<AbortController | null>(null);
 
   const [items, setItems] = useState<Memory[]>([]);
   const [loading, setLoading] = useState(false);
   const [hasLoaded, setHasLoaded] = useState(false);
+  const [error, setError] = useState<string | null>(null);
   const [search, setSearch] = useState(searchParams.get('q') ?? '');
   const [types, setTypes] = useState<MemoryType[]>([]);
   const [sources, setSources] = useState<MemorySource[]>([]);
@@ -64,7 +66,10 @@ export default function MemoryWellClient() {
     return match?.name ?? focusName;
   }, [focusName, items]);
 
-  const load = useCallback(async (reset = false, nextOffset = offset) => {
+  const load = useCallback(async (reset = false, nextOffset = 0) => {
+    loadControllerRef.current?.abort();
+    const controller = new AbortController();
+    loadControllerRef.current = controller;
     setLoading(true);
     try {
       const params = new URLSearchParams();
@@ -74,7 +79,8 @@ export default function MemoryWellClient() {
       params.set('limit', '12');
       params.set('offset', String(nextOffset));
 
-      const res = await fetch(`/api/memory?${params.toString()}`);
+      const res = await fetch(`/api/memory?${params.toString()}`, { signal: controller.signal });
+      if (!res.ok) throw new Error('Mimir could not search the well.');
       const data = (await res.json()) as Memory[];
       const total = Number(res.headers.get('x-total-count') ?? '0');
       const syncedAt = res.headers.get('x-memory-sync');
@@ -85,10 +91,20 @@ export default function MemoryWellClient() {
         syncedAt: syncedAt || new Date().toISOString(),
       });
       setHasLoaded(true);
+      setError(null);
+    } catch (loadError) {
+      if (controller.signal.aborted) return;
+      setError(loadError instanceof Error ? loadError.message : 'Mimir could not search the well.');
+      setHasLoaded(true);
     } finally {
-      setLoading(false);
+      if (loadControllerRef.current === controller) {
+        loadControllerRef.current = null;
+        setLoading(false);
+      }
     }
-  }, [offset, search, sources, types]);
+  }, [search, sources, types]);
+
+  useEffect(() => () => loadControllerRef.current?.abort(), []);
 
   useEffect(() => {
     const focus = searchParams.get('focus');
@@ -134,11 +150,15 @@ export default function MemoryWellClient() {
   }, [updateUrl]);
 
   const mutateMemory = useCallback(async (name: string, action: 'promote' | 'archive') => {
-    await fetch(`/api/memory/${encodeURIComponent(name)}`, {
+    const res = await fetch(`/api/memory/${encodeURIComponent(name)}`, {
       method: 'PATCH',
       headers: { 'content-type': 'application/json' },
       body: JSON.stringify({ action }),
     });
+    if (!res.ok) {
+      setError('The memory could not be updated.');
+      return;
+    }
     setOffset(0);
     await load(true, 0);
   }, [load]);
@@ -278,6 +298,7 @@ export default function MemoryWellClient() {
           The well is dry. No memories yet. Live, work, and Mímir will fill it.
         </div>
       ) : null}
+      {error ? <div className="mt-6 text-sm italic text-blood">{error}</div> : null}
 
       {items.length > 0 ? (
         <>

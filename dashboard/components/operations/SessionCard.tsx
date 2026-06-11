@@ -34,9 +34,10 @@ export function SessionCard({ s }: { s: Heartbeat }) {
         body: JSON.stringify({ session: s.session, persona: s.persona, status: s.status, focus: s.focus }),
       });
       const data = (await res.json()) as { ok?: boolean; error?: string };
+      if (!res.ok) throw new Error(data.error ?? 'Failed');
       if (mounted.current) setToast(data.ok ? 'Paged LeBot ✓' : data.error ?? 'Failed');
-    } catch {
-      if (mounted.current) setToast('Failed');
+    } catch (error) {
+      if (mounted.current) setToast(error instanceof Error ? error.message : 'Failed');
     } finally {
       if (mounted.current) setBusy(false);
       if (toastTimer.current) window.clearTimeout(toastTimer.current);

@@ -40,7 +40,8 @@ export function CouncilAgentCard({ member, health, onActivity }: Props) {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ memberId: member.id, action }),
       });
-      const data = await res.json();
+      const data = (await res.json()) as { ok?: boolean; message?: string; error?: string };
+      if (!res.ok) throw new Error(data.error ?? 'Action failed');
       if (data.ok) {
         if (action === 'pause') setPaused(true);
         if (action === 'resume') setPaused(false);
@@ -51,8 +52,8 @@ export function CouncilAgentCard({ member, health, onActivity }: Props) {
         setToast(data.error ?? 'Action failed');
         window.setTimeout(() => setToast(null), 2400);
       }
-    } catch {
-      setToast('Action failed');
+    } catch (error) {
+      setToast(error instanceof Error ? error.message : 'Action failed');
       window.setTimeout(() => setToast(null), 2400);
     } finally {
       setBusy(null);

@@ -149,23 +149,26 @@ export default function RavensRoot() {
     setLoading(true);
     setStreamText('');
     setActionStatus(null);
-    const res = await fetch('/api/ravens', {
-      method: 'POST',
-      headers: { 'content-type': 'application/json' },
-      body: JSON.stringify({ text: query, agent: selectedAgent }),
-    });
-    if (!res.body) {
+    try {
+      const res = await fetch('/api/ravens', {
+        method: 'POST',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({ text: query, agent: selectedAgent }),
+      });
+      if (!res.ok) throw new Error('The ravens could not reach the council.');
+      if (!res.body) throw new Error('The council returned no response.');
+      const reader = res.body.getReader();
+      const decoder = new TextDecoder();
+      while (true) {
+        const { done, value } = await reader.read();
+        if (done) break;
+        setStreamText((prev) => prev + decoder.decode(value));
+      }
+    } catch (error) {
+      setActionStatus(error instanceof Error ? error.message : 'The ravens could not reach the council.');
+    } finally {
       setLoading(false);
-      return;
     }
-    const reader = res.body.getReader();
-    const decoder = new TextDecoder();
-    while (true) {
-      const { done, value } = await reader.read();
-      if (done) break;
-      setStreamText((prev) => prev + decoder.decode(value));
-    }
-    setLoading(false);
   }
 
   function handleEscalateClick() {
@@ -223,7 +226,7 @@ export default function RavensRoot() {
       {open ? (
         <div className="fixed inset-0 z-40">
           <div className="absolute inset-0 bg-black/35 backdrop-blur-sm" onClick={() => setOpen(false)} />
-          <aside className="absolute right-0 top-0 flex h-full w-[420px] flex-col border-l border-border-subtle bg-bg-panel px-5 py-5 shadow-2xl">
+          <aside className="absolute right-0 top-0 flex h-full w-full max-w-[420px] flex-col border-l border-border-subtle bg-bg-panel px-5 py-5 shadow-2xl">
             <div className="flex items-center justify-between">
               <div>
                 <div className="font-display text-2xl text-rune-gold">The Ravens</div>

@@ -49,19 +49,23 @@ function readDoctorSavepointEvents() {
 
   for (const file of files) {
     const fullPath = path.join(PATHS.doctorSavepoints, file);
-    const raw = fs.readFileSync(fullPath, 'utf8');
-    const payload = JSON.parse(raw) as DoctorFinding & { at?: string; timestamp?: string };
-    const timestamp = payload.at || payload.timestamp || fs.statSync(fullPath).mtime.toISOString();
-    items.push({
-      id: `doctor-savepoint-${file}`,
-      timestamp,
-      kind: 'doctor',
-      agent: null,
-      title: `${payload.area || 'Doctor'} savepoint`,
-      detail: payload.msg || file,
-      source: fullPath,
-      href: '/activity',
-    });
+    try {
+      const raw = fs.readFileSync(fullPath, 'utf8');
+      const payload = JSON.parse(raw) as DoctorFinding & { at?: string; timestamp?: string };
+      const timestamp = payload.at || payload.timestamp || fs.statSync(fullPath).mtime.toISOString();
+      items.push({
+        id: `doctor-savepoint-${file}`,
+        timestamp,
+        kind: 'doctor',
+        agent: null,
+        title: `${payload.area || 'Doctor'} savepoint`,
+        detail: payload.msg || file,
+        source: fullPath,
+        href: '/activity',
+      });
+    } catch (error) {
+      console.error(`Failed to read doctor savepoint ${fullPath}.`, error);
+    }
   }
   return items;
 }

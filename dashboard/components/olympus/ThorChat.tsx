@@ -54,6 +54,7 @@ export function ThorChat({ decisionContext, bare = false }: ThorChatProps) {
       });
 
       const data = (await res.json()) as { answer?: string; error?: string; latency_ms?: number };
+      if (!res.ok) throw new Error(data.error ?? 'The council is temporarily unreachable.');
       const anubisMsg: Message = {
         role: 'anubis',
         content: data.answer ?? data.error ?? 'Anubis did not respond.',
@@ -61,10 +62,14 @@ export function ThorChat({ decisionContext, bare = false }: ThorChatProps) {
         ts: Date.now(),
       };
       setMessages((prev) => [...prev, anubisMsg]);
-    } catch {
+    } catch (error) {
       setMessages((prev) => [
         ...prev,
-        { role: 'anubis', content: 'The council is temporarily unreachable. Try again.', ts: Date.now() },
+        {
+          role: 'anubis',
+          content: error instanceof Error ? error.message : 'The council is temporarily unreachable. Try again.',
+          ts: Date.now(),
+        },
       ]);
     } finally {
       setLoading(false);
@@ -182,9 +187,11 @@ export function ThorChat({ decisionContext, bare = false }: ThorChatProps) {
             style={{ maxHeight: '100px', overflowY: 'auto' }}
           />
           <button
+            type="button"
             onClick={() => sendMessage(input)}
             disabled={!input.trim() || loading}
-            className="flex h-7 w-7 flex-shrink-0 items-center justify-center rounded-lg bg-[#C9A961] text-[#120F07] transition-all hover:bg-[#D6B876] disabled:cursor-not-allowed disabled:opacity-30"
+            aria-label="Send message"
+            className="flex h-11 w-11 flex-shrink-0 items-center justify-center rounded-lg bg-[#C9A961] text-[#120F07] transition-all hover:bg-[#D6B876] disabled:cursor-not-allowed disabled:opacity-30"
             title="Send (Enter)"
           >
             <svg width="14" height="14" viewBox="0 0 14 14" fill="none">
