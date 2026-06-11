@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useMemo, useState } from 'react';
+import { TriangleAlert } from 'lucide-react';
 import type { Internship, InternshipStatus } from '@/lib/internships';
 
 type FormState = {
@@ -59,6 +60,7 @@ export default function InternshipPanel() {
   const [items, setItems] = useState<Internship[]>([]);
   const [form, setForm] = useState<FormState>(EMPTY_FORM);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
   const [showArchived, setShowArchived] = useState(false);
 
@@ -66,8 +68,14 @@ export default function InternshipPanel() {
     try {
       setLoading(true);
       const res = await fetch('/api/internships?includeArchived=1', { cache: 'no-store' });
+      if (!res.ok) {
+        throw new Error('Unable to load internship applications.');
+      }
       const json = (await res.json()) as Internship[];
       setItems(sortInternships(json));
+      setError(null);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Unable to load internship applications.');
     } finally {
       setLoading(false);
     }
@@ -151,6 +159,18 @@ export default function InternshipPanel() {
             <div className="h-12 rounded-2xl bg-bg-deep shimmer" />
             <div className="h-12 rounded-2xl bg-bg-deep shimmer" />
             <div className="h-12 rounded-2xl bg-bg-deep shimmer" />
+          </div>
+        ) : error ? (
+          <div className="flex min-h-24 items-center gap-3 rounded-2xl border border-amber-500/20 bg-amber-500/[0.05] px-4 py-3">
+            <TriangleAlert className="h-4 w-4 shrink-0 text-amber-400" aria-hidden="true" />
+            <div className="min-w-0 flex-1 truncate font-mono text-xs text-amber-400">{error}</div>
+            <button
+              type="button"
+              onClick={() => void refresh()}
+              className="min-h-[44px] shrink-0 rounded border border-amber-500/25 px-3 font-mono text-[10px] text-amber-400 transition-colors hover:border-amber-400 hover:text-amber-300"
+            >
+              RETRY
+            </button>
           </div>
         ) : activeItems.length === 0 ? (
           <div className="rounded-2xl border border-white/[0.06] bg-white/[0.03] px-4 py-4 text-sm italic text-text-muted">

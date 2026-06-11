@@ -17,17 +17,20 @@ export default function MemoryDrawer({ name, onClose, onRefresh }: Props) {
   const [memory, setMemory] = useState<MemoryWithBody | null>(null);
   const [refs, setRefs] = useState<Memory[]>([]);
   const [error, setError] = useState<string | null>(null);
+  const [actionError, setActionError] = useState<string | null>(null);
 
   useEffect(() => {
     if (!name) {
       setMemory(null);
       setRefs([]);
       setError(null);
+      setActionError(null);
       return;
     }
     void (async () => {
       try {
         setError(null);
+        setActionError(null);
         const [memoryRes, refsRes] = await Promise.all([
           fetch(`/api/memory/${encodeURIComponent(name)}`),
           fetch(`/api/memory/refs/${encodeURIComponent(name)}`),
@@ -62,20 +65,36 @@ export default function MemoryDrawer({ name, onClose, onRefresh }: Props) {
   const safeName = name;
 
   async function mutate(action: 'promote' | 'archive') {
-    await fetch(`/api/memory/${encodeURIComponent(safeName)}`, {
-      method: 'PATCH',
-      headers: { 'content-type': 'application/json' },
-      body: JSON.stringify({ action }),
-    });
-    onRefresh();
-    onClose();
+    setActionError(null);
+    try {
+      const res = await fetch(`/api/memory/${encodeURIComponent(safeName)}`, {
+        method: 'PATCH',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({ action }),
+      });
+      if (!res.ok) {
+        throw new Error('Action failed');
+      }
+      onRefresh();
+      onClose();
+    } catch {
+      setActionError('Action failed — try again');
+    }
   }
 
   async function remove() {
     if (!window.confirm('Cast this memory into Helheim? This cannot be undone.')) return;
-    await fetch(`/api/memory/${encodeURIComponent(safeName)}`, { method: 'DELETE' });
-    onRefresh();
-    onClose();
+    setActionError(null);
+    try {
+      const res = await fetch(`/api/memory/${encodeURIComponent(safeName)}`, { method: 'DELETE' });
+      if (!res.ok) {
+        throw new Error('Action failed');
+      }
+      onRefresh();
+      onClose();
+    } catch {
+      setActionError('Action failed — try again');
+    }
   }
 
   return (
@@ -131,6 +150,7 @@ export default function MemoryDrawer({ name, onClose, onRefresh }: Props) {
                 Delete
               </button>
             </div>
+            {actionError ? <div className="mt-2 font-mono text-xs text-amber-400">{actionError}</div> : null}
           </>
         ) : error ? (
           <div className="flex h-full items-center justify-center">

@@ -103,11 +103,18 @@ export default function ScryingPool({ open, onToggle, agent, personaMarkdown, me
 
   return (
     <>
-      <aside className={`relative shrink-0 border-l border-border-subtle bg-bg-panel/95 transition-all duration-200 ${open ? 'w-80' : 'w-10'}`}>
+      <aside
+        className={`relative shrink-0 border-l border-border-subtle bg-bg-panel/95 transition-all duration-200 ${
+          open
+            ? 'w-80 max-sm:fixed max-sm:inset-y-0 max-sm:right-0 max-sm:z-40 max-sm:w-[85vw] max-sm:max-w-80 max-sm:shadow-2xl'
+            : 'w-10'
+        }`}
+      >
         <button
           type="button"
           onClick={onToggle}
-          className="absolute -left-3 top-6 rounded-full border border-border-subtle bg-bg-panel px-2 py-1 text-xs text-text-muted transition-colors hover:bg-bg-hover hover:text-text-primary"
+          aria-label={open ? 'Collapse scrying pool' : 'Expand scrying pool'}
+          className="absolute -left-3 top-6 flex min-h-[44px] min-w-[28px] items-center justify-center rounded-full border border-border-subtle bg-bg-panel px-2 py-1 text-xs text-text-muted transition-colors hover:bg-bg-hover hover:text-text-primary"
         >
           {open ? '›' : '‹'}
         </button>

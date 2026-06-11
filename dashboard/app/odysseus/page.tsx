@@ -29,29 +29,29 @@ export default function OdysseusPage() {
               Odysseus
             </h1>
           </div>
-          <div className="flex items-center gap-2 rounded-full border border-bifrost/30 bg-bifrost/10 px-3 py-1">
+          <div className="hidden items-center gap-2 rounded-full border border-bifrost/30 bg-bifrost/10 px-3 py-1 sm:flex">
             <span className="h-1.5 w-1.5 animate-ember-pulse rounded-full bg-bifrost shadow-[0_0_5px_rgba(120,160,255,0.6)]" />
             <span className="font-mono text-[10px] tracking-wider text-bifrost">EVERY MODEL · EVERY DEVICE</span>
           </div>
         </div>
 
         <div className="relative flex items-center gap-3 font-mono text-[10px] text-text-muted">
-          <span>Droplet · Tailscale HTTPS</span>
-          <span className="text-white/20">|</span>
+          <span className="hidden sm:inline">Droplet · Tailscale HTTPS</span>
+          <span className="hidden text-white/20 sm:inline">|</span>
           <a
             href={ODYSSEUS_URL}
             target="_blank"
             rel="noopener noreferrer"
-            className="cursor-pointer rounded border border-border-subtle px-2 py-0.5 transition-colors hover:border-rune-gold hover:text-rune-gold"
+            className="flex min-h-[40px] cursor-pointer items-center rounded border border-border-subtle px-2 py-0.5 transition-colors hover:border-rune-gold hover:text-rune-gold"
           >
-            ↗ OPEN ON MOBILE / NEW TAB
+            ↗ OPEN<span className="hidden sm:inline">&nbsp;IN NEW TAB</span>
           </a>
         </div>
       </header>
 
-      {/* Full-bleed Odysseus workspace */}
+      {/* Full-bleed Odysseus workspace — embed resolves http/https itself */}
       <main className="flex-1 overflow-hidden">
-        <OdysseusEmbed src={ODYSSEUS_URL} />
+        <OdysseusEmbed />
       </main>
     </div>
   );

@@ -32,6 +32,7 @@ export default function FinancePanel() {
   const [data, setData] = useState<FinancesPayload | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [mutationError, setMutationError] = useState<string | null>(null);
   const [editingBudget, setEditingBudget] = useState<string | null>(null);
   const [budgetDraft, setBudgetDraft] = useState<string>('');
   const [editingSavings, setEditingSavings] = useState(false);
@@ -57,15 +58,26 @@ export default function FinancePanel() {
   useEffect(() => { refresh(); }, [refresh]);
 
   const patch = async (body: Record<string, unknown>) => {
-    const res = await fetch('/api/finances', {
-      method: 'PATCH',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(body),
-    });
-    if (res.ok) setData(await res.json());
+    try {
+      const res = await fetch('/api/finances', {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(body),
+      });
+      if (!res.ok) {
+        throw new Error('Save failed');
+      }
+      setData(await res.json());
+      setMutationError(null);
+      return true;
+    } catch {
+      setMutationError('Save failed — try again');
+      return false;
+    }
   };
 
   const startEditBudget = (key: string, value: number) => {
+    setMutationError(null);
     setEditingBudget(key);
     setBudgetDraft(String(value));
   };
@@ -74,11 +86,13 @@ export default function FinancePanel() {
     if (!editingBudget) return;
     const v = parseFloat(budgetDraft);
     if (isNaN(v) || v < 0) { setEditingBudget(null); return; }
-    await patch({ monthlyBudget: { [editingBudget]: v } });
-    setEditingBudget(null);
+    if (await patch({ monthlyBudget: { [editingBudget]: v } })) {
+      setEditingBudget(null);
+    }
   };
 
   const startEditSavings = () => {
+    setMutationError(null);
     setEditingSavings(true);
     setSavingsDraft(String(data?.savingsGoal?.current ?? 0));
   };
@@ -86,14 +100,15 @@ export default function FinancePanel() {
   const saveSavings = async () => {
     const v = parseFloat(savingsDraft);
     if (isNaN(v) || v < 0) { setEditingSavings(false); return; }
-    await patch({ savingsCurrent: v });
-    setEditingSavings(false);
+    if (await patch({ savingsCurrent: v })) {
+      setEditingSavings(false);
+    }
   };
 
   const addPaycheck = async () => {
     const netPay = parseFloat(newPay.netPay);
     if (isNaN(netPay) || netPay <= 0 || !newPay.date) return;
-    await patch({
+    if (!await patch({
       addPaycheck: {
         date: newPay.date,
         grossPay: Math.round(netPay * 1.25),
@@ -101,7 +116,7 @@ export default function FinancePanel() {
         employer: 'Part-time',
         notes: '',
       },
-    });
+    })) return;
     setNewPay({ date: todayStr(), netPay: '' });
     setShowAddPaycheck(false);
   };
@@ -195,24 +210,30 @@ export default function FinancePanel() {
                   >
                     <span className="font-mono text-[10px] capitalize text-text-secondary">{key}</span>
                     {editingBudget === key ? (
-                      <div className="flex items-center gap-1">
-                        <input
-                          autoFocus
-                          type="number"
-                          value={budgetDraft}
-                          onChange={(e) => setBudgetDraft(e.target.value)}
-                          onKeyDown={(e) => {
-                            if (e.key === 'Enter') saveBudget();
-                            if (e.key === 'Escape') setEditingBudget(null);
-                          }}
-                          className="w-16 rounded bg-bg-deep px-1.5 py-0.5 font-numeric text-[11px] text-right text-text-primary outline-none focus:ring-1 focus:ring-rune-gold"
-                        />
-                        <button onClick={saveBudget} className="text-emerald-400 hover:text-emerald-300 cursor-pointer">
-                          <Check className="h-3 w-3" strokeWidth={2.5} />
-                        </button>
-                        <button onClick={() => setEditingBudget(null)} className="text-text-muted hover:text-text-secondary cursor-pointer">
-                          <X className="h-3 w-3" strokeWidth={2.5} />
-                        </button>
+                      <div className="flex flex-col items-end gap-1">
+                        <div className="flex items-center gap-1">
+                          <input
+                            autoFocus
+                            type="number"
+                            value={budgetDraft}
+                            onChange={(e) => {
+                              setBudgetDraft(e.target.value);
+                              setMutationError(null);
+                            }}
+                            onKeyDown={(e) => {
+                              if (e.key === 'Enter') saveBudget();
+                              if (e.key === 'Escape') setEditingBudget(null);
+                            }}
+                            className="w-16 rounded bg-bg-deep px-1.5 py-0.5 font-numeric text-[11px] text-right text-text-primary outline-none focus:ring-1 focus:ring-rune-gold"
+                          />
+                          <button onClick={saveBudget} className="text-emerald-400 hover:text-emerald-300 cursor-pointer">
+                            <Check className="h-3 w-3" strokeWidth={2.5} />
+                          </button>
+                          <button onClick={() => setEditingBudget(null)} className="text-text-muted hover:text-text-secondary cursor-pointer">
+                            <X className="h-3 w-3" strokeWidth={2.5} />
+                          </button>
+                        </div>
+                        {mutationError ? <div className="font-mono text-xs text-amber-400">{mutationError}</div> : null}
                       </div>
                     ) : (
                       <button
@@ -238,22 +259,28 @@ export default function FinancePanel() {
                   </div>
                   <div className="text-right">
                     {editingSavings ? (
-                      <div className="flex items-center gap-1">
-                        <span className="font-numeric text-[11px] text-text-muted">$</span>
-                        <input
-                          autoFocus
-                          type="number"
-                          value={savingsDraft}
-                          onChange={(e) => setSavingsDraft(e.target.value)}
-                          onKeyDown={(e) => {
-                            if (e.key === 'Enter') saveSavings();
-                            if (e.key === 'Escape') setEditingSavings(false);
-                          }}
-                          className="w-20 rounded bg-bg-deep px-1.5 py-0.5 font-numeric text-[12px] text-right text-text-primary outline-none focus:ring-1 focus:ring-emerald-400"
-                        />
-                        <button onClick={saveSavings} className="text-emerald-400 cursor-pointer">
-                          <Check className="h-3 w-3" strokeWidth={2.5} />
-                        </button>
+                      <div className="flex flex-col items-end gap-1">
+                        <div className="flex items-center gap-1">
+                          <span className="font-numeric text-[11px] text-text-muted">$</span>
+                          <input
+                            autoFocus
+                            type="number"
+                            value={savingsDraft}
+                            onChange={(e) => {
+                              setSavingsDraft(e.target.value);
+                              setMutationError(null);
+                            }}
+                            onKeyDown={(e) => {
+                              if (e.key === 'Enter') saveSavings();
+                              if (e.key === 'Escape') setEditingSavings(false);
+                            }}
+                            className="w-20 rounded bg-bg-deep px-1.5 py-0.5 font-numeric text-[12px] text-right text-text-primary outline-none focus:ring-1 focus:ring-emerald-400"
+                          />
+                          <button onClick={saveSavings} className="text-emerald-400 cursor-pointer">
+                            <Check className="h-3 w-3" strokeWidth={2.5} />
+                          </button>
+                        </div>
+                        {mutationError ? <div className="font-mono text-xs text-amber-400">{mutationError}</div> : null}
                       </div>
                     ) : (
                       <button
@@ -294,27 +321,36 @@ export default function FinancePanel() {
               </div>
 
               {showAddPaycheck && (
-                <div className="mb-2 flex items-center gap-2 rounded-xl border border-rune-gold/20 bg-rune-gold/[0.04] px-3 py-2">
-                  <input
-                    type="date"
-                    value={newPay.date}
-                    onChange={(e) => setNewPay((p) => ({ ...p, date: e.target.value }))}
-                    className="rounded bg-bg-deep px-2 py-1 font-mono text-[10px] text-text-secondary outline-none focus:ring-1 focus:ring-rune-gold [color-scheme:dark]"
-                  />
-                  <input
-                    type="number"
-                    placeholder="net pay"
-                    value={newPay.netPay}
-                    onChange={(e) => setNewPay((p) => ({ ...p, netPay: e.target.value }))}
-                    onKeyDown={(e) => { if (e.key === 'Enter') addPaycheck(); }}
-                    className="flex-1 rounded bg-bg-deep px-2 py-1 font-numeric text-[11px] text-right text-text-primary outline-none focus:ring-1 focus:ring-rune-gold"
-                  />
-                  <button onClick={addPaycheck} className="text-emerald-400 hover:text-emerald-300 cursor-pointer">
-                    <Check className="h-3 w-3" strokeWidth={2.5} />
-                  </button>
-                  <button onClick={() => setShowAddPaycheck(false)} className="text-text-muted hover:text-text-secondary cursor-pointer">
-                    <X className="h-3 w-3" strokeWidth={2.5} />
-                  </button>
+                <div className="mb-2 rounded-xl border border-rune-gold/20 bg-rune-gold/[0.04] px-3 py-2">
+                  <div className="flex items-center gap-2">
+                    <input
+                      type="date"
+                      value={newPay.date}
+                      onChange={(e) => {
+                        setNewPay((p) => ({ ...p, date: e.target.value }));
+                        setMutationError(null);
+                      }}
+                      className="rounded bg-bg-deep px-2 py-1 font-mono text-[10px] text-text-secondary outline-none focus:ring-1 focus:ring-rune-gold [color-scheme:dark]"
+                    />
+                    <input
+                      type="number"
+                      placeholder="net pay"
+                      value={newPay.netPay}
+                      onChange={(e) => {
+                        setNewPay((p) => ({ ...p, netPay: e.target.value }));
+                        setMutationError(null);
+                      }}
+                      onKeyDown={(e) => { if (e.key === 'Enter') addPaycheck(); }}
+                      className="flex-1 rounded bg-bg-deep px-2 py-1 font-numeric text-[11px] text-right text-text-primary outline-none focus:ring-1 focus:ring-rune-gold"
+                    />
+                    <button onClick={addPaycheck} className="text-emerald-400 hover:text-emerald-300 cursor-pointer">
+                      <Check className="h-3 w-3" strokeWidth={2.5} />
+                    </button>
+                    <button onClick={() => setShowAddPaycheck(false)} className="text-text-muted hover:text-text-secondary cursor-pointer">
+                      <X className="h-3 w-3" strokeWidth={2.5} />
+                    </button>
+                  </div>
+                  {mutationError ? <div className="mt-1 font-mono text-xs text-amber-400">{mutationError}</div> : null}
                 </div>
               )}
 
