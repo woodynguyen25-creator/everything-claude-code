@@ -64,7 +64,7 @@ export default function MemoryCard({ memory, selected = false, onOpen, onPromote
             event.stopPropagation();
             onOpen();
           }}
-          className="rounded border border-border-subtle px-3 py-2 text-xs text-text-secondary hover:bg-bg-hover hover:text-text-primary"
+          className="min-h-[44px] rounded border border-border-subtle px-3 py-2 text-xs text-text-secondary hover:bg-bg-hover hover:text-text-primary sm:min-h-0"
         >
           Open
         </button>
@@ -74,7 +74,7 @@ export default function MemoryCard({ memory, selected = false, onOpen, onPromote
             event.stopPropagation();
             onPromote();
           }}
-          className="rounded border border-border-subtle px-3 py-2 text-xs text-text-secondary hover:bg-bg-hover hover:text-text-primary"
+          className="min-h-[44px] rounded border border-border-subtle px-3 py-2 text-xs text-text-secondary hover:bg-bg-hover hover:text-text-primary sm:min-h-0"
         >
           {memory.pinned ? 'Unpin' : 'Pin'}
         </button>
@@ -84,7 +84,7 @@ export default function MemoryCard({ memory, selected = false, onOpen, onPromote
             event.stopPropagation();
             onArchive();
           }}
-          className="rounded border border-border-subtle px-3 py-2 text-xs text-text-secondary hover:bg-bg-hover hover:text-text-primary"
+          className="min-h-[44px] rounded border border-border-subtle px-3 py-2 text-xs text-text-secondary hover:bg-bg-hover hover:text-text-primary sm:min-h-0"
         >
           Archive
         </button>

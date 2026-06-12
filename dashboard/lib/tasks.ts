@@ -45,7 +45,8 @@ export function listTasks(): Task[] {
     .prepare(
       `SELECT id, title, status, priority, createdAt, COALESCE(updatedAt, createdAt) as updatedAt
        FROM tasks
-       ORDER BY status='done', priority DESC, id DESC`
+       ORDER BY status='done', priority DESC, id DESC
+       LIMIT 200`
     )
     .all() as Task[];
 }

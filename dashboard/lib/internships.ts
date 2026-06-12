@@ -124,7 +124,8 @@ export function listInternships(includeArchived = false): Internship[] {
       `SELECT id, company, role, location, status, appliedDate, deadline, nextAction, nextActionDate, url, notes, archived, createdAt, updatedAt
        FROM internships
        ${includeArchived ? '' : 'WHERE archived = 0'}
-       ORDER BY archived ASC, updatedAt DESC, id DESC`
+       ORDER BY archived ASC, updatedAt DESC, id DESC
+       LIMIT 200`
     )
     .all() as InternshipRow[];
 

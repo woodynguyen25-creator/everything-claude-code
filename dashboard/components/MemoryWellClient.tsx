@@ -242,7 +242,7 @@ export default function MemoryWellClient() {
             placeholder="Search the well..."
             className="flex-1 rounded border border-border-subtle bg-bg-deep px-4 py-3 text-sm text-text-primary outline-none placeholder:text-text-muted focus:border-rune-gold"
           />
-          <div className="text-xs text-text-muted">⌘K</div>
+          <div className="hidden text-xs text-text-muted sm:block">⌘K</div>
         </div>
 
         <div className="mt-4 flex flex-wrap gap-2">
