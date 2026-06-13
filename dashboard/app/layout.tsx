@@ -7,6 +7,16 @@ import RavensRoot from '@/components/RavensRoot';
 export const metadata: Metadata = {
   title: 'AIOS - Command Center',
   description: "Woody's Norse-themed Claude Code OS",
+  manifest: '/manifest.webmanifest',
+  appleWebApp: {
+    capable: true,
+    statusBarStyle: 'black-translucent',
+    title: 'Realm',
+  },
+  icons: {
+    icon: [{ url: '/icons/icon-192.png', sizes: '192x192', type: 'image/png' }],
+    apple: [{ url: '/icons/icon-180.png', sizes: '180x180', type: 'image/png' }],
+  },
 };
 
 export const viewport: Viewport = {
