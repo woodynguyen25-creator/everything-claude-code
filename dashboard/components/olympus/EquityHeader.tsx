@@ -49,6 +49,8 @@ export function EquityHeader({ state }: EquityHeaderProps) {
   const pct = pnl / state.starting_equity;
   const isGreen = pnl >= 0;
   const showPaper = mode !== 'real';
+  // Mock/demo fallback — the paper figure isn't from live paper-trading results.
+  const isSample = state.equity_source === 'sample';
 
   return (
     <header className="rounded-2xl border border-white/[0.08] bg-[rgba(12,10,26,0.85)] p-4 shadow-[0_18px_70px_rgba(0,0,0,0.5)] backdrop-blur-xl">
@@ -56,7 +58,17 @@ export function EquityHeader({ state }: EquityHeaderProps) {
         <div className="rounded-2xl border border-white/[0.06] bg-white/[0.025] p-5">
           {/* Title + mode toggle */}
           <div className="flex items-start justify-between gap-2">
-            <div className="text-[10px] uppercase tracking-[0.28em] text-white/40">Olympus Fund</div>
+            <div className="flex items-center gap-2">
+              <div className="text-[10px] uppercase tracking-[0.28em] text-white/40">Olympus Fund</div>
+              {isSample && (
+                <span
+                  title="Demo figures — no live fund data yet"
+                  className="rounded-full border border-amber-400/30 bg-amber-400/10 px-1.5 py-0.5 text-[8px] font-semibold uppercase tracking-[0.16em] text-amber-300/90"
+                >
+                  Demo
+                </span>
+              )}
+            </div>
             <div className="flex items-center gap-px rounded-full border border-white/[0.08] bg-white/[0.02] p-0.5">
               {(['paper', 'real', 'both'] as EquityMode[]).map((m) => (
                 <button

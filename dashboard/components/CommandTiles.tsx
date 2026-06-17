@@ -7,6 +7,12 @@ import { DataFooter, type DataState } from '@/components/ui/DataFooter';
 type Health = { slug: string; status: 'ok' | 'fallback' | 'offline' };
 type Task = { id: number; title: string; status: string; priority: number };
 type Habits = Record<string, boolean>;
+type Olympus = {
+  current_equity?: number;
+  starting_equity?: number;
+  open_positions_count?: number;
+  equity_source?: 'live' | 'sample';
+};
 
 type Fetched<T> = { data: T | null; at: number | null; state: DataState };
 
@@ -23,7 +29,7 @@ const HABIT_LABELS: Record<string, string> = {
 
 export default function CommandTiles() {
   // Four independent endpoints, each on the shared spine (dedupes with any other poller of the same URL).
-  const olympusR = useLiveResource<Record<string, number>>('/api/olympus/state', { intervalMs: 60_000 });
+  const olympusR = useLiveResource<Olympus>('/api/olympus/state', { intervalMs: 60_000 });
   const healthR = useLiveResource<Health[]>('/api/doctor/agents', { intervalMs: 60_000 });
   const habitsR = useLiveResource<Habits>('/api/habits', { intervalMs: 60_000 });
   const tasksR = useLiveResource<Task[]>('/api/tasks', { intervalMs: 60_000 });
@@ -51,6 +57,9 @@ export default function CommandTiles() {
   const start = olympus.data?.starting_equity ?? null;
   const pnl = eq != null && start != null ? eq - start : null;
   const positions = olympus.data?.open_positions_count ?? null;
+  // When the Droplet shows no live PnL movement the figures are the mock
+  // fallback — badge them honestly instead of rendering as real equity.
+  const olympusSample = olympus.data?.equity_source === 'sample';
 
   // Health
   const agents = health.data ?? [];
@@ -75,7 +84,9 @@ export default function CommandTiles() {
         <div className="text-rune text-[10px] tracking-[0.3em] text-text-muted">OLYMPUS FUND</div>
         <div className="mt-2 font-numeric text-3xl text-rune-gold">{eq != null ? money(eq) : '—'}</div>
         <div className="mt-1 flex items-center gap-2 text-[12px]">
-          {pnl != null ? (
+          {olympusSample ? (
+            <span className="text-text-muted">demo figures — awaiting live fund</span>
+          ) : pnl != null ? (
             <span className={pnl >= 0 ? 'text-emerald-400' : 'text-rose-400'}>
               {pnl >= 0 ? '▲' : '▼'} {money(Math.abs(pnl))} vs start
             </span>
@@ -84,8 +95,14 @@ export default function CommandTiles() {
           )}
         </div>
         <div className="mt-auto pt-3">
-          <DataFooter source="Droplet" state={olympus.state} ageSec={age(olympus.at)} />
-          {positions != null ? <div className="mt-1 font-mono text-[10px] text-text-muted">{positions} open positions</div> : null}
+          <DataFooter
+            source="Droplet"
+            state={olympusSample ? 'sample' : olympus.state}
+            ageSec={age(olympus.at)}
+          />
+          {positions != null && !olympusSample ? (
+            <div className="mt-1 font-mono text-[10px] text-text-muted">{positions} open positions</div>
+          ) : null}
         </div>
       </Link>
 

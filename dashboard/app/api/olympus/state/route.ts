@@ -19,6 +19,9 @@ function normalizeOlympusState(live: OlympusState, fallback: OlympusState): Olym
   return {
     ...fallback,
     ...live,
+    // Equity is only "live" when the Droplet shows real PnL movement; otherwise
+    // these figures are the mock fallback and must be badged as a sample.
+    equity_source: useLiveEquity ? 'live' : 'sample',
     agents: (live.agents ?? fallback.agents).map((agent) =>
       (agent.agent as string) === 'thor'
         ? { ...agent, agent: 'anubis' as const }
@@ -65,7 +68,9 @@ export async function GET() {
       }
     }
 
-    return NextResponse.json(fallback);
+    // No endpoint configured, or the Droplet was unreachable/errored: this is
+    // pure mock data, never real equity. Badge it as a sample.
+    return NextResponse.json({ ...fallback, equity_source: 'sample' });
   } catch (err) {
     return NextResponse.json(
       { error: 'olympus_state_unavailable', detail: String(err) },

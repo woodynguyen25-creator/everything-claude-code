@@ -6,9 +6,14 @@ build/
 *.tsbuildinfo
 next-env.d.ts
 
-# data
+# data — runtime SQLite state (incl. WAL/SHM sidecars that churn every session)
 data/*.db
 data/*.db-journal
+data/*.db-wal
+data/*.db-shm
+data/**/*.db
+data/**/*.db-wal
+data/**/*.db-shm
 
 # env
 .env

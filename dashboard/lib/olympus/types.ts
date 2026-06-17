@@ -157,4 +157,10 @@ export interface OlympusState {
   trading_bots?: TradingBot[];
   macro_brief?: MacroBrief | null;
   strategic_actions?: StrategicAction[];
+  /**
+   * Provenance of the equity figures. 'live' = real movement from the Droplet;
+   * 'sample' = demo/mock fallback (no live PnL movement or Droplet unreachable).
+   * Drives the data-honesty badge on the dashboard so mock equity never reads as real.
+   */
+  equity_source?: 'live' | 'sample';
 }
