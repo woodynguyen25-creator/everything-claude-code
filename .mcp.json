@@ -1,5 +1,9 @@
 {
   "mcpServers": {
+    "higgsfield": {
+      "type": "http",
+      "url": "https://mcp.higgsfield.ai/mcp"
+    },
     "robinhood-trading": {
       "type": "http",
       "url": "https://agent.robinhood.com/mcp/trading"
@@ -12,10 +16,35 @@
       "command": "npx",
       "args": [
         "-y",
-        "@21st-dev/magic@latest"
+        "@21st-dev/magic@0.1.1-beta.1"
       ],
       "env": {
-        "TWENTY_FIRST_API_KEY": "6dae9df6bf05687b59774a6e300c151d2962a19777fdb1e55ba32cc20efdeeb7"
+        "TWENTY_FIRST_API_KEY": "${TWENTY_FIRST_API_KEY}"
+      }
+    },
+    "github": {
+      "command": "npx",
+      "args": [
+        "-y",
+        "@modelcontextprotocol/server-github@2025.4.8"
+      ]
+    },
+    "context7": {
+      "command": "npx",
+      "args": [
+        "-y",
+        "@upstash/context7-mcp@2.1.4"
+      ]
+    },
+    "playwright": {
+      "command": "npx",
+      "args": [
+        "-y",
+        "@playwright/mcp@0.0.69",
+        "--extension"
+      ],
+      "env": {
+        "PLAYWRIGHT_MCP_EXTENSION_TOKEN": "${PLAYWRIGHT_MCP_EXTENSION_TOKEN}"
       }
     }
   }

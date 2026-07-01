@@ -78,6 +78,7 @@ marketing/
 .dmux-hooks/
 .claude/worktrees/
 .claude/scheduled_tasks.lock
+.claude/settings.json
 
 # Temporary files
 tmp/
