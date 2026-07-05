@@ -5,7 +5,7 @@ import { PageShell } from '@/components/layout/PageShell';
 export default function MemoryPage() {
   return (
     <PageShell title="Mimir's Well" eyebrow="Memory">
-      <p className="max-w-2xl text-sm text-white/50">
+      <p className="max-w-2xl text-sm text-text-secondary">
         What the wise know, others have forgotten. Drink and recall.
       </p>
 

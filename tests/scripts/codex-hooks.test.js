@@ -142,9 +142,9 @@ if (
       assert.ok(!Object.prototype.hasOwnProperty.call(parsedConfig, 'multi_agent'));
       assert.ok(parsedConfig.features);
       assert.strictEqual(parsedConfig.features.multi_agent, true);
-      assert.ok(parsedConfig.profiles);
-      assert.strictEqual(parsedConfig.profiles.strict.approval_policy, 'on-request');
-      assert.strictEqual(parsedConfig.profiles.yolo.approval_policy, 'never');
+      // Profiles are user-level keys; the repo baseline ships them commented
+      // out, so the merge must NOT install them.
+      assert.ok(!Object.prototype.hasOwnProperty.call(parsedConfig, 'profiles'));
       assert.ok(parsedConfig.agents);
       assert.strictEqual(parsedConfig.agents.max_threads, 6);
       assert.strictEqual(parsedConfig.agents.max_depth, 1);

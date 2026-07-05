@@ -68,10 +68,10 @@ function totalCouncilCost(decision: Decision): number {
 }
 
 function rMultipleColor(r: number | null) {
-  if (r === null) return 'text-white/55';
+  if (r === null) return 'text-text-secondary';
   if (r > 0) return 'text-emerald-300';
   if (r < 0) return 'text-rose-300';
-  return 'text-white/55';
+  return 'text-text-secondary';
 }
 
 export function DecisionDrawer({ decision, onClose }: DrawerProps) {
@@ -125,7 +125,7 @@ export function DecisionDrawer({ decision, onClose }: DrawerProps) {
         aria-label={decision ? `${decision.ticker} ${decision.right} $${decision.strike} decision detail` : 'Decision detail'}
         className="fixed inset-y-0 right-0 z-50 flex w-full flex-col overflow-hidden md:w-[480px]"
         style={{
-          background: 'rgba(12,10,26,0.95)',
+          background: 'oklch(var(--color-bg-panel) / 0.95)',
           backdropFilter: 'blur(20px)',
           WebkitBackdropFilter: 'blur(20px)',
           borderLeft: '1px solid rgba(255,255,255,0.08)',
@@ -140,7 +140,7 @@ export function DecisionDrawer({ decision, onClose }: DrawerProps) {
             type="button"
             onClick={onClose}
             aria-label="Close decision detail"
-            className="flex h-8 w-8 items-center justify-center rounded-lg text-white/50 transition-colors hover:bg-white/10 hover:text-white/80"
+            className="flex h-8 w-8 items-center justify-center rounded-lg text-text-muted transition-colors hover:bg-white/10 hover:text-text-secondary"
           >
             <X size={16} />
           </button>
@@ -150,7 +150,7 @@ export function DecisionDrawer({ decision, onClose }: DrawerProps) {
         <div className="flex-1 overflow-y-auto px-6 pb-10 md:px-8">
           {!decision ? (
             <div className="mt-16 text-center">
-              <p className="text-sm text-white/40">Decision not found</p>
+              <p className="text-sm text-text-muted">Decision not found</p>
             </div>
           ) : (
             <DecisionDrawerBody decision={decision} />
@@ -175,7 +175,7 @@ function DecisionDrawerBody({ decision }: { decision: Decision }) {
       {/* Header */}
       <div>
         <div className="flex flex-wrap items-baseline gap-3">
-          <span className="font-sans text-3xl font-bold tracking-wide text-white">
+          <span className="font-sans text-3xl font-bold tracking-wide text-text-primary">
             {decision.ticker}
           </span>
           <span
@@ -187,14 +187,14 @@ function DecisionDrawerBody({ decision }: { decision: Decision }) {
           >
             {decision.right}
           </span>
-          <span className="font-mono text-sm text-white/55">${decision.strike}</span>
+          <span className="font-mono text-sm text-text-secondary">${decision.strike}</span>
         </div>
-        <div className="mt-1 flex items-center gap-3 font-mono text-xs text-white/40">
+        <div className="mt-1 flex items-center gap-3 font-mono text-xs text-text-muted">
           <span>Expiry: {shortDate(decision.expiry)}</span>
           {(() => {
             const d = daysUntil(decision.expiry);
             if (d === null) return null;
-            const tone = d <= 3 ? 'text-rose-300' : d <= 7 ? 'text-amber-300' : 'text-white/60';
+            const tone = d <= 3 ? 'text-rose-300' : d <= 7 ? 'text-amber-300' : 'text-text-secondary';
             return <span className={tone}>· {d}d to expiry</span>;
           })()}
         </div>
@@ -203,14 +203,14 @@ function DecisionDrawerBody({ decision }: { decision: Decision }) {
       {/* Trade levels */}
       {(decision.entry_price !== null || decision.target_price !== null || decision.stop_price !== null) ? (
         <div>
-          <div className="mb-2 text-[10px] uppercase tracking-[0.22em] text-white/42">Trade Levels</div>
-          <div className="grid grid-cols-3 gap-2 rounded-xl border border-white/[0.06] bg-white/[0.025] p-3">
+          <div className="mb-2 text-[10px] uppercase tracking-[0.22em] text-text-muted">Trade Levels</div>
+          <div className="grid grid-cols-3 gap-2 rounded-xl border border-border-subtle bg-white/[0.025] p-3">
             <div>
-              <div className="text-[9px] uppercase tracking-[0.18em] text-white/35">Entry</div>
-              <div className="mt-1 font-mono text-sm text-white/90">{money(decision.entry_price)}</div>
+              <div className="text-[9px] uppercase tracking-[0.18em] text-text-muted">Entry</div>
+              <div className="mt-1 font-mono text-sm text-text-primary">{money(decision.entry_price)}</div>
             </div>
             <div>
-              <div className="text-[9px] uppercase tracking-[0.18em] text-white/35">Target</div>
+              <div className="text-[9px] uppercase tracking-[0.18em] text-text-muted">Target</div>
               <div className="mt-1 font-mono text-sm text-emerald-200">{money(decision.target_price)}</div>
               {(() => {
                 const pct = targetReturnPct(decision.entry_price, decision.target_price);
@@ -219,7 +219,7 @@ function DecisionDrawerBody({ decision }: { decision: Decision }) {
               })()}
             </div>
             <div>
-              <div className="text-[9px] uppercase tracking-[0.18em] text-white/35">Stop</div>
+              <div className="text-[9px] uppercase tracking-[0.18em] text-text-muted">Stop</div>
               <div className="mt-1 font-mono text-sm text-rose-200">{money(decision.stop_price)}</div>
               {(() => {
                 const pct = stopReturnPct(decision.entry_price, decision.stop_price);
@@ -229,7 +229,7 @@ function DecisionDrawerBody({ decision }: { decision: Decision }) {
             </div>
           </div>
           {decision.status === 'active' ? (
-            <div className="mt-2 text-[10px] uppercase tracking-[0.18em] text-white/30">
+            <div className="mt-2 text-[10px] uppercase tracking-[0.18em] text-text-muted">
               Live P&amp;L tracking · mark-to-market wiring in progress
             </div>
           ) : null}
@@ -239,8 +239,8 @@ function DecisionDrawerBody({ decision }: { decision: Decision }) {
       {/* Conviction bar */}
       <div>
         <div className="mb-2 flex items-center justify-between gap-3">
-          <span className="text-[10px] uppercase tracking-[0.22em] text-white/42">Conviction</span>
-          <span className="font-mono text-xs text-white/75">{decision.conviction.toFixed(1)} / 10</span>
+          <span className="text-[10px] uppercase tracking-[0.22em] text-text-muted">Conviction</span>
+          <span className="font-mono text-xs text-text-secondary">{decision.conviction.toFixed(1)} / 10</span>
         </div>
         <div className="h-2 overflow-hidden rounded-full bg-white/[0.08]">
           <div
@@ -253,7 +253,7 @@ function DecisionDrawerBody({ decision }: { decision: Decision }) {
         </div>
       </div>
 
-      <hr className="border-white/[0.08]" />
+      <hr className="border-border-subtle" />
 
       {/* Council reasoning */}
       <div className="flex flex-col gap-5">
@@ -276,21 +276,21 @@ function DecisionDrawerBody({ decision }: { decision: Decision }) {
       {/* Resolution section (only if resolved) */}
       {hasResolution ? (
         <>
-          <hr className="border-white/[0.08]" />
+          <hr className="border-border-subtle" />
           <div>
-            <div className="mb-3 text-[10px] uppercase tracking-[0.22em] text-white/42">
+            <div className="mb-3 text-[10px] uppercase tracking-[0.22em] text-text-muted">
               Resolution
             </div>
             <div className="flex flex-col gap-2">
               <div className="flex items-center justify-between">
-                <span className="text-xs text-white/55">Outcome</span>
+                <span className="text-xs text-text-secondary">Outcome</span>
                 <span
                   className={`font-mono text-sm font-semibold uppercase ${
                     decision.outcome === 'win'
                       ? 'text-emerald-300'
                       : decision.outcome === 'loss'
                         ? 'text-rose-300'
-                        : 'text-white/50'
+                        : 'text-text-muted'
                   }`}
                 >
                   {decision.outcome ?? '--'}
@@ -299,13 +299,13 @@ function DecisionDrawerBody({ decision }: { decision: Decision }) {
               </div>
               {decision.exit_price !== null ? (
                 <div className="flex items-center justify-between">
-                  <span className="text-xs text-white/55">Exit price</span>
-                  <span className="font-mono text-sm text-white/80">{money(decision.exit_price)}</span>
+                  <span className="text-xs text-text-secondary">Exit price</span>
+                  <span className="font-mono text-sm text-text-secondary">{money(decision.exit_price)}</span>
                 </div>
               ) : null}
               {decision.realized_r !== null ? (
                 <div className="flex items-center justify-between">
-                  <span className="text-xs text-white/55">R-multiple</span>
+                  <span className="text-xs text-text-secondary">R-multiple</span>
                   <span className={`font-mono text-sm ${rMultipleColor(decision.realized_r)}`}>
                     {decision.realized_r > 0 ? '+' : ''}{decision.realized_r.toFixed(2)}R
                   </span>
@@ -313,7 +313,7 @@ function DecisionDrawerBody({ decision }: { decision: Decision }) {
               ) : null}
               {decision.realized_pnl !== null ? (
                 <div className="flex items-center justify-between">
-                  <span className="text-xs text-white/55">P&amp;L</span>
+                  <span className="text-xs text-text-secondary">P&amp;L</span>
                   <span
                     className={`font-mono text-sm ${
                       decision.realized_pnl >= 0 ? 'text-emerald-300' : 'text-rose-300'
@@ -328,20 +328,20 @@ function DecisionDrawerBody({ decision }: { decision: Decision }) {
         </>
       ) : null}
 
-      <hr className="border-white/[0.08]" />
+      <hr className="border-border-subtle" />
 
       {/* Footer metadata */}
       <div className="flex flex-col gap-1.5">
         <div className="flex items-start justify-between gap-4">
-          <span className="text-[10px] text-white/30">Decision ID</span>
-          <span className="font-mono text-[10px] text-white/45 text-right break-all">
+          <span className="text-[10px] text-text-muted">Decision ID</span>
+          <span className="font-mono text-[10px] text-text-muted text-right break-all">
             {decision.decision_id}
           </span>
         </div>
         {decision.approved_at ? (
           <div className="flex items-start justify-between gap-4">
-            <span className="text-[10px] text-white/30">Approved at</span>
-            <span className="font-mono text-[10px] text-white/45 text-right">
+            <span className="text-[10px] text-text-muted">Approved at</span>
+            <span className="font-mono text-[10px] text-text-muted text-right">
               {new Date(decision.approved_at).toLocaleString('en-US', {
                 timeZone: 'America/Chicago',
                 month: 'short',
@@ -354,8 +354,8 @@ function DecisionDrawerBody({ decision }: { decision: Decision }) {
         ) : null}
         {totalCost > 0 ? (
           <div className="flex items-start justify-between gap-4">
-            <span className="text-[10px] text-white/30">Est. council cost</span>
-            <span className="font-mono text-[10px] text-white/45">{formatCost(totalCost)}</span>
+            <span className="text-[10px] text-text-muted">Est. council cost</span>
+            <span className="font-mono text-[10px] text-text-muted">{formatCost(totalCost)}</span>
           </div>
         ) : null}
       </div>

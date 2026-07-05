@@ -19,13 +19,15 @@ approval_policy = "on-request"
 sandbox_mode = "workspace-write"
 web_search = "live"
 
-# External notifications receive a JSON payload on stdin.
-notify = [
-  "terminal-notifier",
-  "-title", "Codex ECC",
-  "-message", "Task completed!",
-  "-sound", "default",
-]
+# External notifications are a USER-LEVEL key (not supported at project scope).
+# Move to ~/.codex/config.toml to enable; left commented here to avoid the
+# "Ignored unsupported project-local config keys" warning.
+# notify = [
+#   "terminal-notifier",
+#   "-title", "Codex ECC",
+#   "-message", "Task completed!",
+#   "-sound", "default",
+# ]
 
 # Persistent instructions are appended to every prompt (additive, unlike
 # model_instructions_file which replaces AGENTS.md).
@@ -90,16 +92,17 @@ startup_timeout_sec = 30
 # Keep the explicit toggle here so the repo documents its expectation clearly.
 multi_agent = true
 
-# Profiles — switch with `codex -p <name>`
-[profiles.strict]
-approval_policy = "on-request"
-sandbox_mode = "read-only"
-web_search = "cached"
-
-[profiles.yolo]
-approval_policy = "never"
-sandbox_mode = "workspace-write"
-web_search = "live"
+# Profiles are a USER-LEVEL key (not supported at project scope). Move to
+# ~/.codex/config.toml to enable; left commented here to avoid the warning.
+# [profiles.strict]
+# approval_policy = "on-request"
+# sandbox_mode = "read-only"
+# web_search = "cached"
+#
+# [profiles.yolo]
+# approval_policy = "never"
+# sandbox_mode = "workspace-write"
+# web_search = "live"
 
 [agents]
 # Multi-agent role limits and local role definitions.

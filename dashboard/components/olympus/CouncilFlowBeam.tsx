@@ -25,7 +25,8 @@ export function CouncilFlowBeam() {
           aria-hidden
           className="cfb-sweep pointer-events-none absolute top-1/2 h-[1px] w-1/4"
           style={{
-            background: 'linear-gradient(90deg, transparent 0%, #C9A96188 20%, #C9A961 50%, #C9A96188 80%, transparent 100%)',
+            background:
+              'linear-gradient(90deg, transparent 0%, oklch(var(--color-rune-gold) / 0.5) 20%, oklch(var(--color-rune-gold)) 50%, oklch(var(--color-rune-gold) / 0.5) 80%, transparent 100%)',
             filter: 'blur(0.5px)',
           }}
         />
@@ -35,10 +36,10 @@ export function CouncilFlowBeam() {
             {/* Node dot + label */}
             <div className="relative flex shrink-0 flex-col items-center gap-1.5">
               <div
-                className="h-1.5 w-1.5 rounded-full"
-                style={{ background: '#C9A961', boxShadow: '0 0 6px #C9A96166' }}
+                className="h-1.5 w-1.5 rounded-full bg-rune-gold"
+                style={{ boxShadow: '0 0 6px oklch(var(--color-rune-gold) / 0.4)' }}
               />
-              <span className="font-mono text-[8px] tracking-[0.22em] text-white/35">
+              <span className="font-mono text-[8px] tracking-[0.22em] text-text-muted">
                 {label}
               </span>
             </div>

@@ -17,6 +17,10 @@ export const metadata: Metadata = {
     icon: [{ url: '/icons/icon-192.png', sizes: '192x192', type: 'image/png' }],
     apple: [{ url: '/icons/icon-180.png', sizes: '180x180', type: 'image/png' }],
   },
+  // Modern standard tag alongside Next's apple-mobile-web-app-capable (which is deprecated on its own).
+  other: {
+    'mobile-web-app-capable': 'yes',
+  },
 };
 
 export const viewport: Viewport = {

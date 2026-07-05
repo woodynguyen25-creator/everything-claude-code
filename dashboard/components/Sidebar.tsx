@@ -33,7 +33,7 @@ export default function Sidebar({ operatorDateLabel, mobileOpen = false, onClose
 
   return (
     <aside
-      className={`fixed inset-y-0 left-0 z-50 flex w-72 max-w-[82vw] shrink-0 transform flex-col overflow-y-auto border-r border-border-subtle bg-bg-panel transition-transform duration-300 ease-out sm:static sm:z-20 sm:w-56 sm:max-w-none sm:translate-x-0 ${
+      className={`fixed inset-y-0 left-0 z-50 flex w-72 max-w-[82vw] shrink-0 transform flex-col overflow-y-auto border-r border-border-subtle bg-bg-panel transition-transform duration-300 ease-out sm:static sm:z-20 sm:w-60 sm:max-w-none sm:translate-x-0 ${
         mobileOpen ? 'translate-x-0' : '-translate-x-full'
       }`}
     >
@@ -42,7 +42,7 @@ export default function Sidebar({ operatorDateLabel, mobileOpen = false, onClose
         <div className="flex min-w-0 items-center gap-2.5">
           <RealmMark size={22} className="shrink-0" />
           <div className="min-w-0">
-            <div className="truncate font-display text-lg uppercase tracking-[0.1em] text-rune-gold sm:tracking-[0.18em]">Woody&apos;s Realm</div>
+            <div className="truncate font-display text-lg uppercase tracking-[0.1em] text-rune-gold sm:text-base sm:tracking-[0.14em]">Woody&apos;s Realm</div>
             <div className="font-mono text-[10px] text-text-muted">{operatorDateLabel}</div>
           </div>
         </div>

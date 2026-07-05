@@ -156,6 +156,8 @@ export interface OlympusState {
   whale_flow?: WhaleFlowItem[];
   trading_bots?: TradingBot[];
   macro_brief?: MacroBrief | null;
+  /** Provenance of the macro brief: 'live' from the Droplet, 'sample' = mock fallback (badged in UI). */
+  macro_brief_source?: 'live' | 'sample';
   strategic_actions?: StrategicAction[];
   /**
    * Provenance of the equity figures. 'live' = real movement from the Droplet;

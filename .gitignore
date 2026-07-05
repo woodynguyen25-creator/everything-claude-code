@@ -98,3 +98,15 @@ ecc2/target/
 .opencode/package-lock.json
 .opencode/node_modules/
 assets/images/security/badrudi-exploit.mp4
+
+# Runtime state / tool-generated dirs (audit 2026-07-04)
+.omx/
+dashboard/.omx/
+.entroly/
+.obsidian/
+.playwright-mcp/
+.github/context-mode/
+
+# Config backups
+*.bak-*
+*.entroly-backup

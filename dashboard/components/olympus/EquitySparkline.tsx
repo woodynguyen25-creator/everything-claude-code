@@ -59,16 +59,16 @@ export function EquitySparkline({ points }: EquitySparklineProps) {
     };
   }, [points, viewBox]);
 
-  const stroke = spark.positive ? '#22C55E' : '#F43F5E';
-  const fill = spark.positive ? '#22C55E22' : '#F43F5E22';
+  const stroke = spark.positive ? 'oklch(var(--color-perseus-emerald))' : 'oklch(var(--color-blood))';
+  const fill = spark.positive ? 'oklch(var(--color-perseus-emerald) / 0.13)' : 'oklch(var(--color-blood) / 0.13)';
   const visibleTooltip = hovered ?? spark.last?.point ?? null;
 
   return (
-    <div className="relative h-full min-h-24 overflow-hidden rounded-2xl border border-white/[0.06] bg-white/[0.025] p-3">
+    <div className="relative h-full min-h-24 overflow-hidden rounded-2xl border border-border-subtle bg-white/[0.025] p-3">
       <div className="mb-1 flex items-center justify-between gap-3">
-        <span className="text-[10px] uppercase tracking-[0.24em] text-white/40">Equity curve</span>
+        <span className="text-[10px] uppercase tracking-[0.24em] text-text-muted">Equity curve</span>
         {visibleTooltip ? (
-          <span className="font-mono text-[10px] text-white/55">
+          <span className="font-mono text-[10px] text-text-muted">
             {formatTime(visibleTooltip.ts)} / {formatCurrency(visibleTooltip.equity)}
           </span>
         ) : null}
@@ -100,7 +100,7 @@ export function EquitySparkline({ points }: EquitySparklineProps) {
           />
         ))}
         {spark.last ? (
-          <circle cx={spark.last.x} cy={spark.last.y} r="4.5" fill={stroke} stroke="#0D0B1A" strokeWidth="2" />
+          <circle cx={spark.last.x} cy={spark.last.y} r="4.5" fill={stroke} stroke="oklch(var(--color-bg-deep))" strokeWidth="2" />
         ) : null}
       </svg>
     </div>

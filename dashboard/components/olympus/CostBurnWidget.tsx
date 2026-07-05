@@ -13,7 +13,7 @@ interface CostState {
 
 function Skeleton() {
   return (
-    <div className="rounded-2xl border border-white/[0.06] bg-white/[0.025] p-5">
+    <div className="rounded-2xl border border-border-subtle bg-white/[0.025] p-5">
       <div className="h-3 w-24 rounded bg-white/[0.07] shimmer" />
       <div className="mt-3 h-8 w-32 rounded bg-white/[0.07] shimmer" />
       <div className="mt-4 h-2 w-full rounded bg-white/[0.07] shimmer" />
@@ -33,19 +33,19 @@ export function CostBurnWidget() {
   if (!cost) return <Skeleton />;
 
   const color =
-    cost.status === 'green' ? '#10B981' :
-      cost.status === 'amber' ? '#F59E0B' :
-        '#EF4444';
+    cost.status === 'green' ? 'oklch(60% 0.14 155)' :
+      cost.status === 'amber' ? 'oklch(72% 0.18 50)' :
+        'oklch(58% 0.20 25)';
 
   return (
-    <div className="rounded-2xl border border-white/[0.06] bg-white/[0.025] p-5 backdrop-blur">
-      <div className="flex items-center gap-2 text-[11px] uppercase tracking-[0.18em] text-white/44">
+    <div className="rounded-2xl border border-border-subtle bg-white/[0.025] p-5 backdrop-blur">
+      <div className="flex items-center gap-2 text-[11px] uppercase tracking-[0.18em] text-text-muted">
         <span>💰</span>
         <span>Cost Burn</span>
       </div>
       <div className="mt-2 flex items-baseline gap-2">
-        <span className="font-mono text-2xl font-semibold tracking-wide text-white">${cost.mtd_total.toFixed(2)}</span>
-        <span className="text-sm text-white/40">/ ${cost.monthly_cap.toFixed(0)}</span>
+        <span className="font-mono text-2xl font-semibold tracking-wide text-text-primary">${cost.mtd_total.toFixed(2)}</span>
+        <span className="text-sm text-text-muted">/ ${cost.monthly_cap.toFixed(0)}</span>
       </div>
       <div className="mt-3 h-1.5 overflow-hidden rounded-full bg-white/[0.08]">
         <div
@@ -53,7 +53,7 @@ export function CostBurnWidget() {
           style={{ width: `${Math.min(100, cost.mtd_pct * 100)}%`, backgroundColor: color }}
         />
       </div>
-      <div className="mt-3 flex items-center justify-between text-[11px] text-white/45">
+      <div className="mt-3 flex items-center justify-between text-[11px] text-text-muted">
         <span>{(cost.mtd_pct * 100).toFixed(0)}%</span>
         <span>Forecast: ${cost.forecast_eom.toFixed(2)}</span>
       </div>

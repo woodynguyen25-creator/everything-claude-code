@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server';
 import { readFile } from 'fs/promises';
 import path from 'path';
-import type { OlympusState } from '@/lib/olympus/types';
+import type { OlympusState, StrategicAction } from '@/lib/olympus/types';
 
 export const dynamic = 'force-dynamic';
 export const revalidate = 0;
@@ -14,11 +14,28 @@ function hasLiveEquityMovement(live: OlympusState): boolean {
   return moved && curve.length > 1;
 }
 
+function dedupeActions(actions: StrategicAction[]): StrategicAction[] {
+  const seen = new Set<string>();
+  return actions.filter((action) => {
+    const key = `${action.action_type}|${action.ticker}|${action.description}`;
+    if (seen.has(key)) return false;
+    seen.add(key);
+    return true;
+  });
+}
+
 function normalizeOlympusState(live: OlympusState, fallback: OlympusState): OlympusState {
   const useLiveEquity = hasLiveEquityMovement(live);
+  const decisions = live.decisions ?? fallback.decisions;
   return {
     ...fallback,
     ...live,
+    // A voided/resolved decision must never render as an open position, even
+    // if the Droplet still groups it under `approved`.
+    decisions: {
+      ...decisions,
+      approved: (decisions.approved ?? []).filter((d) => d.status === 'active'),
+    },
     // Equity is only "live" when the Droplet shows real PnL movement; otherwise
     // these figures are the mock fallback and must be badged as a sample.
     equity_source: useLiveEquity ? 'live' : 'sample',
@@ -30,12 +47,13 @@ function normalizeOlympusState(live: OlympusState, fallback: OlympusState): Olym
     whale_flow: live.whale_flow && live.whale_flow.length > 0 ? live.whale_flow : fallback.whale_flow,
     trading_bots: live.trading_bots && live.trading_bots.length > 0 ? live.trading_bots : fallback.trading_bots,
     macro_brief: live.macro_brief ?? fallback.macro_brief ?? null,
+    macro_brief_source: live.macro_brief ? 'live' : 'sample',
     current_equity: useLiveEquity ? live.current_equity : fallback.current_equity,
     starting_equity: live.starting_equity ?? fallback.starting_equity,
     total_realized_pnl: useLiveEquity ? live.total_realized_pnl : fallback.total_realized_pnl,
     total_unrealized_pnl: useLiveEquity ? live.total_unrealized_pnl : fallback.total_unrealized_pnl,
     equity_curve: useLiveEquity ? live.equity_curve : fallback.equity_curve,
-    strategic_actions: live.strategic_actions ?? fallback.strategic_actions ?? [],
+    strategic_actions: dedupeActions(live.strategic_actions ?? fallback.strategic_actions ?? []),
   };
 }
 
@@ -70,7 +88,12 @@ export async function GET() {
 
     // No endpoint configured, or the Droplet was unreachable/errored: this is
     // pure mock data, never real equity. Badge it as a sample.
-    return NextResponse.json({ ...fallback, equity_source: 'sample' });
+    return NextResponse.json({
+      ...fallback,
+      equity_source: 'sample',
+      macro_brief_source: 'sample',
+      strategic_actions: dedupeActions(fallback.strategic_actions ?? []),
+    });
   } catch (err) {
     return NextResponse.json(
       { error: 'olympus_state_unavailable', detail: String(err) },

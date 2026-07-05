@@ -9,7 +9,7 @@ export function AgentLegend({ agents }: AgentLegendProps) {
   const activity = new Map(agents.map((agent) => [agent.agent, agent]));
 
   return (
-    <div className="rounded-2xl border border-white/[0.08] bg-[rgba(12,10,26,0.85)] px-4 py-3 shadow-[0_12px_48px_rgba(0,0,0,0.38)] backdrop-blur-xl">
+    <div className="rounded-2xl border border-border-subtle bg-bg-panel/85 px-4 py-3 shadow-panel backdrop-blur-xl">
       {/* Horizontal scroll on mobile, wrap on larger screens */}
       <div
         className="flex items-center gap-2 overflow-x-auto md:flex-wrap"
@@ -18,7 +18,7 @@ export function AgentLegend({ agents }: AgentLegendProps) {
         {AGENT_ORDER.map((agent) => {
           const color = AGENT_COLORS[agent];
           const state = activity.get(agent);
-          const statusColor = state?.status === 'error' ? '#F43F5E' : state?.status === 'active' ? '#22C55E' : '#FFFFFF55';
+          const statusColor = state?.status === 'error' ? 'oklch(58% 0.20 25)' : state?.status === 'active' ? 'oklch(60% 0.14 155)' : 'rgba(255,255,255,0.33)';
           return (
             <span
               key={agent}
@@ -31,9 +31,9 @@ export function AgentLegend({ agents }: AgentLegendProps) {
               title={`${color.label}: ${state?.last_action ?? 'no activity yet'}`}
             >
               <span>{color.emoji}</span>
-              <span className="font-semibold text-white/85">{color.label}</span>
+              <span className="font-semibold text-text-primary">{color.label}</span>
               <span className="h-1.5 w-1.5 rounded-full" style={{ background: statusColor }} />
-              <span className="hidden font-mono text-[10px] text-white/40 xl:inline">
+              <span className="hidden font-mono text-[10px] text-text-muted xl:inline">
                 {state?.provider_last ?? `${state?.calls_today ?? 0} calls`}
               </span>
             </span>

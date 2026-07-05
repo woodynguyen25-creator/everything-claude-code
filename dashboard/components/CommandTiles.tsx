@@ -79,10 +79,10 @@ export default function CommandTiles() {
       {/* Olympus Fund */}
       <Link
         href="/olympus"
-        className="group flex flex-col rounded-2xl border border-border-subtle border-l-2 border-l-rune-gold bg-bg-raised p-5 transition-all duration-300 hover:bg-bg-hover hover:shadow-[0_0_28px_-8px_oklch(var(--color-rune-gold)/0.5)]"
+        className="group flex flex-col rounded-xl border border-border-subtle border-l-2 border-l-rune-gold bg-bg-raised p-5 shadow-[inset_0_1px_0_0_oklch(100%_0_0_/_0.06)] transition-all duration-150 hover:border-rune-gold/40 hover:bg-bg-hover"
       >
         <div className="text-rune text-[10px] tracking-[0.3em] text-text-muted">OLYMPUS FUND</div>
-        <div className="mt-2 font-numeric text-3xl text-rune-gold">{eq != null ? money(eq) : '—'}</div>
+        <div className="mt-2 font-numeric text-5xl tabular-nums tracking-tight text-rune-gold">{eq != null ? money(eq) : '—'}</div>
         <div className="mt-1 flex items-center gap-2 text-[12px]">
           {olympusSample ? (
             <span className="text-text-muted">demo figures — awaiting live fund</span>
@@ -109,10 +109,10 @@ export default function CommandTiles() {
       {/* Agent Health */}
       <Link
         href="/war-room"
-        className="group flex flex-col rounded-2xl border border-border-subtle border-l-2 border-l-bifrost bg-bg-raised p-5 transition-all duration-300 hover:bg-bg-hover hover:shadow-[0_0_28px_-8px_oklch(var(--color-bifrost)/0.5)]"
+        className="group flex flex-col rounded-xl border border-border-subtle bg-bg-raised p-5 shadow-[inset_0_1px_0_0_oklch(100%_0_0_/_0.06)] transition-all duration-150 hover:border-rune-gold/40 hover:bg-bg-hover"
       >
         <div className="text-rune text-[10px] tracking-[0.3em] text-text-muted">AGENT HEALTH</div>
-        <div className="mt-2 font-numeric text-3xl text-bifrost">
+        <div className="mt-2 font-numeric text-2xl tabular-nums text-text-primary">
           {agents.length ? `${okCount}/${agents.length}` : '—'}
         </div>
         <div className="mt-1 text-[12px]">
@@ -130,10 +130,10 @@ export default function CommandTiles() {
       {/* My Life */}
       <Link
         href="#today"
-        className="group flex flex-col rounded-2xl border border-border-subtle border-l-2 border-l-emerald bg-bg-raised p-5 transition-all duration-300 hover:bg-bg-hover hover:shadow-[0_0_28px_-8px_oklch(var(--color-perseus-emerald)/0.5)]"
+        className="group flex flex-col rounded-xl border border-border-subtle bg-bg-raised p-5 shadow-[inset_0_1px_0_0_oklch(100%_0_0_/_0.06)] transition-all duration-150 hover:border-rune-gold/40 hover:bg-bg-hover"
       >
         <div className="text-rune text-[10px] tracking-[0.3em] text-text-muted">MY LIFE</div>
-        <div className="mt-2 font-numeric text-3xl text-emerald">
+        <div className="mt-2 font-numeric text-2xl tabular-nums text-text-primary">
           {habitEntries.length ? `${doneCount}/${habitEntries.length}` : '—'}
           <span className="ml-1 font-body text-sm text-text-muted">rites</span>
         </div>
@@ -157,7 +157,7 @@ export default function CommandTiles() {
       {/* Today's Brief / Next action */}
       <Link
         href="#today"
-        className="group flex flex-col rounded-2xl border border-border-subtle border-l-2 border-l-fire bg-bg-raised p-5 transition-all duration-300 hover:bg-bg-hover hover:shadow-[0_0_28px_-8px_oklch(var(--color-sauron-fire)/0.5)]"
+        className="group flex flex-col rounded-xl border border-border-subtle bg-bg-raised p-5 shadow-[inset_0_1px_0_0_oklch(100%_0_0_/_0.06)] transition-all duration-150 hover:border-rune-gold/40 hover:bg-bg-hover"
       >
         <div className="text-rune text-[10px] tracking-[0.3em] text-text-muted">NEXT ACTION</div>
         {nextTask ? (

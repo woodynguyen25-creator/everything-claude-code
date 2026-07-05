@@ -21,7 +21,7 @@ export function PageShell({
   maxWidth = 1800,
 }: PageShellProps) {
   return (
-    <div className="relative min-h-screen overflow-hidden bg-[#0D0B1A] px-4 py-8 text-white sm:px-6 md:px-8 lg:px-10 xl:px-12">
+    <div className="relative min-h-screen overflow-hidden bg-bg-deep px-4 py-8 text-text-primary sm:px-6 md:px-8 lg:px-10 xl:px-12">
       {/* Radial dot grid */}
       <div
         aria-hidden
@@ -35,7 +35,7 @@ export function PageShell({
       {/* Gold top glow */}
       <div
         aria-hidden
-        className="pointer-events-none absolute inset-x-0 top-0 h-80 bg-[radial-gradient(ellipse_at_top,_rgba(201,169,97,0.18),_transparent_62%)]"
+        className="pointer-events-none absolute inset-x-0 top-0 h-80 bg-[radial-gradient(ellipse_at_top,_oklch(var(--color-rune-gold)_/_0.16),_transparent_62%)]"
       />
 
       <main
@@ -45,11 +45,11 @@ export function PageShell({
         <div className="flex flex-wrap items-end justify-between gap-4">
           <div>
             {eyebrow && (
-              <div className="text-[10px] uppercase tracking-[0.32em] text-white/42">
+              <div className="text-[10px] uppercase tracking-[0.32em] text-text-muted">
                 {eyebrow}
               </div>
             )}
-            <h1 className="mt-2 font-sans text-3xl font-semibold uppercase tracking-wide text-white md:text-4xl">
+            <h1 className="mt-2 font-display text-3xl uppercase tracking-wide text-rune-gold md:text-4xl">
               {title}
             </h1>
           </div>

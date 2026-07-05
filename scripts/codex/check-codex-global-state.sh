@@ -104,8 +104,18 @@ if [[ -f "$CONFIG_FILE" ]]; then
   else
     warn "persistent_instructions is not set (recommended but optional)"
   fi
-  check_config_pattern '^\[profiles\.strict\]' "profiles.strict exists"
-  check_config_pattern '^\[profiles\.yolo\]' "profiles.yolo exists"
+  # Profiles are USER-LEVEL keys; the repo baseline ships them commented out,
+  # so their absence is expected — warn instead of fail.
+  if search_file '^\[profiles\.strict\]' "$CONFIG_FILE"; then
+    ok "profiles.strict exists"
+  else
+    warn "profiles.strict not set (user-level profile, optional)"
+  fi
+  if search_file '^\[profiles\.yolo\]' "$CONFIG_FILE"; then
+    ok "profiles.yolo exists"
+  else
+    warn "profiles.yolo not set (user-level profile, optional)"
+  fi
 
   for section in \
     'mcp_servers.github' \

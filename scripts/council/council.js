@@ -14,7 +14,9 @@
 const { loadEnv, SEATS } = require('./providers');
 const { buildEntry, appendEntries, readRecent, summarize, DEFAULT_LEDGER } = require('./ledger');
 
-const DEFAULT_SEATS = ['codex', 'gemini', 'deepseek'];
+// Roster tuned 2026-07-01: Gemini dropped (out of funds + rate-limited/429s). DeepSeek = best paid value;
+// Cerebras + Groq = free, fast breadth seats (both confirmed working). Codex = deepest. Re-add gemini only if refunded.
+const DEFAULT_SEATS = ['codex', 'deepseek', 'cerebras', 'groq'];
 
 function parseArgs(argv) {
   const args = { question: '', to: DEFAULT_SEATS, tag: '', synth: false, timeoutS: 240 };
@@ -54,7 +56,7 @@ async function synthesize(question, results, env) {
     .map(r => `--- ${r.provider.toUpperCase()} (${r.model}) ---\n${r.text}`)
     .join('\n\n');
   const prompt = `Multiple AI models answered the same question. Synthesize for the human director:\n1. CONSENSUS — points most/all agree on (terse bullets).\n2. DISAGREEMENTS — where they diverge, who says what, and which position looks stronger.\n3. UNIQUE — any insight only one model surfaced that deserves attention.\nNo preamble.\n\nQUESTION: ${question}\n\nANSWERS:\n${blocks}`;
-  return SEATS.gemini(prompt, env, { timeoutMs: 120_000 });
+  return SEATS.deepseek(prompt, env, { timeoutMs: 120_000 }); // synth via deepseek (gemini out of funds)
 }
 
 async function main() {

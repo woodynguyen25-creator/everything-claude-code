@@ -1,7 +1,8 @@
 import fs from 'node:fs';
 import path from 'node:path';
 import Database from 'better-sqlite3';
-import { spawn, spawnSync } from 'node:child_process';
+import { spawn } from 'node:child_process';
+import { resolveClaudeBinary, isClaudeAvailable } from '@/lib/claude-bin';
 import { readDoctor } from '@/lib/doctor';
 import { getTradingDetail } from '@/lib/adapters/trading';
 import { listTasks } from '@/lib/tasks';
@@ -55,34 +56,9 @@ const preambles: Record<AgentName, string> = {
   sauron: '👁 The Eye turns west.',
 };
 
-function resolveClaudeBinary() {
-  const explicit = path.join(process.env.USERPROFILE || '', '.local', 'bin', 'claude.exe');
-  if (fs.existsSync(explicit)) return explicit;
-
-  const result = spawnSync('where', ['claude'], {
-    shell: true,
-    encoding: 'utf8',
-    timeout: 4000,
-  });
-  if (result.status === 0) {
-    const first = result.stdout.split(/\r?\n/).find(Boolean);
-    if (first) return first.trim();
-  }
-
-  return 'claude';
-}
-
 function looksResearchy(query: string) {
   const q = query.toLowerCase();
   return ['find', 'latest', 'compare', 'research', 'news', 'what\'s happening'].some((keyword) => q.includes(keyword));
-}
-
-function isClaudeAvailable() {
-  const result = spawnSync(resolveClaudeBinary(), ['--version'], {
-    timeout: 4000,
-    encoding: 'utf8',
-  });
-  return result.status === 0;
 }
 
 function scoreAgent(query: string): AgentName {

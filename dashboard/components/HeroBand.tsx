@@ -1,6 +1,7 @@
 import Image from 'next/image';
 import { getModeContext } from '@/lib/mode';
 import AnimatedRaven from '@/components/AnimatedRaven';
+import { HeroOrb, HeroPulse } from '@/components/HeroPulse';
 
 const HERO_VIDEO: string | null = null; // drop /public/hero-loop.webm and set to '/hero-loop.webm'
 const HERO_IMAGE: string | null = null; // fallback still image if no video
@@ -33,7 +34,7 @@ export default async function HeroBand() {
   }).format(new Date());
 
   return (
-    <section className="relative min-h-[36rem] overflow-hidden">
+    <section className="relative min-h-[28rem] overflow-hidden">
       {HERO_VIDEO ? (
         <video
           autoPlay
@@ -69,16 +70,41 @@ export default async function HeroBand() {
       />
       <div className="absolute inset-0 bg-[linear-gradient(180deg,transparent_0%,oklch(8%_0_0_/_0.42)_48%,oklch(8%_0_0_/_0.85)_100%)]" />
 
+      {/* Perspective grid floor — grounds the hero, echoes the command-deck HUD */}
+      <div
+        aria-hidden
+        className="pointer-events-none absolute inset-x-0 bottom-0 h-44 opacity-[0.05] [mask-image:linear-gradient(to_top,black_20%,transparent)]"
+        style={{
+          backgroundImage:
+            'repeating-linear-gradient(90deg, oklch(75% 0.13 80) 0 1px, transparent 1px 56px), repeating-linear-gradient(0deg, oklch(75% 0.13 80) 0 1px, transparent 1px 36px)',
+          transform: 'perspective(480px) rotateX(58deg) scale(1.7)',
+          transformOrigin: 'bottom',
+        }}
+      />
+
+      {/* Living network orb — the system's "brain"; color = live system state */}
+      <div
+        aria-hidden
+        className="pointer-events-none absolute -right-24 top-1/2 hidden h-[30rem] w-[30rem] -translate-y-1/2 opacity-55 lg:block xl:-right-12 xl:h-[34rem] xl:w-[34rem]"
+      >
+        <HeroOrb />
+      </div>
+
+      {/* Live clock + system pulse — top-left, balancing the raven */}
+      <div className="absolute left-12 top-10 z-10 hidden sm:block">
+        <HeroPulse />
+      </div>
+
       <AnimatedRaven />
 
-      <div className="relative z-10 flex min-h-[36rem] flex-col justify-end px-12 py-12">
+      <div className="relative z-10 flex min-h-[28rem] flex-col justify-end px-12 pb-10 pt-12">
         <div className="max-w-4xl">
           {/* Rune inscription label above the greeting */}
           <p
             className="mb-3 font-mono text-[9px] uppercase tracking-[0.3em] text-rune-gold/50"
             style={{ textShadow: '0 0 12px oklch(var(--color-rune-gold) / 0.3)' }}
           >
-            ᚹᛟᛞᛖᚾ · ᚱᛖᚨᛚᛗ
+            AIOS · Command Center
           </p>
           <h1 className="font-display text-[clamp(3rem,2rem+3vw,4.5rem)] leading-[1.08] text-rune-gold [text-shadow:_0_0_40px_oklch(var(--color-rune-gold)_/_0.25)]">
             {greeting}

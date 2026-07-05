@@ -23,14 +23,14 @@ function timeLabel(ts: string) {
 
 export function WhaleHunting({ flow }: WhaleHuntingProps) {
   return (
-    <section className="rounded-2xl border border-white/[0.08] bg-[rgba(12,10,26,0.85)] p-4 shadow-[0_16px_60px_rgba(0,0,0,0.42)] backdrop-blur-xl">
+    <section className="rounded-2xl border border-border-subtle bg-bg-panel/85 p-4 shadow-panel backdrop-blur-xl">
       <div className="mb-2 flex items-center justify-between gap-3">
         <div>
-          <h2 className="text-sm font-semibold uppercase tracking-[0.22em] text-white">🐋 Whale Hunting</h2>
-          <p className="mt-1 text-[11px] uppercase tracking-[0.16em] text-white/34">Artemis live flow board</p>
+          <h2 className="text-sm font-semibold uppercase tracking-[0.22em] text-text-primary">🐋 Whale Hunting</h2>
+          <p className="mt-1 text-[11px] uppercase tracking-[0.16em] text-text-muted">Artemis live flow board</p>
         </div>
         {flow.length > 15 ? (
-          <span className="rounded-full border border-white/[0.12] px-2.5 py-1 text-[10px] text-white/45">
+          <span className="rounded-full border border-border-subtle px-2.5 py-1 text-[10px] text-text-muted">
             +{flow.length - 15} more
           </span>
         ) : null}
@@ -40,7 +40,7 @@ export function WhaleHunting({ flow }: WhaleHuntingProps) {
       {flow.length > 0 && <MarqueeFlow items={flow} />}
 
       {flow.length === 0 ? (
-        <div className="flex min-h-36 items-center justify-center rounded-xl border border-dashed border-white/[0.08] text-sm text-white/34">
+        <div className="flex min-h-36 items-center justify-center rounded-xl border border-dashed border-border-subtle text-sm text-text-muted">
           Scanning the deep...
         </div>
       ) : (
@@ -48,12 +48,12 @@ export function WhaleHunting({ flow }: WhaleHuntingProps) {
           {flow.slice(0, 15).map((item) => (
             <div
               key={item.id}
-              className="rounded-xl border border-white/[0.06] bg-white/[0.025] px-3 py-3"
+              className="rounded-xl border border-border-subtle bg-white/[0.025] px-3 py-3"
             >
               <div className="flex items-start justify-between gap-3">
                 <div className="min-w-0">
                   <div className="flex items-center gap-2">
-                    <span className="text-base font-bold tracking-wide text-white">{item.ticker}</span>
+                    <span className="text-base font-bold tracking-wide text-text-primary">{item.ticker}</span>
                     <span
                       className={`rounded-full border px-2 py-0.5 text-[10px] font-semibold uppercase tracking-[0.14em] ${
                         item.right === 'call'
@@ -65,16 +65,16 @@ export function WhaleHunting({ flow }: WhaleHuntingProps) {
                     </span>
                     {item.notable ? <span className="h-2 w-2 animate-pulse rounded-full bg-emerald-300" /> : null}
                   </div>
-                  <div className="mt-1 font-mono text-[11px] text-white/38">
+                  <div className="mt-1 font-mono text-[11px] text-text-muted">
                     {item.type} / {item.expiry} / ${item.strike}
                   </div>
                 </div>
                 <div className="text-right">
-                  <div className="font-mono text-xs text-white/80">{money(item.premium)}</div>
-                  <div className="mt-1 text-[10px] uppercase tracking-[0.14em] text-white/34">{timeLabel(item.ts)}</div>
+                  <div className="font-mono text-xs text-text-secondary">{money(item.premium)}</div>
+                  <div className="mt-1 text-[10px] uppercase tracking-[0.14em] text-text-muted">{timeLabel(item.ts)}</div>
                 </div>
               </div>
-              <div className="mt-3 flex items-center justify-between gap-3 text-[11px] text-white/48">
+              <div className="mt-3 flex items-center justify-between gap-3 text-[11px] text-text-muted">
                 <span>{item.size.toLocaleString()} contracts</span>
                 <span className="uppercase tracking-[0.14em]">{item.side}</span>
               </div>

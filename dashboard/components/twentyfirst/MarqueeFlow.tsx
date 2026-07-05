@@ -36,12 +36,12 @@ export function MarqueeFlow({ items, speed = 45 }: MarqueeFlowProps) {
         <div
           aria-hidden
           className="pointer-events-none absolute inset-y-0 left-0 z-10 w-6"
-          style={{ background: 'linear-gradient(to right, rgba(12,10,26,0.95), transparent)' }}
+          style={{ background: 'linear-gradient(to right, oklch(var(--color-bg-panel) / 0.95), transparent)' }}
         />
         <div
           aria-hidden
           className="pointer-events-none absolute inset-y-0 right-0 z-10 w-6"
-          style={{ background: 'linear-gradient(to left, rgba(12,10,26,0.95), transparent)' }}
+          style={{ background: 'linear-gradient(to left, oklch(var(--color-bg-panel) / 0.95), transparent)' }}
         />
         <div className="mq-inner flex items-center gap-5">
           {/* Duplicate set for seamless loop */}
@@ -50,17 +50,17 @@ export function MarqueeFlow({ items, speed = 45 }: MarqueeFlowProps) {
               key={`${item.id}-${i}`}
               className="flex shrink-0 items-center gap-1.5 font-mono text-[10px]"
             >
-              <span className="font-bold tracking-wide text-white">{item.ticker}</span>
+              <span className="font-bold tracking-wide text-text-primary">{item.ticker}</span>
               <span
                 className={`uppercase tracking-[0.14em] ${
-                  item.right === 'call' ? 'text-[#C9A961]' : 'text-rose-300'
+                  item.right === 'call' ? 'text-rune-gold' : 'text-blood'
                 }`}
               >
                 {item.right}
               </span>
-              <span className="text-white/45">${item.strike}</span>
-              <span className="text-white/70">{compact(item.premium)}</span>
-              <span className="text-white/18 select-none">·</span>
+              <span className="text-text-muted">${item.strike}</span>
+              <span className="text-text-secondary">{compact(item.premium)}</span>
+              <span className="select-none text-text-muted/50">·</span>
             </span>
           ))}
         </div>

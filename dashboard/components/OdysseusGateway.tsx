@@ -21,7 +21,7 @@ export default function OdysseusGateway() {
   return (
     <section className="mx-12 mt-4">
       {/* Portal threshold card — layered depth, mythic atmosphere */}
-      <div className="group relative overflow-hidden rounded-2xl border border-border-subtle bg-gradient-to-br from-[#141228] via-bg-raised to-[#0f1320] p-6 transition-shadow duration-500 hover:border-rune-gold/30 hover:shadow-[0_0_48px_-16px_oklch(var(--color-rune-gold)/0.35)]">
+      <div className="group relative overflow-hidden rounded-2xl border border-border-subtle bg-gradient-to-br from-bg-panel via-bg-raised to-bg-deep p-6 transition-shadow duration-500 hover:border-rune-gold/30 hover:shadow-[0_0_48px_-16px_oklch(var(--color-rune-gold)/0.35)]">
 
         {/* faint starfield */}
         <div

@@ -53,23 +53,23 @@ export function EquityHeader({ state }: EquityHeaderProps) {
   const isSample = state.equity_source === 'sample';
 
   return (
-    <header className="rounded-2xl border border-white/[0.08] bg-[rgba(12,10,26,0.85)] p-4 shadow-[0_18px_70px_rgba(0,0,0,0.5)] backdrop-blur-xl">
+    <header className="rounded-2xl border border-border-subtle bg-bg-panel/85 p-4 shadow-panel backdrop-blur-xl">
       <div className="grid min-h-[140px] grid-cols-1 gap-4 xl:grid-cols-[0.75fr_1.1fr_0.9fr_0.85fr]">
-        <div className="rounded-2xl border border-white/[0.06] bg-white/[0.025] p-5">
+        <div className="rounded-2xl border border-border-subtle bg-white/[0.025] p-5">
           {/* Title + mode toggle */}
           <div className="flex items-start justify-between gap-2">
             <div className="flex items-center gap-2">
-              <div className="text-[10px] uppercase tracking-[0.28em] text-white/40">Olympus Fund</div>
+              <div className="text-[10px] uppercase tracking-[0.28em] text-text-muted">Olympus Fund</div>
               {isSample && (
                 <span
                   title="Demo figures — no live fund data yet"
-                  className="rounded-full border border-amber-400/30 bg-amber-400/10 px-1.5 py-0.5 text-[8px] font-semibold uppercase tracking-[0.16em] text-amber-300/90"
+                  className="rounded-full border border-ember/40 bg-ember/10 px-1.5 py-0.5 text-[8px] font-semibold uppercase tracking-[0.16em] text-ember"
                 >
                   Demo
                 </span>
               )}
             </div>
-            <div className="flex items-center gap-px rounded-full border border-white/[0.08] bg-white/[0.02] p-0.5">
+            <div className="flex items-center gap-px rounded-full border border-border-subtle bg-white/[0.02] p-0.5">
               {(['paper', 'real', 'both'] as EquityMode[]).map((m) => (
                 <button
                   key={m}
@@ -77,8 +77,8 @@ export function EquityHeader({ state }: EquityHeaderProps) {
                   onClick={() => selectMode(m)}
                   className={`rounded-full px-2.5 py-0.5 text-[8px] uppercase tracking-[0.14em] transition-all ${
                     mode === m
-                      ? 'bg-[#C9A961] font-semibold text-[#0D0B1A]'
-                      : 'text-white/35 hover:text-white/60'
+                      ? 'bg-rune-gold font-semibold text-bg-deep'
+                      : 'text-text-muted hover:text-text-secondary'
                   }`}
                 >
                   {m}
@@ -93,17 +93,17 @@ export function EquityHeader({ state }: EquityHeaderProps) {
               <NumberFlow
                 value={state.current_equity}
                 format={{ style: 'currency', currency: 'USD', minimumFractionDigits: 2 }}
-                className="font-mono text-4xl font-semibold tracking-wide text-white tabular-nums"
+                className="font-mono text-4xl font-semibold tracking-tight text-text-primary tabular-nums sm:text-5xl xl:text-6xl"
               />
             ) : (
-              <span className="font-mono text-2xl italic text-white/25">
+              <span className="font-mono text-2xl italic text-text-muted/60">
                 {rhAvailable ? 'Loading…' : '— real pending'}
               </span>
             )}
           </div>
 
           {/* P&L */}
-          <div className={`mt-2 font-mono text-sm ${isGreen ? 'text-emerald-200' : 'text-rose-200'}`}>
+          <div className={`mt-2 font-mono text-sm ${isGreen ? 'text-emerald' : 'text-blood'}`}>
             {isGreen ? '+' : ''}
             {currency(pnl)} / {isGreen ? '+' : ''}
             {(pct * 100).toFixed(2)}%
@@ -112,21 +112,21 @@ export function EquityHeader({ state }: EquityHeaderProps) {
           {/* Net delta strip (both mode) */}
           {mode === 'both' && (
             <div className="mt-1 flex flex-wrap items-center gap-x-2 gap-y-0.5 font-mono text-[9px]">
-              <span className={isGreen ? 'text-[#C9A961]' : 'text-rose-300'}>
+              <span className={isGreen ? 'text-rune-gold' : 'text-blood'}>
                 Paper {isGreen ? '+' : ''}{currency(pnl)} ({(pct * 100).toFixed(2)}%)
               </span>
-              <span className="text-white/20">·</span>
-              <span className={rhAvailable ? 'text-emerald-300/70' : 'text-white/25 italic'}>
+              <span className="text-text-muted/40">·</span>
+              <span className={rhAvailable ? 'text-emerald/70' : 'text-text-muted/60 italic'}>
                 {rhAvailable ? 'Real syncing…' : 'Real sync pending Robinhood wire-up'}
               </span>
             </div>
           )}
 
-          <div className="mt-3 flex flex-wrap gap-2 text-[10px] uppercase tracking-[0.16em] text-white/45">
-            <span className="rounded-full border border-white/[0.08] px-2 py-1">
+          <div className="mt-3 flex flex-wrap gap-2 text-[10px] uppercase tracking-[0.16em] text-text-muted">
+            <span className="rounded-full border border-border-subtle px-2 py-1">
               <NumberFlow value={state.open_positions_count} className="tabular-nums" /> open
             </span>
-            <span className="rounded-full border border-white/[0.08] px-2 py-1">
+            <span className="rounded-full border border-border-subtle px-2 py-1">
               <NumberFlow
                 value={state.total_unrealized_pnl}
                 format={{ style: 'currency', currency: 'USD', minimumFractionDigits: 0 }}
@@ -134,7 +134,7 @@ export function EquityHeader({ state }: EquityHeaderProps) {
               /> unrealized
             </span>
           </div>
-          <div className="mt-3 text-[10px] text-white/30 tracking-wide">
+          <div className="mt-3 text-[10px] text-text-muted/70 tracking-wide">
             ⚖️ Anubis chairs · ⚒️ Thor speaks · 🤴 LeBot reports
           </div>
         </div>

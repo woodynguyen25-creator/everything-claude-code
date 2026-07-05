@@ -133,7 +133,10 @@ async function listMemoryFiles(root: string, prefixSource: MemorySource): Promis
           ? (data.metadata as Record<string, unknown>).type
           : data.type) ?? 'unknown'
       );
-      const preview = body.replace(/\s+/g, ' ').trim().slice(0, 180);
+      // The card already renders the title — strip the leading heading so the
+      // preview doesn't open by repeating it verbatim.
+      const previewSource = body.replace(/^\s*#{1,6}\s+[^\n]*\n+/, '');
+      const preview = previewSource.replace(/\s+/g, ' ').trim().slice(0, 180);
       const relative = path.relative(memoryRoot, fullPath).replace(/\\/g, '/');
 
       items.push({
