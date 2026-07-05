@@ -22,13 +22,6 @@
         "TWENTY_FIRST_API_KEY": "${TWENTY_FIRST_API_KEY}"
       }
     },
-    "github": {
-      "command": "npx",
-      "args": [
-        "-y",
-        "@modelcontextprotocol/server-github@2025.4.8"
-      ]
-    },
     "context7": {
       "command": "npx",
       "args": [
