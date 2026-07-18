@@ -9,8 +9,9 @@ const path = require('node:path');
 
 const DEFAULT_LEDGER = path.resolve(__dirname, '..', '..', 'dashboard', 'data', 'council-ledger.jsonl');
 
-/** Build one immutable ledger entry from a provider result. */
-function buildEntry(result, { tag = '', promptChars = 0 } = {}) {
+/** Build one immutable ledger entry from a provider result. Token counts are chars/4 estimates. */
+function buildEntry(result, { tag = '', promptChars = 0, round = undefined } = {}) {
+  const outputChars = result.text ? result.text.length : 0;
   return {
     ts: new Date().toISOString(),
     provider: result.provider,
@@ -18,7 +19,11 @@ function buildEntry(result, { tag = '', promptChars = 0 } = {}) {
     ok: Boolean(result.ok),
     ms: result.ms ?? 0,
     promptChars,
-    outputChars: result.text ? result.text.length : 0,
+    outputChars,
+    promptTokensEst: Math.ceil(promptChars / 4),
+    outputTokensEst: Math.ceil(outputChars / 4),
+    round,
+    retried: result.retried || undefined,
     tag,
     error: result.error || undefined,
   };
