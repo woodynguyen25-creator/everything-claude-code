@@ -16,11 +16,29 @@
       "command": "npx",
       "args": [
         "-y",
-        "@21st-dev/magic@0.1.1-beta.1"
+        "@21st-dev/magic@0.2.1"
       ],
       "env": {
-        "TWENTY_FIRST_API_KEY": "${TWENTY_FIRST_API_KEY}"
+        "TWENTY_FIRST_API_KEY": "${TWENTY_FIRST_API_KEY}",
+        "API_KEY_21ST": "${TWENTY_FIRST_API_KEY}"
       }
+    },
+    "chrome-devtools": {
+      "command": "npx",
+      "args": [
+        "-y",
+        "chrome-devtools-mcp@latest",
+        "--headless",
+        "--slim"
+      ]
+    },
+    "shadcn": {
+      "command": "npx",
+      "args": [
+        "-y",
+        "shadcn@latest",
+        "mcp"
+      ]
     },
     "context7": {
       "command": "npx",
@@ -39,6 +57,12 @@
       "env": {
         "PLAYWRIGHT_MCP_EXTENSION_TOKEN": "${PLAYWRIGHT_MCP_EXTENSION_TOKEN}"
       }
+    },
+    "blender": {
+      "command": "uvx",
+      "args": [
+        "blender-mcp"
+      ]
     }
   }
 }
