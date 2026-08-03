@@ -251,6 +251,24 @@ async function main() {
   appendEntries(entries);
   const okCount = finalResults.filter(r => r.ok).length;
   console.log(`\n[council] ${okCount}/${finalResults.length} seats answered · ledger: ${DEFAULT_LEDGER}`);
+
+  // Silent quorum shortfall is how the gemini seat stayed dead for six days:
+  // a failed seat printed one "[FAILED: …]" line among pages of output and the
+  // run still looked successful. A council answering with fewer seats than
+  // requested is a DIFFERENT (worse-evidenced) council, so say so loudly and
+  // exit non-zero — a reduced quorum should never read as a clean result.
+  const dead = finalResults.filter(r => !r.ok);
+  if (dead.length > 0) {
+    console.log(`\n${'!'.repeat(64)}`);
+    console.log(`[council] DEGRADED QUORUM — ${dead.length} of ${finalResults.length} seat(s) DOWN:`);
+    for (const d of dead) {
+      console.log(`  ✗ ${d.provider.padEnd(11)} ${String(d.error || 'unknown error').replace(/\s+/g, ' ').slice(0, 100)}`);
+    }
+    console.log('[council] Treat this verdict as weaker evidence than a full quorum.');
+    console.log('[council] Diagnose with: node scripts/council/health.js');
+    console.log(`${'!'.repeat(64)}`);
+    process.exitCode = 1;
+  }
 }
 
 main().catch(err => {
