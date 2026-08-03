@@ -3,11 +3,17 @@
  * council — fan one question out to Woody's paid AI seats in parallel.
  *
  * Usage:
- *   node scripts/council/council.js "Question..." [--to codex,deepseek,...] [--tag purpose]
+ *   node scripts/council/council.js "Question..." [--to claude,codex,...] [--tag purpose]
  *                                   [--synth] [--rounds 2] [--no-lenses] [--timeout 180]
- *   node scripts/council/council.js ledger [N]      # show recent dispatches + today's per-provider summary
+ *   node scripts/council/council.js "Task..." --workers   # cheap tier, executes a fixed spec
+ *   node scripts/council/council.js ledger [N]      # recent dispatches + today's per-provider summary
+ *   node scripts/council/health.js                  # probe every seat, exit 1 if a roster seat is down
  *
- * Seats: codex (GPT-5.6 Sol CLI) · xai (Grok 4.5) · deepseek · cerebras · groq
+ * LEAD roster (default, decorrelated — ideate/decide):
+ *   claude (Opus 5) · codex (GPT-5.6 Sol) · xai (Grok 4.5) · gemini (3.5-flash)
+ * WORKER roster (--workers, correlated — execute):
+ *   groq · gemini · deepseek · cerebras
+ * Also callable via --to: geminipro (DEAD — 0-for-3, agy ineligible).
  * Every dispatch is logged to dashboard/data/council-ledger.jsonl.
  *
  * v2 (2026-07-18):
@@ -22,18 +28,41 @@
 const { loadEnv, SEATS } = require('./providers');
 const { buildEntry, appendEntries, readRecent, summarize, DEFAULT_LEDGER } = require('./ledger');
 
-// Roster tuned 2026-07-01: Gemini dropped (out of funds + rate-limited/429s). DeepSeek = best paid value;
-// Cerebras + Groq = free, fast breadth seats (both confirmed working). Codex = deepest. Re-add gemini only if refunded.
-const DEFAULT_SEATS = ['codex', 'xai', 'deepseek', 'cerebras', 'groq'];
+// Tiered roster (2026-08-02, Woody's call) — see roster.js for the tier
+// rationale and the ledger evidence behind each seat's placement.
+const { LEAD_SEATS, WORKER_SEATS } = require('./roster');
+
+const DEFAULT_SEATS = LEAD_SEATS;
 
 // Decorrelation lenses — same question, five forced perspectives. Assigned by seat order.
-const LENSES = [
-  'Answer through a RED-TEAM lens: what is wrong, risky, or likely to fail here? Attack the premise itself if it deserves it.',
-  'Answer through an IMPLEMENTATION-REALIST lens: what would this actually take to build or do — effort, sequencing, hidden work, dependencies?',
-  'Answer through a USER/CUSTOMER lens: how does this land for the end user or buyer — what do they actually need and feel?',
-  'Answer through a CHEAPEST-VIABLE lens: what is the simplest, cheapest path to 80% of the value?',
-  'Answer through a SECOND-ORDER lens: knock-on effects, incentives created, and what this makes harder or easier later.',
-];
+//
+// LENS SETS (added 2026-08-03). The default set is written for PRODUCT/BUILD questions, and
+// using it on a TRADE question produced a structural bias that took months to notice:
+// seat 0 always draws the RED-TEAM lens, seat 0 is `xai` (the strongest seat), and seats 2-3
+// draw "USER/CUSTOMER" and "CHEAPEST-VIABLE" — meaningless for a position, so those seats
+// defaulted to generic caution. Net effect: the best model was hard-coded to attack, nobody
+// was ever assigned to argue FOR the position, and every trade council came back unanimous
+// SELL. Unanimity out of a one-sided lens table is an echo, not a confirmation.
+//
+// The `trading` set fixes that by assigning genuine adversaries and putting BULL on seat 0,
+// so the bull case gets the strongest advocate rather than no advocate.
+const LENS_SETS = {
+  default: [
+    'Answer through a RED-TEAM lens: what is wrong, risky, or likely to fail here? Attack the premise itself if it deserves it.',
+    'Answer through an IMPLEMENTATION-REALIST lens: what would this actually take to build or do — effort, sequencing, hidden work, dependencies?',
+    'Answer through a USER/CUSTOMER lens: how does this land for the end user or buyer — what do they actually need and feel?',
+    'Answer through a CHEAPEST-VIABLE lens: what is the simplest, cheapest path to 80% of the value?',
+    'Answer through a SECOND-ORDER lens: knock-on effects, incentives created, and what this makes harder or easier later.',
+  ],
+  trading: [
+    'You are the BULL seat. Your job is to build the STRONGEST honest case FOR the position — for holding, adding, or extending the target. Argue it like a portfolio manager who wants to own this. Name the specific catalysts, the flows, the technical structure and the fundamental case that justify more upside, and say what price you think it reaches and by when. You are NOT permitted to conclude "sell" — if you genuinely believe the bull case is unsalvageable, say exactly which single fact kills it and stop. Do not hedge. Someone else is assigned to argue the other side.',
+    'You are the BEAR seat. Your job is to build the STRONGEST honest case AGAINST the position — for selling now or cutting size. Name the specific mechanism that takes the price down, the level that confirms it, and the timeframe. You are NOT permitted to conclude "hold". Do not hedge. Someone else is assigned to argue the other side.',
+    'You are the QUANT seat. NUMBERS ONLY. Recompute the packet\'s math independently and say where you get a different answer. Probabilities, expected value, break-evens, position sizing, spread and slippage costs, decay. Flag any figure in the packet you believe is wrong or misleading, and show the corrected arithmetic. You are FORBIDDEN from making a directional recommendation — if the numbers favour one side, present the numbers and let them speak.',
+    'You are the RISK seat. Ignore direction entirely — assume the thesis is correct and ask only what happens if it is not. Concentration, ruin risk, gap risk, correlation to other exposure, worst realistic drawdown, and whether the position size is defensible on its own terms. Your only question is "what kills the account", not "what makes money".',
+    'You are the HISTORIAN seat. Judge this ONLY against the operator\'s own measured track record as given in the packet. What has actually happened the last N times he was in a setup like this one? Where does the packet\'s framing contradict his own data? Be specific that you are reasoning from his record, not from general market wisdom — and if his record contradicts the consensus view in the packet, say so plainly.',
+  ],
+};
+const LENSES = LENS_SETS.default;
 
 const SYNTH_FALLBACK_CHAIN = ['deepseek', 'xai', 'cerebras'];
 const SYNTH_BLOCK_MAX_CHARS = 6000; // per-seat cap fed into the synthesis prompt
@@ -45,15 +74,23 @@ function truncate(text, max) {
 }
 
 function parseArgs(argv) {
-  const args = { question: '', to: DEFAULT_SEATS, tag: '', synth: false, timeoutS: 240, rounds: 1, lenses: true };
+  const args = { question: '', to: DEFAULT_SEATS, tag: '', synth: false, timeoutS: 240, rounds: 1, lenses: true, lensSet: 'default' };
   const rest = [];
   for (let i = 0; i < argv.length; i += 1) {
     const a = argv[i];
     if (a === '--to') args.to = String(argv[++i] || '').split(',').map(s => s.trim()).filter(Boolean);
+    // --workers swaps the LEAD roster for the WORKER roster: cheap seats
+    // executing an already-decided spec. Lenses off by default — workers are
+    // meant to converge on the spec, not diverge from it.
+    else if (a === '--workers') { args.to = WORKER_SEATS; args.lenses = false; }
     else if (a === '--tag') args.tag = String(argv[++i] || '');
     else if (a === '--synth') args.synth = true;
     else if (a === '--rounds') args.rounds = Math.max(1, Math.min(2, Number(argv[++i]) || 1));
     else if (a === '--no-lenses') args.lenses = false;
+    // --trading swaps the product/build lens table for adversarial BULL/BEAR/QUANT/RISK/
+    // HISTORIAN seats. Use it for ANY position or market question.
+    else if (a === '--trading') args.lensSet = 'trading';
+    else if (a === '--lens-set') args.lensSet = String(argv[++i] || 'default');
     else if (a === '--timeout') args.timeoutS = Number(argv[++i]) || 240;
     else rest.push(a);
   }
@@ -151,7 +188,9 @@ async function main() {
 
   const args = parseArgs(argv);
   if (!args.question) {
-    console.error('Usage: council.js "Question..." [--to codex,deepseek,cerebras,groq,xai] [--tag purpose] [--synth] [--rounds 2] [--no-lenses] [--timeout 180]');
+    console.error(`Usage: council.js "Question..." [--to ${Object.keys(SEATS).join(',')}] [--workers] [--tag purpose] [--synth] [--rounds 2] [--no-lenses] [--timeout 180]`);
+    console.error(`  LEAD (default): ${LEAD_SEATS.join(', ')}`);
+    console.error(`  WORKER (--workers): ${WORKER_SEATS.join(', ')}`);
     process.exitCode = 1;
     return;
   }
@@ -161,19 +200,36 @@ async function main() {
     process.exitCode = 1;
     return;
   }
-  if (args.to.includes('gemini')) {
-    process.stderr.write('[council] WARNING: gemini was dropped from the roster 2026-07-01 (out of funds, 41% historical failure rate) — expect failures\n');
-  }
+  // gemini seat: key rotated 2026-08-02 to a fresh AI-Studio project after the
+  // prior project was SUSPENDED (403 on every model, incl. flash). Now on
+  // gemini-3.5-flash. Lifetime failure rate is 44% — ON PROBATION, watch the ledger.
 
   const env = loadEnv();
+  // codex (Sol) boots a full agent session (MCP servers + AGENTS.md + skills + doctrine block)
+  // on every call — ~10x slower than the pure-API seats (a trivial call = ~60s/41k tokens).
+  // Give it a floor so a short global --timeout can't guillotine it before it answers.
+  // Per-seat timeout FLOORS for CLI seats that boot a whole agent session
+  // before answering, so a short global --timeout can't guillotine them.
+  // claude measured ~8s on a trivial prompt but boots MCP servers + skills on
+  // real ones; codex is far worse (182s average, 600s hard timeouts observed).
+  const CLI_MIN_TIMEOUT_S = { codex: 600, claude: 300 };
+  const seatOpts = seat => ({ timeoutMs: Math.max(args.timeoutS, CLI_MIN_TIMEOUT_S[seat] || 0) * 1000 });
   const opts = { timeoutMs: args.timeoutS * 1000 };
   const useLenses = args.lenses && args.to.length >= 3; // 1-2 seats = targeted ask, lenses off
-  console.log(`[council] dispatching to ${args.to.join(', ')}${useLenses ? ' (role lenses on)' : ''} — results stream as seats finish …`);
+  const lensTable = LENS_SETS[args.lensSet] || LENS_SETS.default;
+  const lensNames = args.lensSet === 'trading'
+    ? ['BULL', 'BEAR', 'QUANT', 'RISK', 'HISTORIAN'] : null;
+  const lensLabel = useLenses
+    ? (lensNames
+        ? ` — ${args.to.map((s, i) => `${s}=${lensNames[i % lensNames.length]}`).join(' ')}`
+        : ' (role lenses on)')
+    : '';
+  console.log(`[council] dispatching to ${args.to.join(', ')}${lensLabel} — results stream as seats finish …`);
 
   const entries = [];
   const round1 = await Promise.all(args.to.map((seat, i) => {
-    const lens = useLenses ? `\n\n[LENS — apply to your answer] ${LENSES[i % LENSES.length]}` : '';
-    return callSeat(seat, args.question + lens, env, opts).then(r => {
+    const lens = useLenses ? `\n\n[LENS — apply to your answer] ${lensTable[i % lensTable.length]}` : '';
+    return callSeat(seat, args.question + lens, env, seatOpts(seat)).then(r => {
       printResult(r);
       entries.push(buildEntry(r, { tag: args.tag, promptChars: args.question.length, round: 1 }));
       return r;

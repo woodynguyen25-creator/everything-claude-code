@@ -39,7 +39,8 @@ async function callLLM(
     {
       url:   GEMINI_URL,
       key:   process.env.GEMINI_API_KEY,
-      model: 'gemini-2.0-flash',
+      // 3.5-flash, not 3.6: measured 3/3 stable vs 3.6's 2/3 (flaps 403). 2026-08-02.
+      model: 'gemini-3.5-flash',
       name:  'Gemini',
     },
     {

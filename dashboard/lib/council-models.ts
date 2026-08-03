@@ -38,7 +38,9 @@ const COUNCIL_MODELS: Record<CouncilAgent, CouncilModelConfig> = {
     godModeLabel: 'Fenrir Unchained',
   },
   sauron: {
-    normal: { provider: 'gemini', model: 'gemini-2.5-flash', label: 'Gemini 2.5 Flash' },
+    // gemini-3.6-flash was dead here: the old key's project was suspended AND
+    // the id flapped 403 (2/3 calls) even on the new key. 3.5-flash went 3/3.
+    normal: { provider: 'gemini', model: 'gemini-3.5-flash', label: 'Gemini 3.5 Flash' },
     supercharged: { provider: 'claude-cli', model: 'claude-fable-5', label: 'Claude CLI — Fable 5' },
     godModeLabel: 'The Eye Opens',
   },

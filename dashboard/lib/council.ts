@@ -125,8 +125,9 @@ const CONFIG: Record<CouncilAgent, CouncilConfig> = {
     sigilSrc: '/art/agents/sigils/sauron.webp',
     chain: 'bulkExecutor',
     primaryProvider: 'gemini',
-    primaryModel: 'gemini-2.5-flash',
-    modelLabel: 'Gemini 2.5 Flash',
+    // 3.6-flash flaps 403 (1 of 3 calls); 3.5-flash measured 3/3 stable 2026-08-02.
+    primaryModel: 'gemini-3.5-flash',
+    modelLabel: 'Gemini 3.5 Flash',
     summonLabel: String(copy.button.summon),
     emptyHeading: 'Sauron sees',
     thinking: String(copy.loading.agentSauron),
