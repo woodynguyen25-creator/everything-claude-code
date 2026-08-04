@@ -11,7 +11,15 @@
  * Usage:
  *   node scripts/council/health.js              # probe roster seats
  *   node scripts/council/health.js --all        # include benched seats
+ *   node scripts/council/health.js --models     # MODEL-ROT CHECK (see below)
  *   node scripts/council/health.js --json       # machine-readable
+ *
+ * --models answers a different question than the probe: not "does the seat
+ * answer" but "does the model this seat is configured with still EXIST".
+ * Those diverge. On 2026-08-04 three configured ids had silently vanished from
+ * their providers (qwen-3-235b-a22b, llama3.1-8b, gemma2-9b-it) while every
+ * seat still reported UP, because the live seats used different ids than the
+ * loop router did. Run this after any provider announcement.
  *
  * Exit codes: 0 = every roster seat up · 1 = at least one roster seat down.
  * Safe to wire as a preflight; it costs one trivial prompt per seat.
@@ -19,7 +27,7 @@
 'use strict';
 
 const { loadEnv, SEATS } = require('./providers');
-const { LEAD_SEATS, WORKER_SEATS, BENCHED_SEATS } = require('./roster');
+const { LEAD_SEATS, WORKER_SEATS, BENCHED_SEATS, SEATS: ROSTER, CATALOGUES } = require('./roster');
 
 const PROMPT = 'Reply with exactly one word: PONG';
 
@@ -48,10 +56,65 @@ function tierOf(seat) {
   return tiers.join('+');
 }
 
+/**
+ * Model-rot check: for every seat whose provider exposes a model catalogue,
+ * confirm the configured id is still listed. A seat can answer fine while a
+ * DIFFERENT part of the system points at a dead id, so this is deliberately
+ * independent of the liveness probe.
+ */
+async function checkModels(env) {
+  console.log('[health] model-rot check — configured ids vs live provider catalogues\n');
+  const cache = {};
+  let rot = 0;
+  let skipped = 0;
+
+  for (const seat of ROSTER) {
+    const cat = CATALOGUES[seat.id];
+    if (!cat) {
+      console.log(`  --   ${seat.id.padEnd(11)} ${seat.model.padEnd(28)} no catalogue API (CLI seat) — use the liveness probe`);
+      skipped += 1;
+      continue;
+    }
+    if (!cache[seat.id]) {
+      try {
+        // Most vendors take a Bearer header; Gemini takes the key as a query param.
+        const isQuery = cat.auth === 'query';
+        const url = isQuery ? `${cat.url}${cat.url.includes('?') ? '&' : '?'}key=${env[cat.key]}` : cat.url;
+        const headers = isQuery ? {} : { Authorization: `Bearer ${env[cat.key]}` };
+        const r = await fetch(url, { headers, signal: AbortSignal.timeout(30_000) });
+        const j = await r.json();
+        cache[seat.id] = (j.data || j.models || [])
+          .map(m => m.id || m.name)
+          .filter(Boolean)
+          // Gemini prefixes ids with "models/"; strip so config can stay clean.
+          .map(id => id.replace(/^models\//, ''));
+      } catch (e) {
+        console.log(`  ??   ${seat.id.padEnd(11)} catalogue unreachable: ${e.message.slice(0, 60)}`);
+        skipped += 1;
+        continue;
+      }
+    }
+    const listed = cache[seat.id].includes(seat.model);
+    // Some providers serve working aliases that are absent from /models
+    // (deepseek-chat is live but unlisted), so an absent id is a WARNING to
+    // verify by probe, never an automatic failure.
+    console.log(`  ${listed ? 'OK  ' : 'WARN'} ${seat.id.padEnd(11)} ${seat.model.padEnd(28)} ${listed ? 'listed' : 'NOT in catalogue — alias, or rotted. Verify by probe.'}`);
+    if (!listed) rot += 1;
+  }
+
+  console.log(`\n[health] ${ROSTER.length - rot - skipped} verified · ${rot} unlisted · ${skipped} not checkable`);
+  return rot;
+}
+
 async function main() {
   const argv = process.argv.slice(2);
   const asJson = argv.includes('--json');
   const includeBenched = argv.includes('--all');
+
+  if (argv.includes('--models')) {
+    await checkModels(env);
+    return;
+  }
 
   // A seat in both rosters is probed once; Set preserves first-seen order.
   const roster = [...new Set([...LEAD_SEATS, ...WORKER_SEATS])];

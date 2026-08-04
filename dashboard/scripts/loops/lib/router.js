@@ -51,28 +51,36 @@ const CHAINS = {
   fastExecutor: ['cerebrasFast', 'groq', 'gemini', 'ollama'],
   // Code: no DeepSeek free tier, so route to Cerebras GPT-OSS-120B (strong code) or local Ollama coder
   codeGeneration: ['cerebrasMid', 'cerebras', 'ollamaCoder'],
-  triage: ['haiku', 'cerebrasFast', 'groqGemma', 'ollamaSmall'],
+  triage: ['haiku', 'cerebrasFast', 'groqSmall', 'ollamaSmall'],
   critic: ['sonnet', 'cerebras', 'groqLlama', 'gpt55'],
   multimodal: ['gemini'], // no fallback — fail loud
   planner: ['opus', 'sonnet'],
   longContext: ['cerebras', 'cerebrasMid', 'geminiPro'],
-  thinker: ['cerebrasFast', 'groqGemma', 'gemini'],
+  thinker: ['cerebrasFast', 'groqSmall', 'gemini'],
   paidWorker: ['deepseek', 'codex', 'cerebrasMid', 'groqLlama'],
   freeWorker: ['cerebras', 'groq', 'gemini', 'ollama'],
 };
 
 // Default model per provider for each role.
-// Cerebras free-tier model IDs (verified 2026-05-18 via /v1/models):
-//   qwen-3-235b-a22b-instruct-2507  - 235B MoE, top-tier reasoning, sometimes 429 under load
-//   gpt-oss-120b                    - OpenAI's open 120B, solid all-around
-//   zai-glm-4.7                     - ZAI GLM 4.7
-//   llama3.1-8b                     - Fastest, sub-200ms, good for high-frequency tasks
+// Cerebras free-tier model IDs (re-verified 2026-08-04 via /v1/models — the key
+// serves exactly THREE models; the 2026-05-18 list below it was stale):
+//   gpt-oss-120b   - OpenAI's open 120B. Fastest useful option (~390ms), 1% failure.
+//   gemma-4-31b    - smaller, ~388ms, reasoning held up on a real test prompt.
+//   zai-glm-4.7    - ⚠ returns HTTP 200 with an EMPTY body. Do NOT route to it.
 const MODEL_MAP = {
-  cerebras: 'qwen-3-235b-a22b-instruct-2507',  // primary — heavy reasoning
-  cerebrasFast: 'llama3.1-8b',                 // when latency matters more than depth
-  cerebrasMid: 'gpt-oss-120b',                 // fallback when Qwen-235B is 429
+  // 2026-08-04: validated every id against the live provider catalogues. THREE
+  // were dead and had been routing to nothing:
+  //   qwen-3-235b-a22b-instruct-2507 → 404 (this was the "primary" alias)
+  //   llama3.1-8b                    → 404 (never existed on the Cerebras key)
+  //   gemma2-9b-it                   → 400 "decommissioned" by Groq
+  // The Cerebras key serves exactly three models: gpt-oss-120b, gemma-4-31b,
+  // zai-glm-4.7. zai-glm-4.7 returns HTTP 200 with an EMPTY body — tested, do
+  // not use. Re-check with: node scripts/council/health.js --models
+  cerebras: 'gpt-oss-120b',      // primary — 1% failure over 176 calls, ~390ms
+  cerebrasFast: 'gemma-4-31b',   // smaller/cheaper; measured 388ms, sound reasoning
+  cerebrasMid: 'gpt-oss-120b',   // same as primary; Cerebras has no middle tier
   groq: 'llama-3.3-70b-versatile',
-  groqGemma: 'gemma2-9b-it',
+  groqSmall: 'llama-3.1-8b-instant',  // replaces decommissioned gemma2-9b-it
   groqLlama: 'llama-3.3-70b-versatile',
   deepseek: 'deepseek-chat',
   deepseekReasoner: 'deepseek-reasoner',
@@ -307,7 +315,7 @@ async function callClaude({ model, system, prompt, maxTokens = 2000 }) {
 
 const PROVIDER_CALLS = {
   groq: callGroq,
-  groqGemma: callGroq,
+  groqSmall: callGroq,
   groqLlama: callGroq,
   cerebras: callCerebras,
   gemini: callGemini,
