@@ -35,6 +35,45 @@ function appendEntries(entries, ledgerPath = DEFAULT_LEDGER) {
   fs.appendFileSync(ledgerPath, `${lines}\n`, 'utf8');
 }
 
+const TRANSCRIPT_DIR = path.resolve(__dirname, '..', '..', 'dashboard', 'data', 'council-transcripts');
+
+/**
+ * Persist the full text of a council run.
+ *
+ * ADDED 2026-08-03. The ledger deliberately stores metadata only, so the dashboard's
+ * cost view stays small — but that meant every council VERDICT evaporated the moment the
+ * terminal scrolled. Runs were being re-dispatched to recover answers that had already been
+ * paid for, and a seat could not be audited for fabrication after the fact. Text goes in a
+ * sibling file, not in the JSONL, so the cost view is unaffected.
+ *
+ * Returns the transcript path (or null if nothing was written).
+ */
+function saveTranscript(results, { tag = '', question = '' } = {}) {
+  const withText = (results || []).filter(r => r && r.text);
+  if (withText.length === 0) return null;
+  fs.mkdirSync(TRANSCRIPT_DIR, { recursive: true });
+  const stamp = new Date().toISOString().replace(/[:.]/g, '-');
+  const slug = (tag || 'untagged').replace(/[^a-zA-Z0-9._-]/g, '-').slice(0, 60);
+  const file = path.join(TRANSCRIPT_DIR, `${stamp}__${slug}.md`);
+  const parts = [
+    `# Council run — ${tag || 'untagged'}`,
+    `_${new Date().toISOString()}_`,
+    '',
+    '## Question',
+    '',
+    '```',
+    question.slice(0, 20000),
+    '```',
+    '',
+  ];
+  for (const r of withText) {
+    parts.push(`## ${r.provider} (${r.model}${r.ms ? `, ${(r.ms / 1000).toFixed(1)}s` : ''})`,
+      '', r.text, '');
+  }
+  fs.writeFileSync(file, parts.join('\n'), 'utf8');
+  return file;
+}
+
 function readRecent(n = 20, ledgerPath = DEFAULT_LEDGER) {
   try {
     const lines = fs.readFileSync(ledgerPath, 'utf8').split(/\r?\n/).filter(Boolean);
@@ -60,4 +99,4 @@ function summarize(entries, dayIso = new Date().toISOString().slice(0, 10)) {
   return byProvider;
 }
 
-module.exports = { DEFAULT_LEDGER, buildEntry, appendEntries, readRecent, summarize };
+module.exports = { DEFAULT_LEDGER, TRANSCRIPT_DIR, buildEntry, appendEntries, saveTranscript, readRecent, summarize };

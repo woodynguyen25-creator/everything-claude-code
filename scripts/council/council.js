@@ -26,7 +26,7 @@
 'use strict';
 
 const { loadEnv, SEATS } = require('./providers');
-const { buildEntry, appendEntries, readRecent, summarize, DEFAULT_LEDGER } = require('./ledger');
+const { buildEntry, appendEntries, saveTranscript, readRecent, summarize, DEFAULT_LEDGER } = require('./ledger');
 
 // Tiered roster (2026-08-02, Woody's call) — see roster.js for the tier
 // rationale and the ledger evidence behind each seat's placement.
@@ -241,16 +241,22 @@ async function main() {
     finalResults = await debateRound(args.question, args.to, round1, env, opts, args.tag, entries);
   }
 
+  const transcriptResults = [...finalResults];
   if (args.synth) {
     const synth = await synthesize(args.question, finalResults, env);
     entries.push(buildEntry(synth, { tag: `${args.tag}#synth`, promptChars: args.question.length }));
+    transcriptResults.push({ ...synth, provider: `${synth.provider} (SYNTHESIS)` });
     console.log(`\n===== SYNTHESIS (${synth.provider}/${synth.model}) =====`);
     console.log(synth.ok ? synth.text : `[FAILED: ${synth.error}]`);
   }
 
+  // Persist full text BEFORE the ledger append, so a crash in appendEntries still leaves the
+  // answers on disk. Verdicts used to survive only as long as the terminal scrollback.
+  const transcript = saveTranscript(transcriptResults, { tag: args.tag, question: args.question });
   appendEntries(entries);
   const okCount = finalResults.filter(r => r.ok).length;
   console.log(`\n[council] ${okCount}/${finalResults.length} seats answered · ledger: ${DEFAULT_LEDGER}`);
+  if (transcript) console.log(`[council] full text saved: ${transcript}`);
 
   // Silent quorum shortfall is how the gemini seat stayed dead for six days:
   // a failed seat printed one "[FAILED: …]" line among pages of output and the
