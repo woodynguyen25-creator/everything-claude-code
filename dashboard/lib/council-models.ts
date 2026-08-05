@@ -38,9 +38,11 @@ const COUNCIL_MODELS: Record<CouncilAgent, CouncilModelConfig> = {
     godModeLabel: 'Fenrir Unchained',
   },
   sauron: {
-    // gemini-3.6-flash was dead here: the old key's project was suspended AND
-    // the id flapped 403 (2/3 calls) even on the new key. 3.5-flash went 3/3.
-    normal: { provider: 'gemini', model: 'gemini-3.5-flash', label: 'Gemini 3.5 Flash' },
+    // Re-measured 2026-08-05 (n=5 each): 3.6-flash 5/5 med 1242ms range 1125-1293;
+    // 3.5-flash 5/5 med 2026ms but range 1142-24539 — a 20x tail that stalls the
+    // council past its own timeout. The earlier "3.6 flaps 403 2/3" note was the
+    // SUSPENDED project on the old key, not the model. Back on 3.6.
+    normal: { provider: 'gemini', model: 'gemini-3.6-flash', label: 'Gemini 3.6 Flash' },
     supercharged: { provider: 'claude-cli', model: 'claude-fable-5', label: 'Claude CLI — Fable 5' },
     godModeLabel: 'The Eye Opens',
   },

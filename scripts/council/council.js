@@ -202,7 +202,9 @@ async function main() {
   }
   // gemini seat: key rotated 2026-08-02 to a fresh AI-Studio project after the
   // prior project was SUSPENDED (403 on every model, incl. flash). Now on
-  // gemini-3.5-flash. Lifetime failure rate is 44% — ON PROBATION, watch the ledger.
+  // gemini-3.6-flash — see roster.js for the latency-variance measurement that
+  // chose it over 3.5-flash. Lifetime failure rate is 44% — ON PROBATION, but note
+  // most of that predates the key rotation. Watch the ledger.
 
   const env = loadEnv();
   // codex (Sol) boots a full agent session (MCP servers + AGENTS.md + skills + doctrine block)

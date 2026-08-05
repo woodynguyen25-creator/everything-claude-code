@@ -101,7 +101,7 @@ function runCodex(prompt, { timeoutMs = 900_000 } = {}) {
  * a separate wallet. REVISIT-IF: Cloud billing is linked to this project — then
  * gemini-3.1-pro-preview becomes viable and the seat can move to the lead tier.
  */
-async function runGemini(prompt, env, { timeoutMs = 120_000, model = 'gemini-3.5-flash' } = {}) {
+async function runGemini(prompt, env, { timeoutMs = 120_000, model = 'gemini-3.6-flash' } = {}) {
   const started = Date.now();
   const key = env.GEMINI_API_KEY;
   if (!key) return { provider: 'gemini', model, ok: false, text: '', ms: 0, error: 'GEMINI_API_KEY missing' };

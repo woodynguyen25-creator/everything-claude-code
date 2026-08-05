@@ -125,9 +125,10 @@ const CONFIG: Record<CouncilAgent, CouncilConfig> = {
     sigilSrc: '/art/agents/sigils/sauron.webp',
     chain: 'bulkExecutor',
     primaryProvider: 'gemini',
-    // 3.6-flash flaps 403 (1 of 3 calls); 3.5-flash measured 3/3 stable 2026-08-02.
-    primaryModel: 'gemini-3.5-flash',
-    modelLabel: 'Gemini 3.5 Flash',
+    // 2026-08-05 (n=5): 3.6-flash 5/5 med 1242ms range 1125-1293; 3.5-flash 5/5 but
+    // range 1142-24539ms. The 08-02 "3.6 flaps 403" was the suspended project.
+    primaryModel: 'gemini-3.6-flash',
+    modelLabel: 'Gemini 3.6 Flash',
     summonLabel: String(copy.button.summon),
     emptyHeading: 'Sauron sees',
     thinking: String(copy.loading.agentSauron),

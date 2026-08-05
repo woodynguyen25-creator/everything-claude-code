@@ -39,8 +39,10 @@ async function callLLM(
     {
       url:   GEMINI_URL,
       key:   process.env.GEMINI_API_KEY,
-      // 3.5-flash, not 3.6: measured 3/3 stable vs 3.6's 2/3 (flaps 403). 2026-08-02.
-      model: 'gemini-3.5-flash',
+      // 3.6, not 3.5: re-measured 2026-08-05 (n=5) — 3.6 5/5 range 1125-1293ms,
+      // 3.5 5/5 but range 1142-24539ms. The 08-02 3.6 "403 flap" was the
+      // suspended AI-Studio project on the old key, not the model.
+      model: 'gemini-3.6-flash',
       name:  'Gemini',
     },
     {

@@ -87,15 +87,17 @@ const MODEL_MAP = {
   codex: 'gpt-5.4',
   ollamaCoder: 'deepseek-coder-v2:16b',
   // 2026-08-02: key rotated to a fresh AI-Studio project (prior project was
-  // SUSPENDED — 403 on every model). Moved off 3.6-flash, which flapped 403 on
-  // 1 of 3 back-to-back calls even on the healthy key; 3.5-flash went 3/3.
-  gemini: 'gemini-3.5-flash',
+  // SUSPENDED — 403 on every model).
+  // 2026-08-05 re-measured (n=5): 3.6-flash 5/5, med 1242ms, range 1125-1293.
+  // 3.5-flash also 5/5 but range 1142-24539ms — the 403 flap attributed to 3.6 on
+  // 08-02 was the suspended project, not the model. Back on 3.6 for the tight tail.
+  gemini: 'gemini-3.6-flash',
   // geminiPro is UNUSABLE on this tier: every pro id (3.1-pro, 3-pro, 2.5-pro)
   // returns 429 RESOURCE_EXHAUSTED. The Google AI-Pro consumer sub grants NO
   // API quota — that is a separate wallet from the AI-Studio/Cloud key.
   // Routing anything here is a guaranteed failure, so it falls back to flash.
   // REVISIT-IF: Cloud billing is linked to the new project.
-  geminiPro: 'gemini-3.5-flash',
+  geminiPro: 'gemini-3.6-flash',
   ollama: 'qwen2.5:7b',          // confirmed installed on Woody's machine 2026-05-18
   ollamaSmall: 'llama3.2:3b',    // confirmed installed
   ollamaTiny: 'llama3.2:1b',     // confirmed installed

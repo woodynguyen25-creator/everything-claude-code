@@ -36,13 +36,35 @@ const PROMPT = 'Reply with exactly one word: PONG';
 const TIMEOUT_S = { codex: 180, claude: 120, geminipro: 60 };
 const DEFAULT_TIMEOUT_S = 45;
 
+// A 429 means the seat is ALIVE and refusing right now — a different condition
+// from a dead key or a rotted model id, and it must not raise the same alarm.
+// Measured on the free tiers 2026-08-05: cerebras allows 5 requests/MINUTE
+// (2400/day, 150/hour), so merely running this check a few times in a row trips
+// it — the health check was manufacturing its own outage, reporting DOWN while
+// the day quota sat at 2395/2400 and a manual call returned 200. A monitor that
+// causes the failure it reports is worse than no monitor: it trains you to
+// ignore the alarm. One backoff+retry absorbs the per-minute window.
+const THROTTLE_BACKOFF_MS = 12_000;
+
+function isThrottled(r) {
+  return /\b429\b|rate.?limit|RESOURCE_EXHAUSTED|quota/i.test(String(r?.error || ''));
+}
+
 /** Probe one seat. Never throws — a thrown runner is itself a DOWN result. */
-async function probe(seat, env) {
+async function probe(seat, env, { allowRetry = true } = {}) {
   const timeoutMs = (TIMEOUT_S[seat] || DEFAULT_TIMEOUT_S) * 1000;
   const started = Date.now();
   try {
     const r = await SEATS[seat](PROMPT, env, { timeoutMs });
-    return { seat, ok: Boolean(r.ok), model: r.model || '?', ms: r.ms ?? Date.now() - started, error: r.error, text: (r.text || '').trim() };
+    const res = { seat, ok: Boolean(r.ok), model: r.model || '?', ms: r.ms ?? Date.now() - started, error: r.error, text: (r.text || '').trim() };
+    if (!res.ok && isThrottled(res) && allowRetry) {
+      await new Promise(resolve => setTimeout(resolve, THROTTLE_BACKOFF_MS));
+      const retry = await probe(seat, env, { allowRetry: false });
+      // Still refusing after the window: alive but unusable. Say WHY, so this
+      // never gets mistaken for a dead key or a rotted id.
+      return retry.ok ? retry : { ...retry, throttled: true };
+    }
+    return res;
   } catch (e) {
     return { seat, ok: false, model: '?', ms: Date.now() - started, error: `threw: ${e.message}` };
   }
@@ -139,12 +161,18 @@ async function main() {
   } else {
     for (const r of results.sort((a, b) => Number(b.ok) - Number(a.ok))) {
       const detail = r.ok ? r.text.slice(0, 40) : String(r.error || '').replace(/\s+/g, ' ').slice(0, 80);
+      const state = r.ok ? 'UP  ' : (r.throttled ? 'THRT' : 'DOWN');
       console.log(
-        `  ${r.ok ? 'UP  ' : 'DOWN'} ${r.seat.padEnd(11)} ${tierOf(r.seat).padEnd(10)} ${String(r.model).padEnd(24)} ${String(`${r.ms}ms`).padStart(8)}  ${detail}`,
+        `  ${state} ${r.seat.padEnd(11)} ${tierOf(r.seat).padEnd(10)} ${String(r.model).padEnd(24)} ${String(`${r.ms}ms`).padStart(8)}  ${detail}`,
       );
     }
     console.log(`\n[health] ${rosterResults.length - down.length}/${rosterResults.length} roster seats UP`);
-    if (down.length > 0) console.log(`[health] DOWN: ${down.map(d => d.seat).join(', ')}`);
+    const throttled = down.filter(d => d.throttled);
+    const dead = down.filter(d => !d.throttled);
+    if (dead.length > 0) console.log(`[health] DOWN: ${dead.map(d => d.seat).join(', ')}`);
+    if (throttled.length > 0) {
+      console.log(`[health] THROTTLED (alive, rate-limited — not a broken seat): ${throttled.map(d => d.seat).join(', ')}`);
+    }
   }
 
   process.exitCode = down.length > 0 ? 1 : 0;

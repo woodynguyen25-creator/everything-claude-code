@@ -85,12 +85,24 @@ const SEATS = [
     tiers: ['LEAD', 'WORKER'],
     role: 'BREADTH - fast wide-angle takes as a lead, cheap bulk grinding as a worker',
     lab: 'google',
-    model: 'gemini-3.5-flash',
+    model: 'gemini-3.6-flash',
     mandate:
       'Google lab representation, which the roster otherwise lacks entirely. Fast and free enough to also carry worker load. Currently FLASH-tier, a genuine mismatch sitting next to Opus 5 and Sol.',
     swapWhen:
-      'PROMOTE to gemini-3.1-pro-preview the moment Cloud billing is linked to the AI-Studio project - every pro id is 429 quota-0 on the free tier today. Or defer to `geminipro` if Antigravity ever clears, since that reaches Gemini 3 Pro via the subscription instead of API quota. On probation: 44% lifetime failure, key rotated 2026-08-02.',
-    verified: '2026-08-04',
+      'PROMOTE to gemini-3.1-pro-preview the moment Cloud billing is linked to the AI-Studio project - every pro id is 429 quota-0 on the free tier today. Or defer to `geminipro` if Antigravity ever clears, since that reaches Gemini 3 Pro via the subscription instead of API quota.',
+    // Chose on measured LATENCY VARIANCE, not median. n=5 each, 2026-08-05:
+    //   3.6-flash  5/5  med 1242ms  range 1125-1293   <- picked
+    //   3.5-flash  5/5  med 2026ms  range 1142-24539  <- 20x spread
+    //   flash-latest      1/5  RESOURCE_EXHAUSTED x4 (shared free-tier quota pool)
+    //   3-flash-preview   5/5  med 1752ms  range 878-8008
+    // 3.5-flash never FAILED, it stalled: live health probes hit 5.3s / 16.1s /
+    // 45.0s(timeout) on the same key minutes apart. A seat that answers in 45s is
+    // dropped from quorum by the council's own timeout, so a fat tail degrades the
+    // council exactly like a dead seat but without tripping the DOWN alarm.
+    // Median is the wrong statistic for a quorum member; the tail is the product.
+    // The 2026-08-02 note that 3.6 "flaps 403 2/3" was an artifact of the SUSPENDED
+    // project on the old key, not the model - 5/5 clean on the rotated key.
+    verified: '2026-08-05',
   },
   {
     id: 'deepseek',
