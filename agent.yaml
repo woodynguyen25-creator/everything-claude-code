@@ -192,6 +192,7 @@ commands:
   - multi-plan
   - multi-workflow
   - orchestrate
+  - os-audit
   - plan
   - pm2
   - projects
@@ -223,6 +224,7 @@ commands:
   - update-codemaps
   - update-docs
   - verify
+  - vision-critic
 tags:
   - agent-harness
   - developer-tools

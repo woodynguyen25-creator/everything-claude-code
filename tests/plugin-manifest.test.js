@@ -242,9 +242,13 @@ test('.mcp.json has mcpServers object', () => {
   );
 });
 
-test('.mcp.json includes at least github, context7, and exa servers', () => {
+test('.mcp.json includes at least context7 and exa servers', () => {
+  // github moved to the GLOBAL ~/.claude MCP config in the 2026-06-30 RAM cut
+  // (always-on across every project), so the PROJECT manifest no longer carries
+  // it — the committed .mcp.json at that point stopped listing github and this
+  // assertion made every clean checkout red. Assert only what the project
+  // manifest actually guarantees.
   const servers = Object.keys(mcpConfig.mcpServers);
-  assert.ok(servers.includes('github'), 'Expected github MCP server');
   assert.ok(servers.includes('context7'), 'Expected context7 MCP server');
   assert.ok(servers.includes('exa'), 'Expected exa MCP server');
 });

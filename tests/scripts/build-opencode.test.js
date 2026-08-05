@@ -46,9 +46,14 @@ function main() {
       assert.ok(fs.existsSync(distEntry), ".opencode/dist/index.js should exist after build")
     }],
     ["npm pack includes the compiled OpenCode dist payload", () => {
+      // On Windows npm is npm.cmd, which spawnSync cannot execute directly:
+      // without a shell the spawn fails (status null — and since the Node
+      // CVE-2024-27980 fix, spawning .cmd files shell-less throws EINVAL).
+      // Route through the shell on Windows only; POSIX stays exec-direct.
       const result = spawnSync("npm", ["pack", "--dry-run", "--json"], {
         cwd: repoRoot,
         encoding: "utf8",
+        shell: process.platform === "win32",
       })
       assert.strictEqual(result.status, 0, result.stderr)
 

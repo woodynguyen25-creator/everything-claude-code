@@ -2292,7 +2292,17 @@ function runTests() {
     fs.mkdirSync(validSkill, { recursive: true });
     // Broken symlink: target does not exist — statSync will throw ENOENT
     const brokenLink = path.join(skillsDir, 'broken-skill');
-    fs.symlinkSync('/nonexistent/target/path', brokenLink);
+    try {
+      fs.symlinkSync('/nonexistent/target/path', brokenLink);
+    } catch {
+      // Windows without Developer Mode throws EPERM on symlink creation —
+      // the code path under test needs a genuinely broken symlink, so skip.
+      console.log('    (skipped — symlinks not supported)');
+      cleanupTestDir(testDir);
+      cleanupTestDir(agentsDir);
+      fs.rmSync(skillsDir, { recursive: true, force: true });
+      return;
+    }
 
     // Command that references the valid skill (should resolve)
     fs.writeFileSync(path.join(testDir, 'cmd.md'),
