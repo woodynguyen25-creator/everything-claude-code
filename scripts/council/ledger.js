@@ -24,6 +24,10 @@ function buildEntry(result, { tag = '', promptChars = 0, round = undefined } = {
     outputTokensEst: Math.ceil(outputChars / 4),
     round,
     retried: result.retried || undefined,
+    // Machine-readable stance when the seat emitted a VERDICT line (--decide
+    // mode, or organically). Accrues the data that makes the council's dissent
+    // rate auditable — without it, "the council agreed" is unfalsifiable.
+    verdict: result.verdict || undefined,
     tag,
     error: result.error || undefined,
   };

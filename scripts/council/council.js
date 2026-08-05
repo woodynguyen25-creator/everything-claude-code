@@ -74,7 +74,7 @@ function truncate(text, max) {
 }
 
 function parseArgs(argv) {
-  const args = { question: '', to: DEFAULT_SEATS, tag: '', synth: false, timeoutS: 240, rounds: 1, lenses: true, lensSet: 'default', force: false };
+  const args = { question: '', to: DEFAULT_SEATS, tag: '', synth: false, timeoutS: 240, rounds: 1, lenses: true, lensSet: 'default', force: false, decide: false };
   const rest = [];
   for (let i = 0; i < argv.length; i += 1) {
     const a = argv[i];
@@ -95,6 +95,10 @@ function parseArgs(argv) {
     // Skip the API-seat preflight and convene regardless (e.g. deliberately
     // convening a degraded council, or when the preflight itself is suspect).
     else if (a === '--force') args.force = true;
+    // Decision mode: force every seat to end with a machine-readable
+    // VERDICT line, tally the verdicts, and persist them to the ledger so
+    // the council's dissent rate becomes measurable over time.
+    else if (a === '--decide') args.decide = true;
     else rest.push(a);
   }
   args.question = rest.join(' ').trim();
@@ -133,6 +137,18 @@ async function callSeat(seat, prompt, env, opts) {
     result.retried = true;
   }
   return result;
+}
+
+/**
+ * Pull a machine-readable verdict off a seat's answer (last VERDICT: line wins,
+ * so a seat that quotes another seat's verdict doesn't get misread). Extraction
+ * is unconditional — any answer that happens to carry a VERDICT line gets
+ * recorded — but the line is only DEMANDED of seats in --decide mode.
+ */
+function extractVerdict(text) {
+  const matches = String(text || '').match(/VERDICT:\s*(GO|NO-?GO|MODIFY)/gi);
+  if (!matches) return null;
+  return matches[matches.length - 1].replace(/VERDICT:\s*/i, '').toUpperCase().replace('NOGO', 'NO-GO');
 }
 
 function printResult(result, label = '') {
@@ -174,6 +190,7 @@ async function debateRound(question, seats, round1, env, opts, tag, entries) {
       .join('\n\n');
     const prompt = `QUESTION: ${question}\n\nYOUR ROUND-1 ANSWER:\n${truncate(mine.text, DEBATE_BLOCK_MAX_CHARS)}\n\nOTHER COUNCIL MEMBERS' ANSWERS:\n${others}\n\nROUND 2: Where are the others wrong or missing something you caught? Where are they right and you were wrong? Then give your REVISED final answer. Be terse — revised answer only needs what changed plus your final position.`;
     return callSeat(seat, prompt, env, opts).then(r => {
+      r.verdict = extractVerdict(r.text);
       printResult(r, 'R2');
       entries.push(buildEntry(r, { tag: `${tag}#r2`, promptChars: prompt.length, round: 2 }));
       return r;
@@ -191,7 +208,7 @@ async function main() {
 
   const args = parseArgs(argv);
   if (!args.question) {
-    console.error(`Usage: council.js "Question..." [--to ${Object.keys(SEATS).join(',')}] [--workers] [--tag purpose] [--synth] [--rounds 2] [--no-lenses] [--timeout 180] [--force]`);
+    console.error(`Usage: council.js "Question..." [--to ${Object.keys(SEATS).join(',')}] [--workers] [--tag purpose] [--synth] [--rounds 2] [--no-lenses] [--timeout 180] [--force] [--decide]`);
     console.error(`  LEAD (default): ${LEAD_SEATS.join(', ')}`);
     console.error(`  WORKER (--workers): ${WORKER_SEATS.join(', ')}`);
     process.exitCode = 1;
@@ -260,12 +277,23 @@ async function main() {
         ? ` — ${args.to.map((s, i) => `${s}=${lensNames[i % lensNames.length]}`).join(' ')}`
         : ' (role lenses on)')
     : '';
+  // 245 of the first 1,177 ledger entries (21%) were untagged, which makes the
+  // ledger unauditable exactly where audits matter (which convene was this?).
+  // Nag, never block — a blocked convene is worse than an unlabeled one.
+  if (!args.tag) console.log('[council] note: untagged convene — pass --tag <purpose> so this run is auditable in the ledger');
   console.log(`[council] dispatching to ${args.to.join(', ')}${lensLabel} — results stream as seats finish …`);
+
+  // Decision mode: every seat must END with a verdict it can be held to.
+  // "It depends" is the yes-man's exit hatch — close it.
+  const decideSuffix = args.decide
+    ? '\n\n[DECISION MODE] End your answer with exactly one line: "VERDICT: GO", "VERDICT: NO-GO", or "VERDICT: MODIFY" followed by " — " and a one-clause reason. You MUST pick one; "it depends" is not a verdict. If you pick MODIFY, the clause must name the single change that flips you to GO.'
+    : '';
 
   const entries = [];
   const round1 = await Promise.all(args.to.map((seat, i) => {
     const lens = useLenses ? `\n\n[LENS — apply to your answer] ${lensTable[i % lensTable.length]}` : '';
-    return callSeat(seat, args.question + lens, env, seatOpts(seat)).then(r => {
+    return callSeat(seat, args.question + lens + decideSuffix, env, seatOpts(seat)).then(r => {
+      r.verdict = extractVerdict(r.text);
       printResult(r);
       entries.push(buildEntry(r, { tag: args.tag, promptChars: args.question.length, round: 1 }));
       return r;
@@ -292,6 +320,25 @@ async function main() {
   appendEntries(entries);
   const okCount = finalResults.filter(r => r.ok).length;
   console.log(`\n[council] ${okCount}/${finalResults.length} seats answered · ledger: ${DEFAULT_LEDGER}`);
+
+  if (args.decide) {
+    const voted = finalResults.filter(r => r.ok && r.verdict);
+    const tally = {};
+    for (const r of voted) tally[r.verdict] = (tally[r.verdict] || 0) + 1;
+    console.log(`[council] VERDICTS: ${voted.map(r => `${r.provider}=${r.verdict}`).join('  ') || '(none parsed)'}`);
+    const silent = finalResults.filter(r => r.ok && !r.verdict).map(r => r.provider);
+    if (silent.length > 0) console.log(`[council] no verdict line parsed from: ${silent.join(', ')} — read their answers, do not assume assent`);
+    // Unanimity is evidence-suspicious, not reassuring: the council's value is
+    // DECORRELATED error, and 3+ seats landing identically is the signature of
+    // an echo (shared framing, a leading question, or correlated seats) as
+    // often as it is a genuinely one-sided question. Flag it; the human decides.
+    if (voted.length >= 3 && Object.keys(tally).length === 1) {
+      const v = voted[0].verdict;
+      console.log(`[council] ⚠ UNANIMOUS ${v} (${voted.length}/${voted.length}). Before acting, ask: was the question leading? ` +
+        'Would the opposite framing also come back unanimous?' +
+        (voted.some(r => r.provider === 'claude') ? ' Note: the claude seat is the LEAST decorrelated seat — its agreement is near-zero evidence.' : ''));
+    }
+  }
   if (transcript) console.log(`[council] full text saved: ${transcript}`);
 
   // Silent quorum shortfall is how the gemini seat stayed dead for six days:
