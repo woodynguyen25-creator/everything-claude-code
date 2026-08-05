@@ -110,3 +110,10 @@ dashboard/.omx/
 # Config backups
 *.bak-*
 *.entroly-backup
+
+# Council runtime telemetry — unbounded growth, and transcripts contain the FULL
+# text of every verdict (trading positions, client details, personal context).
+# Local-only by design; the ledger is queried in place, never shared.
+dashboard/data/council-ledger.jsonl
+dashboard/data/council-transcripts/
+dashboard/data/vision-critic-ledger.jsonl
