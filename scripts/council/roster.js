@@ -188,4 +188,16 @@ const CATALOGUES = {
   },
 };
 
-module.exports = { SEATS, SEAT_BY_ID, LEAD_SEATS, WORKER_SEATS, BENCHED_SEATS, CATALOGUES };
+/**
+ * Working model ids a provider serves but does NOT list in its catalogue, so
+ * the rot check stops crying wolf on them. Keep this SHORT: every entry is a
+ * spot where rot detection is blind, so each needs a probe-verified date, and
+ * a stale entry here is worse than a WARN (it silences a real rot).
+ */
+const KNOWN_ALIASES = {
+  // DeepSeek's documented always-current alias for its chat model; /models
+  // lists only concrete version ids. Probe-verified UP 2026-08-05 (~1s PONG).
+  deepseek: ['deepseek-chat'],
+};
+
+module.exports = { SEATS, SEAT_BY_ID, LEAD_SEATS, WORKER_SEATS, BENCHED_SEATS, CATALOGUES, KNOWN_ALIASES };

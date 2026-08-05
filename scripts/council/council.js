@@ -10,7 +10,7 @@
  *   node scripts/council/health.js                  # probe every seat, exit 1 if a roster seat is down
  *
  * LEAD roster (default, decorrelated — ideate/decide):
- *   claude (Opus 5) · codex (GPT-5.6 Sol) · xai (Grok 4.5) · gemini (3.5-flash)
+ *   claude (Opus 5) · codex (GPT-5.6 Sol) · xai (Grok 4.5) · gemini (3.6-flash)
  * WORKER roster (--workers, correlated — execute):
  *   groq · gemini · deepseek · cerebras
  * Also callable via --to: geminipro (DEAD — 0-for-3, agy ineligible).
@@ -74,7 +74,7 @@ function truncate(text, max) {
 }
 
 function parseArgs(argv) {
-  const args = { question: '', to: DEFAULT_SEATS, tag: '', synth: false, timeoutS: 240, rounds: 1, lenses: true, lensSet: 'default' };
+  const args = { question: '', to: DEFAULT_SEATS, tag: '', synth: false, timeoutS: 240, rounds: 1, lenses: true, lensSet: 'default', force: false };
   const rest = [];
   for (let i = 0; i < argv.length; i += 1) {
     const a = argv[i];
@@ -92,6 +92,9 @@ function parseArgs(argv) {
     else if (a === '--trading') args.lensSet = 'trading';
     else if (a === '--lens-set') args.lensSet = String(argv[++i] || 'default');
     else if (a === '--timeout') args.timeoutS = Number(argv[++i]) || 240;
+    // Skip the API-seat preflight and convene regardless (e.g. deliberately
+    // convening a degraded council, or when the preflight itself is suspect).
+    else if (a === '--force') args.force = true;
     else rest.push(a);
   }
   args.question = rest.join(' ').trim();
@@ -188,7 +191,7 @@ async function main() {
 
   const args = parseArgs(argv);
   if (!args.question) {
-    console.error(`Usage: council.js "Question..." [--to ${Object.keys(SEATS).join(',')}] [--workers] [--tag purpose] [--synth] [--rounds 2] [--no-lenses] [--timeout 180]`);
+    console.error(`Usage: council.js "Question..." [--to ${Object.keys(SEATS).join(',')}] [--workers] [--tag purpose] [--synth] [--rounds 2] [--no-lenses] [--timeout 180] [--force]`);
     console.error(`  LEAD (default): ${LEAD_SEATS.join(', ')}`);
     console.error(`  WORKER (--workers): ${WORKER_SEATS.join(', ')}`);
     process.exitCode = 1;
@@ -207,6 +210,37 @@ async function main() {
   // most of that predates the key rotation. Watch the ledger.
 
   const env = loadEnv();
+
+  // ── API-seat preflight ────────────────────────────────────────────────────
+  // Fires ONLY when the dispatch includes a CLI seat (codex boots a ~60-180s
+  // agent session; claude ~10s+). Rationale: a dead API key discovered mid-
+  // convene wastes the whole CLI spend, and the degraded-quorum alarm can only
+  // say so AFTER the money is gone. A ~1s parallel ping of the API-backed seats
+  // beforehand converts that into an abort that costs nothing.
+  // Deliberately NOT done for pure-API dispatches (--workers, --to gemini,...):
+  // the dispatch itself is as cheap as the preflight, so a ping only doubles
+  // the request count — and on cerebras (5 req/MIN free tier) doubling requests
+  // is how the health check once manufactured its own outage. See
+  // feedback: monitors-must-not-cause-outages.
+  const CLI_SEATS = new Set(['codex', 'claude', 'geminipro']);
+  const cliInRoster = args.to.some(s => CLI_SEATS.has(s));
+  const apiSeats = args.to.filter(s => !CLI_SEATS.has(s));
+  if (cliInRoster && apiSeats.length > 0 && !args.force) {
+    const pings = await Promise.all(apiSeats.map(seat =>
+      SEATS[seat]('Reply with exactly one word: PONG', env, { timeoutMs: 15_000 })
+        .then(r => ({ seat, ok: Boolean(r.ok), error: r.error }))
+        .catch(e => ({ seat, ok: false, error: e.message })),
+    ));
+    const deadApi = pings.filter(p => !p.ok);
+    if (deadApi.length > 0) {
+      console.error('[council] PREFLIGHT FAILED — refusing to convene (the CLI seats are the expensive part; fix the cheap seats first):');
+      for (const d of deadApi) console.error(`  DOWN ${d.seat}: ${String(d.error || '').slice(0, 100)}`);
+      console.error('[council] Diagnose: node scripts/council/health.js · Convene anyway: --force');
+      process.exitCode = 1;
+      return;
+    }
+  }
+
   // codex (Sol) boots a full agent session (MCP servers + AGENTS.md + skills + doctrine block)
   // on every call — ~10x slower than the pure-API seats (a trivial call = ~60s/41k tokens).
   // Give it a floor so a short global --timeout can't guillotine it before it answers.

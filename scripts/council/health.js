@@ -27,7 +27,7 @@
 'use strict';
 
 const { loadEnv, SEATS } = require('./providers');
-const { LEAD_SEATS, WORKER_SEATS, BENCHED_SEATS, SEATS: ROSTER, CATALOGUES } = require('./roster');
+const { LEAD_SEATS, WORKER_SEATS, BENCHED_SEATS, SEATS: ROSTER, CATALOGUES, KNOWN_ALIASES } = require('./roster');
 
 const PROMPT = 'Reply with exactly one word: PONG';
 
@@ -117,11 +117,15 @@ async function checkModels(env) {
       }
     }
     const listed = cache[seat.id].includes(seat.model);
-    // Some providers serve working aliases that are absent from /models
-    // (deepseek-chat is live but unlisted), so an absent id is a WARNING to
-    // verify by probe, never an automatic failure.
-    console.log(`  ${listed ? 'OK  ' : 'WARN'} ${seat.id.padEnd(11)} ${seat.model.padEnd(28)} ${listed ? 'listed' : 'NOT in catalogue — alias, or rotted. Verify by probe.'}`);
-    if (!listed) rot += 1;
+    // Known aliases (roster.js KNOWN_ALIASES) are unlisted BY DESIGN — flagging
+    // them every run trains the reader to ignore WARN, which is how a real rot
+    // slips through. Anything unlisted AND un-allowlisted still warns.
+    const alias = !listed && (KNOWN_ALIASES[seat.id] || []).includes(seat.model);
+    const label = listed ? 'listed'
+      : alias ? 'known alias — unlisted by provider, probe-verified (roster.js KNOWN_ALIASES)'
+        : 'NOT in catalogue — alias, or rotted. Verify by probe; allowlist in roster.js if real.';
+    console.log(`  ${listed || alias ? 'OK  ' : 'WARN'} ${seat.id.padEnd(11)} ${seat.model.padEnd(28)} ${label}`);
+    if (!listed && !alias) rot += 1;
   }
 
   console.log(`\n[health] ${ROSTER.length - rot - skipped} verified · ${rot} unlisted · ${skipped} not checkable`);
