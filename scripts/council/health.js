@@ -26,6 +26,9 @@
  */
 'use strict';
 
+const path = require('path');
+const fs = require('fs');
+const { execFileSync } = require('child_process');
 const { loadEnv, SEATS } = require('./providers');
 const { LEAD_SEATS, WORKER_SEATS, BENCHED_SEATS, SEATS: ROSTER, CATALOGUES, KNOWN_ALIASES } = require('./roster');
 
@@ -33,7 +36,10 @@ const PROMPT = 'Reply with exactly one word: PONG';
 
 // CLI seats boot a full agent session before answering, so they need headroom.
 // The pure-API seats should answer in single-digit seconds or something is wrong.
-const TIMEOUT_S = { codex: 180, claude: 120, geminipro: 60 };
+const TIMEOUT_S = { codex: 180, claude: 120, geminipro: 90, agyopus: 90, agyflash: 90 };
+// agy seats measured 2026-08-20 at 7.9-23.8s. 90s is headroom for a cold
+// CLI spawn plus agy's per-invocation network eligibility probe, not a
+// tolerance for slowness - anything near the cap deserves a look.
 const DEFAULT_TIMEOUT_S = 45;
 
 // A 429 means the seat is ALIVE and refusing right now — a different condition
@@ -90,7 +96,40 @@ async function checkModels(env) {
   let rot = 0;
   let skipped = 0;
 
+  // `agy models` IS a real catalogue, unlike claude/codex which expose none.
+  // Worth checking: these seats ride Google's Antigravity allocation, so the
+  // model list is Google's to change - Claude Opus 4.6 being served on a Google
+  // plan is exactly the kind of arrangement that can vanish without notice.
+  let agyCatalogue = null;
+  const agySeats = ROSTER.filter(x => / \(via agy\)$/.test(x.model));
+  if (agySeats.length) {
+    try {
+      const bin = path.join(
+        process.env.LOCALAPPDATA || path.join(process.env.USERPROFILE || '', 'AppData', 'Local'),
+        'agy', 'bin', 'agy.exe',
+      );
+      const out = execFileSync(fs.existsSync(bin) ? bin : 'agy', ['models'], {
+        encoding: 'utf8', timeout: 90_000, windowsHide: true,
+      });
+      // Lines are "<id>	<Display Label>"; take the id column.
+      agyCatalogue = out.split(/\r?\n/)
+        .map(l => l.split(/\t/)[0].trim())
+        .filter(id => id && !/\s/.test(id));
+    } catch (e) {
+      agyCatalogue = null;
+      console.log(`  ??   ${'agy'.padEnd(11)} catalogue unreachable: ${String(e.message).slice(0, 60)}`);
+    }
+  }
+
   for (const seat of ROSTER) {
+    const agyId = / \(via agy\)$/.test(seat.model) ? seat.model.replace(/ \(via agy\)$/, '') : null;
+    if (agyId) {
+      if (!agyCatalogue) { skipped += 1; continue; }
+      const ok = agyCatalogue.includes(agyId);
+      console.log(`  ${ok ? 'OK  ' : 'WARN'} ${seat.id.padEnd(11)} ${seat.model.padEnd(28)} ${ok ? 'listed by agy' : 'NOT in `agy models` — Google changed the Antigravity allocation'}`);
+      if (!ok) rot += 1;
+      continue;
+    }
     const cat = CATALOGUES[seat.id];
     if (!cat) {
       console.log(`  --   ${seat.id.padEnd(11)} ${seat.model.padEnd(28)} no catalogue API (CLI seat) — use the liveness probe`);

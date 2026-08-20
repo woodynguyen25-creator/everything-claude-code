@@ -82,14 +82,14 @@ const SEATS = [
   },
   {
     id: 'gemini',
-    tiers: ['LEAD', 'WORKER'],
-    role: 'BREADTH - fast wide-angle takes as a lead, cheap bulk grinding as a worker',
+    tiers: ['WORKER'],
+    role: 'BREADTH - cheap bulk grinding at ~1.2s per call',
     lab: 'google',
     model: 'gemini-3.6-flash',
     mandate:
-      'Google lab representation, which the roster otherwise lacks entirely. Fast and free enough to also carry worker load. Currently FLASH-tier, a genuine mismatch sitting next to Opus 5 and Sol.',
+      'Fast, free and low-variance: the cheapest way to grind a fixed spec. DEMOTED from LEAD 2026-08-20 - this seat was only ever in the lead tier because it was the sole Google path, and a flash model sitting next to Opus 5 and Sol was a documented mismatch. `geminipro` now holds the Google LEAD slot on an actual frontier model, so the lab keeps ONE lead seat and this one does what it is genuinely good at.',
     swapWhen:
-      'PROMOTE to gemini-3.1-pro-preview the moment Cloud billing is linked to the AI-Studio project - every pro id is 429 quota-0 on the free tier today. Or defer to `geminipro` if Antigravity ever clears, since that reaches Gemini 3 Pro via the subscription instead of API quota.',
+      'Retire if the API project is suspended again (it was, for 5 days in Jul/Aug) and `agyflash` proves it can carry worker load on the OAuth wallet instead. Do NOT promote it back to LEAD by pointing it at a pro id - every pro id is 429/404 on this key, measured again 2026-08-20.',
     // Chose on measured LATENCY VARIANCE, not median. n=5 each, 2026-08-05:
     //   3.6-flash  5/5  med 1242ms  range 1125-1293   <- picked
     //   3.5-flash  5/5  med 2026ms  range 1142-24539  <- 20x spread
@@ -133,7 +133,13 @@ const SEATS = [
     tiers: ['WORKER'],
     role: 'CHEAP DRAFT - throwaway passes where substance barely matters',
     lab: 'meta',
-    model: 'llama-3.3-70b-versatile',
+    model: 'qwen/qwen3.6-27b',
+    // DRIFT FIX 2026-08-20, caught by `health.js --models`. Groq decommissioned
+    // llama-3.3-70b-versatile (404, found by probe 2026-08-17) and providers.js
+    // was swapped to qwen3.6 that day - but THIS file, the declared single source
+    // of truth, was not. So the roster advertised a model that had not existed for
+    // three days. Exactly the drift this file exists to prevent, recurring inside
+    // the file meant to prevent it: fixing providers.js is only half the swap.
     mandate:
       'Demoted out of LEAD 2026-08-02: 2,325 average output chars vs cerebras 6,316 on identical prompts, 5x the failure rate, and it flunked an exact-instruction probe (asked for "PONG", answered "PING"). Kept for lab diversity and raw speed only.',
     swapWhen:
@@ -142,15 +148,46 @@ const SEATS = [
   },
   {
     id: 'geminipro',
-    tiers: ['BENCH'],
-    role: 'FRONTIER-GOOGLE - the only path to Gemini 3 Pro that exists here',
+    tiers: ['LEAD'],
+    role: 'FRONTIER-GOOGLE - the Google lead seat, on a real Pro model',
     lab: 'google',
-    model: 'gemini-3-pro (via agy)',
+    model: 'gemini-3.1-pro-high (via agy)',
     mandate:
-      'Sub-metered through the Google AI Pro subscription rather than API quota, which matters because EVERY Gemini pro id is 429 quota-0 on the API key. If it ever works it is a real frontier seat, not a flash seat.',
+      'Sub-metered through the Google AI Pro plan rather than API quota, which matters because EVERY Gemini pro id is 429/404 on the API key. PROMOTED from BENCH to LEAD 2026-08-20 after the student plan cleared Antigravity; it takes the Google lead slot from the flash-tier `gemini` seat, which keeps the roster at one lead seat per lab.',
     swapWhen:
-      'BLOCKED, 0-for-4 lifetime. Google returns VALIDATION_REQUIRED (al_alert). Antigravity requires age 18+, an approved geography, and a personal account. The account is personal and email-verified, but its id_token carries NO locale claim and it was registered under a Vietnamese name - country association is the prime suspect, age second. Promote to LEAD on probation if it ever clears.',
-    verified: '2026-08-04',
+      'ON PROBATION - 0-for-4 for its whole prior life, 3-for-3 since the plan landed. Watch the ledger; demote if it regresses. Falls back to `gemini` (flash, API wallet) if agy eligibility is ever pulled. Marginal cost is $0, so it is only ever worth what it answers.',
+    // Was BENCHED for three weeks on a misread. Google's block was never a tier,
+    // billing, credential or version problem: the AI Pro entitlement sat on a
+    // GIFTED account (tranhaiquyenanh86631995@) that Google's abuse system was
+    // holding back for lack of a verified identity. The student plan put the
+    // entitlement on woodynguyen25@ - Woody's own long-verified account - and it
+    // cleared immediately. The old diagnosis was correct; the fix was an identity
+    // Google already trusts, not a better credential dance.
+    verified: '2026-08-20',
+  },
+  {
+    id: 'agyopus',
+    tiers: ['BENCH'],
+    role: 'FREE LABOUR - Opus-class reasoning on Google’s wallet, not a vote',
+    lab: 'anthropic',
+    model: 'claude-opus-4-6-thinking (via agy)',
+    mandate:
+      'Anthropic Opus 4.6 served through the Google student plan at $0 marginal cost, 7-10s. Useful for one-off deep reasoning and subagent labour where the Anthropic sub would otherwise be the constraint. NOT a council vote.',
+    swapWhen:
+      'BENCHED BY DESIGN. Proposed 2026-08-20 as a context CONTROL for the `claude` seat and rejected 3/3 by council the same day: it varies model version AND context simultaneously, so a split cannot be attributed to either - a real ablation holds the model fixed. The honest version was then measured and is not free (`claude -p --bare` and CLAUDE_CONFIG_DIR both force API-key auth, i.e. metered spend). Do NOT promote it to LEAD: a second Anthropic seat breaks one-seat-per-lab, and its agreement with `claude` would read as corroboration while being the same lab twice. REVISIT-IF: the back-test shows a context-free seat would have flipped a non-zero number of the last 30 days of verdicts.',
+    verified: '2026-08-20',
+  },
+  {
+    id: 'agyflash',
+    tiers: ['BENCH'],
+    role: 'SPARE-WALLET - Google flash on OAuth instead of the API key',
+    lab: 'google',
+    model: 'gemini-3.7-flash-high (via agy)',
+    mandate:
+      'Wallet redundancy. The `gemini` API seat went dark for 5 days when its AI-Studio project was SUSPENDED (403 on every model, not quota). This path bills the OAuth wallet, so it survives that entire class of outage - a different failure domain, not just a different key.',
+    swapWhen:
+      'Deliberately NOT wired as automatic failover: silent failover would mask a dead key, which is exactly the silent-degradation failure this roster already warns about. If the API seat dies we want the ALARM, then a manual `--to agyflash`. Promote to WORKER only if the API seat proves chronically unreliable.',
+    verified: '2026-08-20',
   },
 ];
 

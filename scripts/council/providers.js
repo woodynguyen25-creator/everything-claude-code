@@ -54,7 +54,7 @@ function parseCodexOutput(stdout) {
 }
 
 /** GPT-5.5 via local codex CLI; prompt over stdin to avoid Windows quoting issues. */
-function runCodex(prompt, { timeoutMs = 900_000 } = {}) {
+function runCodex(prompt, { timeoutMs = 900_000, effort = 'high' } = {}) {
   const started = Date.now();
   return new Promise(resolve => {
     const done = (ok, text, error) =>
@@ -63,7 +63,7 @@ function runCodex(prompt, { timeoutMs = 900_000 } = {}) {
     // NOTE: 'gpt-5.5-codex' 400s on ChatGPT-account codex; plain 'gpt-5.6-sol' is the valid id.
     // Pin effort=high explicitly so the council seat stays fast + predictable regardless of
     // whatever ~/.codex/config.toml drifts to (it had crept to 'xhigh' = the timeout cause, 2026-07-26).
-    const child = spawn('codex', ['exec', '--skip-git-repo-check', '--model', 'gpt-5.6-sol', '-c', 'model_reasoning_effort=high', '-'], {
+    const child = spawn('codex', ['exec', '--skip-git-repo-check', '--model', 'gpt-5.6-sol', '-c', `model_reasoning_effort=${effort}`, '-'], {
       shell: true,
       windowsHide: true,
     });
@@ -128,36 +128,103 @@ async function runGemini(prompt, env, { timeoutMs = 120_000, model = 'gemini-3.6
 }
 
 /**
- * Gemini 3 Pro via the Antigravity CLI (`agy`) on Woody's Google AI-Pro sub —
- * OAuth, not the API key (pro models are quota-0 on the key). Same pattern as
- * the codex seat: sub-metered instead of per-token.
+ * Gemini 3.1 Pro via the Antigravity CLI (`agy`) — OAuth on Woody's Google sub,
+ * NOT the API key. Same pattern as the codex seat: sub-metered, not per-token.
+ *
+ * ⭐ REVIVED 2026-08-20. This seat was written off as "0-for-3 lifetime — agy
+ * refuses every account tried (not eligible for Antigravity)". Woody's STUDENT
+ * Google AI Pro plan (1 year) made the account eligible and the seat now works.
+ * Measured the same day: `Gemini 3.1 Pro (High)` answered in 17s, and a real
+ * council-grade prompt (argue both sides + design a falsifiable test) came back
+ * in 27s with a genuinely sharp answer. Promoted from DEAD to a live seat.
+ *
+ * IMPORTANT — the student plan did NOT unlock the API. Measured 2026-08-20 on
+ * GEMINI_API_KEY: 3.6-flash 200, gemini-3.1-pro-preview **429**, and 3-pro /
+ * 2.5-pro / 3.6-pro all **404**. The consumer sub and the API are still separate
+ * wallets, exactly as the runGemini docblock says. Pro is reachable ONLY through
+ * agy's OAuth path. Do not "fix" this by pointing the API seat at a Pro id.
  *
  * 2026-07-27: replaced the `gemini` CLI, which Google cut off for ALL individual
  * accounts on 2026-06-18 (IneligibleTierError → "migrate to the Antigravity
  * suite"). Requires a ONE-TIME interactive `agy` login (creds in ~/.antigravity).
- * REVISIT-IF: Google ships a headless auth path (service account / device code).
  */
+// ── agy model IDs ──────────────────────────────────────────────────────────
+// Prefer the STABLE IDs over the display labels. A label bakes the effort tier
+// into the name ("Gemini 3.1 Pro (High)") and is the more likely of the two to
+// drift; both forms were verified working 2026-08-20. Full catalogue from
+// `agy models`: gemini-3.7|3.6|3.5-flash-{high,medium,low},
+// gemini-3.1-pro-{high,low}, claude-sonnet-4-6, claude-opus-4-6-thinking,
+// gpt-oss-120b-medium.
+const AGY_PRO   = 'gemini-3.1-pro-high';        // geminipro  — LEAD Google seat
+const AGY_COLD  = 'claude-opus-4-6-thinking';   // agyopus    — free Opus-class labour
+const AGY_FLASH = 'gemini-3.7-flash-high';      // agyflash   — free worker seat
+
 const AGY_BIN = path.join(
   process.env.LOCALAPPDATA || path.join(process.env.USERPROFILE || '', 'AppData', 'Local'),
   'agy', 'bin', 'agy.exe',
 );
 
-function runGeminiCli(prompt, { timeoutMs = 300_000, model = '', effort = '' } = {}) {
+/**
+ * agy runs a NETWORK eligibility probe on every single invocation, so a
+ * transient blip surfaces as:
+ *   Error: Eligibility check failed: Get ".../oauth2/v2/userinfo": EOF
+ * which is near-indistinguishable at a glance from a real entitlement refusal.
+ * Reproduced 2026-08-20. Misreading that string is precisely what benched this
+ * seat for three weeks, so classify it explicitly instead of eyeballing it:
+ * a REAL refusal names the account/verification, a TRANSIENT one carries a
+ * network verb. Transient => retry once; refusal => fail loudly, never retry.
+ */
+function isTransientAgyError(msg = '') {
+  if (/not eligible|VALIDATION_REQUIRED|Verify your account|PERMISSION_DENIED/i.test(msg)) return false;
+  return /EOF|context canceled|connection reset|i\/o timeout|deadline exceeded|TLS|dial tcp|no such host|temporarily/i.test(msg);
+}
+
+/**
+ * Generic Antigravity (`agy`) seat runner — OAuth on Woody's Google plan, NOT
+ * the API key. Sub-metered like the codex seat, not per-token.
+ *
+ * ⭐ REVIVED 2026-08-20 by the STUDENT Google AI Pro plan (1 year). This path
+ * was written off as "0-for-3 lifetime — agy refuses every account tried".
+ * The reason it works now is NOT a better credential dance: the entitlement
+ * moved onto `woodynguyen25@gmail.com`, Woody's own long-verified identity,
+ * instead of the GIFTED account Google's abuse system was holding back. The
+ * old diagnosis was right — the fix was an identity Google already trusts.
+ *
+ * IMPORTANT — the student plan did NOT unlock the API. Measured 2026-08-20 on
+ * GEMINI_API_KEY: 3.6-flash 200, gemini-3.1-pro-preview 429, and 3-pro /
+ * 2.5-pro / 3.6-pro all 404. The consumer sub and the API remain separate
+ * wallets. Pro is reachable ONLY through agy's OAuth path — do NOT "fix" the
+ * API seat by pointing it at a Pro id.
+ *
+ * Requires a ONE-TIME interactive `agy` login (creds in Windows Credential
+ * Manager under LegacyGeneric:target=gemini:antigravity, NOT in ~/.gemini).
+ */
+function runAgy(prompt, { seat = 'geminipro', timeoutMs = 300_000, model = AGY_PRO, effort = '', _retried = false } = {}) {
   const started = Date.now();
-  const label = model || 'gemini-3-pro (agy)';
+  const label = model || AGY_PRO;
   return new Promise(resolve => {
     const done = (ok, text, error) =>
-      resolve({ provider: 'geminipro', model: label, ok, text, ms: Date.now() - started, error });
-    // --print = non-interactive single prompt; prompt still goes via stdin to
-    // dodge Windows arg-quoting (same reason as the codex seat).
-    const cliArgs = ['--print', '--output-format', 'text'];
+      resolve({ provider: seat, model: label, ok, text, ms: Date.now() - started, error });
+    // ⚠️ NEVER pass BOTH --print and -p. `-p` IS the short alias for `--print`,
+    // so `--print ... -p PROMPT` makes agy misparse the prompt as a COMMAND and
+    // it tries to execute `agy --help` as a tool, which its own permission layer
+    // then denies non-interactively:
+    //   Error: permission check failed for command "agy --help": user denied…
+    // That reads exactly like an auth/eligibility failure and is NOT one — it
+    // cost a full debugging pass on 2026-08-20. Bisected: `-p` alone works,
+    // `--print` alone works, `--output-format text --model X -p PROMPT` works;
+    // only the --print + -p combination breaks.
+    const cliArgs = ['--output-format', 'text'];
     if (model) cliArgs.push('--model', model);
-    if (effort) cliArgs.push('--effort', effort);
-    const bin = fs.existsSync(AGY_BIN) ? `"${AGY_BIN}"` : 'agy';
-    const child = spawn(bin, cliArgs, {
-      shell: true,
-      windowsHide: true,
-    });
+    // agy REJECTS --effort on the Pro models ("--effort is not supported for
+    // model 'Gemini 3.1 Pro'") — for Gemini the effort tier is part of the model
+    // id instead (…-high / …-low). Claude seats carry it in the id too.
+    if (effort && !/pro|claude|opus|sonnet/i.test(model)) cliArgs.push('--effort', effort);
+    cliArgs.push('-p', prompt);
+    // shell:false — no shell means no arg-escaping hazard, and the prompt can
+    // contain quotes/newlines safely on Windows.
+    const bin = fs.existsSync(AGY_BIN) ? AGY_BIN : 'agy';
+    const child = spawn(bin, cliArgs, { shell: false, windowsHide: true });
     let out = '';
     let err = '';
     const timer = setTimeout(() => {
@@ -169,10 +236,16 @@ function runGeminiCli(prompt, { timeoutMs = 300_000, model = '', effort = '' } =
     child.on('error', e => { clearTimeout(timer); done(false, '', e.message); });
     child.on('close', code => {
       clearTimeout(timer);
-      if (code === 0) done(true, stripAnsi(out).trim());
-      else done(false, '', `exit ${code}: ${stripAnsi(err).slice(0, 300)}`);
+      if (code === 0) return done(true, stripAnsi(out).trim());
+      const detail = stripAnsi(err).slice(0, 300);
+      // One retry, and ONLY for a network-shaped failure. A genuine refusal
+      // must surface immediately — retrying it just hides a dead entitlement.
+      if (!_retried && isTransientAgyError(detail)) {
+        return resolve(runAgy(prompt, { seat, timeoutMs, model, effort, _retried: true }));
+      }
+      done(false, '', `exit ${code}: ${detail}`);
     });
-    child.stdin.write(prompt);
+    // prompt already passed via -p; close stdin so agy does not wait on it
     child.stdin.end();
   });
 }
@@ -240,17 +313,55 @@ const SEATS = {
   claude: (prompt, env, opts) => runClaude(prompt, opts),
   codex: (prompt, env, opts) => runCodex(prompt, opts),
   gemini: (prompt, env, opts) => runGemini(prompt, env, opts),
-  // geminipro is 0-for-3 lifetime — `agy` refuses every account tried
-  // ("not eligible for Antigravity"), and the gemini CLI is cut off for all
-  // individuals since 2026-06-18. Kept callable via --to, but OUT of every
-  // roster. REVISIT-IF: an `agy` login clears identity verification.
-  geminipro: (prompt, env, opts) => runGeminiCli(prompt, opts),
+  // ── agy-backed seats (Google student AI Pro plan, $0 marginal) ──────────
+  // geminipro REVIVED 2026-08-20 on the student AI Pro plan. Serves Gemini 3.1
+  // Pro via agy OAuth and TAKES OVER the Google LEAD slot from the flash-tier
+  // `gemini` API seat — roster.js pre-registered exactly this swap ("defer to
+  // geminipro if Antigravity ever clears"). One seat per lab is preserved:
+  // `gemini` drops to WORKER rather than sitting alongside it in LEAD.
+  geminipro: (prompt, env, opts) => runAgy(prompt, { seat: 'geminipro', model: AGY_PRO, ...opts }),
+  // agyopus — Claude Opus 4.6 on the GOOGLE wallet, $0 marginal, ~7-10s.
+  //
+  // ⚠️ NOT A COUNCIL SEAT AND NOT A CONTROL. It was proposed as a "context
+  // control" for the `claude` seat (same lab, but with no CLAUDE.md/memory
+  // loaded, so a split would isolate context-effects from model-effects).
+  // A 3/3 council REJECTED that on 2026-08-20 and was right: it varies TWO
+  // variables at once — model version (Opus 5 -> 4.6) AND context (full ->
+  // none) — so a disagreement is uninterpretable in the exact dimension the
+  // seat existed to measure. A real ablation holds the model fixed.
+  //
+  // The honest version was then measured and is NOT free: `claude -p --bare`
+  // (skips hooks/auto-memory/CLAUDE.md discovery) and CLAUDE_CONFIG_DIR both
+  // force API-key auth — "Not logged in" on the OAuth sub — so a same-model
+  // context strip costs metered spend. Design case and economic case both
+  // failed; the control was not built. Do not re-invent it without first
+  // running the back-test the council asked for: how many of the last 30 days
+  // of verdicts would a context-free seat actually have flipped?
+  //
+  // What it IS: free Opus-class reasoning for one-off work and subagent
+  // labour. Callable via `--to agyopus`; deliberately in NO roster, because a
+  // second Anthropic model in LEAD would break one-seat-per-lab and its
+  // agreement with `claude` would read as corroboration while being the same
+  // lab twice.
+  agyopus: (prompt, env, opts) => runAgy(prompt, { seat: 'agyopus', model: AGY_COLD, ...opts }),
+  // agyflash — free Gemini 3.7 Flash on the OAuth wallet. Exists for WALLET
+  // REDUNDANCY: the `gemini` API seat died for 5 days in Jul/Aug when its
+  // AI-Studio project was suspended (403 on every model). This path survives
+  // that class of outage because it bills a different wallet entirely.
+  // ⚠️ NOT wired as automatic failover — silent failover would mask a dead key,
+  // which is the exact silent-degradation failure the roster already warns
+  // about. If the API seat dies we want the alarm, then a manual `--to agyflash`.
+  agyflash: (prompt, env, opts) => runAgy(prompt, { seat: 'agyflash', model: AGY_FLASH, ...opts }),
   deepseek: (prompt, env, opts) =>
     runOpenAiCompat('deepseek', 'https://api.deepseek.com', 'DEEPSEEK_API_KEY', 'deepseek-chat', prompt, env, opts),
   cerebras: (prompt, env, opts) =>
     runOpenAiCompat('cerebras', 'https://api.cerebras.ai/v1', 'CEREBRAS_API_KEY', 'gpt-oss-120b', prompt, env, opts),
+  // llama-3.3-70b-versatile was decommissioned by Groq (HTTP 404, found by
+  // health probe 2026-08-17). qwen3.6-27b keeps this WORK seat on a model
+  // family distinct from cerebras's gpt-oss. REVISIT-IF: Groq retires qwen3.6
+  // — pick from /models, prefer a non-gpt-oss family for seat diversity.
   groq: (prompt, env, opts) =>
-    runOpenAiCompat('groq', 'https://api.groq.com/openai/v1', 'GROQ_API_KEY', 'llama-3.3-70b-versatile', prompt, env, opts),
+    runOpenAiCompat('groq', 'https://api.groq.com/openai/v1', 'GROQ_API_KEY', 'qwen/qwen3.6-27b', prompt, env, opts),
   // xAI Grok 4.5 — 500k ctx, $2.00/$6.00 per M (the priciest seat; economical
   // ONLY while xAI's data-sharing free credits are active). Seat id is 'xai',
   // not 'grok', to keep it one typo away from 'groq' (a different vendor).
