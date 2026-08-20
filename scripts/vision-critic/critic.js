@@ -11,7 +11,7 @@
  * Usage:
  *   node critic.js --build shot1.png,shot2.png [--ref target.png] \
  *     --brief "Lucky Dog cosmic hero; award-caliber; must not look boxed/generic" \
- *     [--seat grok] [--model grok-4.5] [--json] [--out verdict.json]
+ *     [--seat grok] [--model grok-4.6] [--json] [--out verdict.json]
  *
  *   # capture first (needs playwright available), then grade:
  *   node critic.js --capture http://localhost:3000 --breakpoints 1440,375 --brief "..."
@@ -128,6 +128,38 @@ function render(v, meta) {
   return L.join('\n');
 }
 
+
+/**
+ * Cost accounting for the vision seat.
+ *
+ * Added 2026-08-20 during an xAI spend audit. This tool fires base64 images at
+ * grok with detail:'high' — vision tokens dwarf text — and it was recording a
+ * verdict while recording NOTHING about spend. An unmetered API consumer is
+ * invisible in a cost review: the audit could only account for ~$1.50 of a ~$15
+ * xAI charge, and this was one of the blind spots that made that possible.
+ *
+ * Rates per docs.x.ai 2026-08-20 (grok-4.5 and 4.6 are priced identically):
+ * $2.00/M input, $6.00/M output — and BOTH DOUBLE above a 200k-token prompt,
+ * which vision payloads can genuinely approach.
+ * xAI's own `cost_in_usd_ticks` is authoritative when present; 1 USD = 1e10
+ * ticks (verified 2026-08-18 — an earlier 1e9 reading was 10x too high).
+ */
+const TICKS_PER_USD = 1e10;
+function costOf(raw, model = '') {
+  const u = raw && raw.usage;
+  if (!u) return null;
+  const inTok = u.prompt_tokens ?? u.input_tokens ?? null;
+  const outTok = u.completion_tokens ?? u.output_tokens ?? null;
+  const ticks = u.cost_in_usd_ticks;
+  let usd = null;
+  if (ticks != null) usd = Number(ticks) / TICKS_PER_USD;
+  else if (/grok/i.test(model) && inTok != null && outTok != null) {
+    const big = inTok >= 200_000;                 // xAI doubles past 200k prompt
+    usd = (inTok / 1e6) * (big ? 4 : 2) + (outTok / 1e6) * (big ? 12 : 6);
+  }
+  return { inTok, outTok, ticks: ticks ?? null, usd, usdIsEstimate: ticks == null };
+}
+
 function ledger(entry) {
   try {
     fs.mkdirSync(path.dirname(LEDGER), { recursive: true });
@@ -172,7 +204,12 @@ async function main() {
     process.exit(3);
   }
 
-  const meta = { ts: new Date().toISOString(), seat: res.seat, model: res.model, ms: res.ms, build: a.build, ref: a.ref, tag: a.tag || null };
+  const cost = costOf(res.raw, res.model);
+  const meta = { ts: new Date().toISOString(), seat: res.seat, model: res.model, ms: res.ms, build: a.build, ref: a.ref, tag: a.tag || null, cost };
+  if (cost && cost.usd != null) {
+    process.stderr.write(`[vision-critic] cost ${cost.usdIsEstimate ? '~' : ''}$${cost.usd.toFixed(4)} (in=${cost.inTok} out=${cost.outTok})
+`);
+  }
   ledger({ ...meta, verdict: verdict.verdict, score: verdict.overallScore, oneLine: verdict.oneLine, wouldWoodyReject: verdict.wouldWoodyReject?.value });
 
   if (a.json) process.stdout.write(JSON.stringify(verdict, null, 2) + '\n');

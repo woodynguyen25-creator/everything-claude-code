@@ -302,11 +302,25 @@ async function runOpenAiCompat(provider, baseUrl, keyName, model, prompt, env, {
     });
     if (!res.ok) return { provider, model, ok: false, text: '', ms: Date.now() - started, error: `HTTP ${res.status}` };
     const data = await res.json();
-    const text = data?.choices?.[0]?.message?.content ?? '';
+    const text = stripThink(data?.choices?.[0]?.message?.content ?? '');
     return { provider, model, ok: Boolean(text), text, ms: Date.now() - started, error: text ? undefined : 'empty response' };
   } catch (e) {
     return { provider, model, ok: false, text: '', ms: Date.now() - started, error: e.message };
   }
+}
+
+/**
+ * Strip leaked chain-of-thought blocks. Groq's qwen3.6-27b emits raw <think>…</think>
+ * into the message body (known since the 2026-08-17 seat swap), and reasoning models
+ * generally can leak it. Left in, it pollutes every council transcript and inflates the
+ * char-based token estimates the ledger uses. An UNCLOSED <think> means the model never
+ * finished thinking, so drop the remainder rather than pass a half-thought off as an answer.
+ */
+function stripThink(text = '') {
+  return String(text)
+    .replace(/<think>[\s\S]*?<\/think>/gi, '')
+    .replace(/<think>[\s\S]*$/i, '')
+    .trim();
 }
 
 const SEATS = {
@@ -366,9 +380,9 @@ const SEATS = {
   // ONLY while xAI's data-sharing free credits are active). Seat id is 'xai',
   // not 'grok', to keep it one typo away from 'groq' (a different vendor).
   xai: (prompt, env, opts) =>
-    runOpenAiCompat('xai', 'https://api.x.ai/v1', 'XAI_API_KEY', 'grok-4.5', prompt, env, opts),
+    runOpenAiCompat('xai', 'https://api.x.ai/v1', 'XAI_API_KEY', 'grok-4.6', prompt, env, opts),
   grok: (prompt, env, opts) =>
-    runOpenAiCompat('xai', 'https://api.x.ai/v1', 'XAI_API_KEY', 'grok-4.5', prompt, env, opts),
+    runOpenAiCompat('xai', 'https://api.x.ai/v1', 'XAI_API_KEY', 'grok-4.6', prompt, env, opts),
 };
 
 module.exports = { loadEnv, parseCodexOutput, stripAnsi, SEATS };

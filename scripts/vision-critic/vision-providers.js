@@ -52,8 +52,8 @@ function imagePart(file) {
  * value = { base, keyName, model }. Add openai/anthropic here if keys land.
  */
 const VISION_SEATS = {
-  grok: { base: 'https://api.x.ai/v1', keyName: 'XAI_API_KEY', model: 'grok-4.5' },
-  xai: { base: 'https://api.x.ai/v1', keyName: 'XAI_API_KEY', model: 'grok-4.5' },
+  grok: { base: 'https://api.x.ai/v1', keyName: 'XAI_API_KEY', model: 'grok-4.6' },
+  xai: { base: 'https://api.x.ai/v1', keyName: 'XAI_API_KEY', model: 'grok-4.6' },
   openai: { base: 'https://api.openai.com/v1', keyName: 'OPENAI_API_KEY', model: 'gpt-4o' },
 };
 

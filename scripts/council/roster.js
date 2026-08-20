@@ -73,7 +73,15 @@ const SEATS = [
     tiers: ['LEAD'],
     role: 'CONTRARIAN - red-team, premise attack, uncomfortable truths',
     lab: 'xai',
-    model: 'grok-4.5',
+    model: 'grok-4.6',
+    // UPGRADED 4.5 -> 4.6 on 2026-08-20. Measured n=3 on an identical reasoning
+    // prompt: SAME headline price ($2/$6 per M, both double above a 200k prompt),
+    // same median latency (~24s vs ~25s), but 4.6 billed **222 input tokens vs
+    // 4.5's 510** for the same question - a 57% cut in billed input. Cache-hit
+    // input is worse on 4.6 ($0.50 vs $0.30) but the council almost never hits
+    // cache (every convene is a fresh prompt), so cache-miss economics dominate.
+    // ⚠️ On a real reasoning prompt this seat is ~24s, NOT the ~1.4s a one-word
+    // PONG health probe suggests. Do not size timeouts off the health probe.
     mandate:
       'Most reliable seat in the roster (0% failure over 128 calls, highest average output). Least filtered, which is what the red-team lens needs.',
     swapWhen:
@@ -113,12 +121,17 @@ const SEATS = [
     mandate:
       'Most-dispatched seat (349 calls) and the default synthesis provider. Best paid value in the roster.',
     swapWhen:
-      'deepseek-v4-pro measured SLOWER (12s vs 2.8s) and shorter than the deepseek-chat alias on an identical prompt - a newer id is not automatically better, so re-measure before swapping. deepseek-reasoner is live if a thinking variant is ever wanted.',
+      'KEEP deepseek-chat for now despite it no longer appearing in the catalogue (allowlisted in KNOWN_ALIASES). Measured n=3 on 2026-08-20: deepseek-chat 1.6s / ~50 output tokens; deepseek-v4-flash 11.6s / 1086-1965 output tokens; deepseek-v4-pro 12.9s / 674-1599. The v4 models are REASONERS that burn 20-40x the output tokens on a task asking for 40 words, and this is a WORKER seat whose job is fast, cheap execution of a fixed spec - deepseek-chat is the right tool for that role and is 8x faster. Pinned successor if deepseek-chat is withdrawn: deepseek-v4-flash (peak $0.44 in / $1.32 out per M; v4-pro is 3x that at $1.32/$3.96). DeepSeek discounts off-peak by 50%, so batch grinding is materially cheaper outside peak hours.',
     verified: '2026-08-04',
   },
   {
     id: 'cerebras',
-    tiers: ['WORKER'],
+    tiers: ['BENCH'],
+    // BENCHED 2026-08-20: HTTP 402 Payment Required on every chat call.
+    // NOT a 429 and not a dead key - the /models catalogue still answers on the
+    // same key, so the account is alive and the balance is out. Benched rather
+    // than left in WORKER so it cannot silently degrade quorum. Restore by
+    // topping up at cloud.cerebras.ai; it is genuinely the fastest seat (0.4s).
     role: 'SPEED - sub-second bulk execution, high-volume mechanical passes',
     lab: 'openai-oss',
     model: 'gpt-oss-120b',
@@ -179,7 +192,10 @@ const SEATS = [
   },
   {
     id: 'agyflash',
-    tiers: ['BENCH'],
+    tiers: ['WORKER'],
+    // PROMOTED to WORKER 2026-08-20 to backfill cerebras (HTTP 402). Free on the
+    // Google OAuth wallet and 6.6s - slower than cerebras's 0.4s, so this is a
+    // ROLE CHANGE from 'fastest' to 'free', not a like-for-like swap.
     role: 'SPARE-WALLET - Google flash on OAuth instead of the API key',
     lab: 'google',
     model: 'gemini-3.7-flash-high (via agy)',
