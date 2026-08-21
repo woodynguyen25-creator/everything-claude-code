@@ -48,9 +48,33 @@ function buildEntry(result, { tag = '', promptChars = 0, round = undefined } = {
 }
 
 function appendEntries(entries, ledgerPath = DEFAULT_LEDGER) {
+  if (!entries || entries.length === 0) return;
   fs.mkdirSync(path.dirname(ledgerPath), { recursive: true });
   const lines = entries.map(e => JSON.stringify(e)).join('\n');
   fs.appendFileSync(ledgerPath, `${lines}\n`, 'utf8');
+}
+
+/**
+ * Append ONE row, immediately.
+ *
+ * ADDED 2026-08-21. The council used to accumulate rows in memory and flush the
+ * batch once, at the end of main(). But a dispatch BILLS the instant it returns,
+ * so anything that killed the run first — a thrown seat, Ctrl-C, `process.exit`,
+ * a crash in the debate round — spent real money and recorded nothing.
+ *
+ * That is worse than lossy accounting, because budget.js derives month-to-date
+ * spend by SUMMING these rows. A crashed run makes MTD read LOW, so the cap fires
+ * LATE — and the runs most likely to crash (retry storms, long --rounds runs) are
+ * exactly the runaway the cap exists to catch. The ceiling was blindest in the one
+ * case it was built for.
+ *
+ * Writing per-dispatch costs one small appendFileSync per seat — single-line
+ * O_APPEND writes, a handful per run. Cheap insurance against un-auditable spend.
+ * A torn line from an interleaved concurrent run is already handled downstream:
+ * budget.js counts an unparseable row AGAINST the cap rather than skipping it.
+ */
+function appendEntry(entry, ledgerPath = DEFAULT_LEDGER) {
+  appendEntries([entry], ledgerPath);
 }
 
 const TRANSCRIPT_DIR = path.resolve(__dirname, '..', '..', 'dashboard', 'data', 'council-transcripts');
@@ -117,4 +141,4 @@ function summarize(entries, dayIso = new Date().toISOString().slice(0, 10)) {
   return byProvider;
 }
 
-module.exports = { DEFAULT_LEDGER, TRANSCRIPT_DIR, buildEntry, appendEntries, saveTranscript, readRecent, summarize };
+module.exports = { DEFAULT_LEDGER, TRANSCRIPT_DIR, buildEntry, appendEntry, appendEntries, saveTranscript, readRecent, summarize };

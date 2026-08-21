@@ -27,7 +27,7 @@
 'use strict';
 
 const { loadEnv, SEATS } = require('./providers');
-const { buildEntry, appendEntries, saveTranscript, readRecent, summarize, DEFAULT_LEDGER } = require('./ledger');
+const { buildEntry, appendEntry, saveTranscript, readRecent, summarize, DEFAULT_LEDGER } = require('./ledger');
 const budget = require('./budget');
 
 // Tiered roster (2026-08-02, Woody's call) — see roster.js for the tier
@@ -182,7 +182,7 @@ async function synthesize(question, results, env) {
 }
 
 /** Debate round: each seat sees the others' round-1 answers, critiques, and revises. */
-async function debateRound(question, seats, round1, env, opts, tag, entries) {
+async function debateRound(question, seats, round1, env, opts, tag) {
   const okResults = round1.filter(r => r.ok);
   if (okResults.length < 2) {
     process.stderr.write('[council] fewer than 2 seats answered — skipping debate round\n');
@@ -200,7 +200,7 @@ async function debateRound(question, seats, round1, env, opts, tag, entries) {
     return callSeat(seat, prompt, env, opts).then(r => {
       r.verdict = extractVerdict(r.text);
       printResult(r, 'R2');
-      entries.push(buildEntry(r, { tag: `${tag}#r2`, promptChars: prompt.length, round: 2 }));
+      appendEntry(buildEntry(r, { tag: `${tag}#r2`, promptChars: prompt.length, round: 2 }));
       return r;
     });
   });
@@ -323,35 +323,39 @@ async function main() {
     ? '\n\n[DECISION MODE] End your answer with exactly one line: "VERDICT: GO", "VERDICT: NO-GO", or "VERDICT: MODIFY" followed by " — " and a one-clause reason. You MUST pick one; "it depends" is not a verdict. If you pick MODIFY, the clause must name the single change that flips you to GO.'
     : '';
 
-  const entries = [];
   const round1 = await Promise.all(args.to.map((seat, i) => {
     const lens = useLenses ? `\n\n[LENS — apply to your answer] ${lensTable[i % lensTable.length]}` : '';
     return callSeat(seat, args.question + lens + decideSuffix, env, seatOpts(seat)).then(r => {
       r.verdict = extractVerdict(r.text);
       printResult(r);
-      entries.push(buildEntry(r, { tag: args.tag, promptChars: args.question.length, round: 1 }));
+      appendEntry(buildEntry(r, { tag: args.tag, promptChars: args.question.length, round: 1 }));
       return r;
     });
   }));
 
   let finalResults = round1;
   if (args.rounds >= 2) {
-    finalResults = await debateRound(args.question, args.to, round1, env, opts, args.tag, entries);
+    finalResults = await debateRound(args.question, args.to, round1, env, opts, args.tag);
   }
 
   const transcriptResults = [...finalResults];
   if (args.synth) {
     const synth = await synthesize(args.question, finalResults, env);
-    entries.push(buildEntry(synth, { tag: `${args.tag}#synth`, promptChars: args.question.length }));
+    appendEntry(buildEntry(synth, { tag: `${args.tag}#synth`, promptChars: args.question.length }));
     transcriptResults.push({ ...synth, provider: `${synth.provider} (SYNTHESIS)` });
     console.log(`\n===== SYNTHESIS (${synth.provider}/${synth.model}) =====`);
     console.log(synth.ok ? synth.text : `[FAILED: ${synth.error}]`);
   }
 
-  // Persist full text BEFORE the ledger append, so a crash in appendEntries still leaves the
-  // answers on disk. Verdicts used to survive only as long as the terminal scrollback.
+  // Ledger rows are already on disk — each dispatch is appended the moment it
+  // returns (2026-08-21). They used to be batched here at the end, which meant any
+  // death before this line billed real money and recorded NOTHING: budget.js sums
+  // these rows, so a crashed run made month-to-date read LOW and the cap fire LATE,
+  // in exactly the runaway case the cap exists to catch.
+  //
+  // Transcripts still land here because they are a whole-run artifact, not a
+  // per-dispatch one. Verdicts used to survive only as long as terminal scrollback.
   const transcript = saveTranscript(transcriptResults, { tag: args.tag, question: args.question });
-  appendEntries(entries);
   const okCount = finalResults.filter(r => r.ok).length;
   console.log(`\n[council] ${okCount}/${finalResults.length} seats answered · ledger: ${DEFAULT_LEDGER}`);
 
