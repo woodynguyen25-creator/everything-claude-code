@@ -171,7 +171,7 @@ async function synthesize(question, results, env, tag = '') {
 }
 
 /** Debate round: each seat sees the others' round-1 answers, critiques, and revises. */
-async function debateRound(question, seats, round1, env, seatOpts, tag, decide) {
+async function debateRound(question, seats, round1, env, seatOpts, tag, decideSuffix) {
   const okResults = round1.filter(r => r.ok);
   if (okResults.length < 2) {
     process.stderr.write('[council] fewer than 2 seats answered — skipping debate round\n');
@@ -185,14 +185,21 @@ async function debateRound(question, seats, round1, env, seatOpts, tag, decide) 
       .filter(r => r !== mine)
       .map(r => `--- ${r.provider.toUpperCase()} ---\n${truncate(r.text, DEBATE_BLOCK_MAX_CHARS)}`)
       .join('\n\n');
-    const prompt = `QUESTION: ${question}\n\nYOUR ROUND-1 ANSWER:\n${truncate(mine.text, DEBATE_BLOCK_MAX_CHARS)}\n\nOTHER COUNCIL MEMBERS' ANSWERS:\n${others}\n\nROUND 2: Where are the others wrong or missing something you caught? Where are they right and you were wrong? Then give your REVISED final answer. Be terse — revised answer only needs what changed plus your final position.`;
+    const prompt = `QUESTION: ${question}\n\nYOUR ROUND-1 ANSWER:\n${truncate(mine.text, DEBATE_BLOCK_MAX_CHARS)}\n\nOTHER COUNCIL MEMBERS' ANSWERS:\n${others}\n\nROUND 2: Where are the others wrong or missing something you caught? Where are they right and you were wrong? Then give your REVISED final answer. Be terse — revised answer only needs what changed plus your final position.${decideSuffix}`;
+    // ^ decideSuffix WAS MISSING here (found by the claude seat reviewing this
+    // pass, 2026-08-21): under --decide --rounds 2 no seat was ever ASKED for a
+    // round-2 verdict, extraction was nonetheless strict, and finalResults is
+    // replaced by round 2 — so the tally ran over answers that were never asked
+    // to vote. Also: the other seats' round-1 answers quoted above CONTAIN their
+    // VERDICT lines, so loose extraction would misattribute a quoted verdict —
+    // strict-last-3-lines plus an explicit re-ask is the only sound combination.
     // seatOpts, NOT the bare global opts. Round 2 previously used the global
     // timeout WITHOUT the CLI floors, so codex entered every debate round with
     // the 240s default against its own 480s p90 - 7 of its ledger timeouts are
     // at exactly 240000ms. The debate round was structurally rigged to kill its
     // slowest seat. Found in the 2026-08-21 full-system review.
     return dispatchWithRetry(seat, prompt, env, seatOpts(seat),
-      { tag: `${tag}#r2`, round: 2, kind: 'debate', verdicts: true, strictVerdict: decide }).then(r => {
+      { tag: `${tag}#r2`, round: 2, kind: 'debate', verdicts: true, strictVerdict: Boolean(decideSuffix) }).then(r => {
       printResult(r, 'R2');
       return r;
     });
@@ -375,7 +382,7 @@ async function main() {
 
   let finalResults = round1;
   if (args.rounds >= 2) {
-    finalResults = await debateRound(args.question, args.to, round1, env, seatOpts, args.tag, args.decide);
+    finalResults = await debateRound(args.question, args.to, round1, env, seatOpts, args.tag, decideSuffix);
   }
 
   const transcriptResults = [...finalResults];
@@ -425,7 +432,12 @@ async function main() {
       for (const l of biasLines) console.log(l);
     }
 
-    if (voted.length >= 3 && Object.keys(tally).length === 1) {
+    // silent.length check (claude seat, 2026-08-21): a seat whose verdict fails
+    // to PARSE silently leaves `voted`, so two dissenters with unparsed verdicts
+    // plus three agreeing seats read as "UNANIMOUS" — a parsing rule
+    // manufacturing consensus in a system whose whole thesis is decorrelated
+    // dissent. No unanimity claim while any answering seat has no parsed verdict.
+    if (voted.length >= 3 && Object.keys(tally).length === 1 && silent.length === 0) {
       const v = voted[0].verdict;
       // Two DIFFERENT failure modes used to share this one alarm. Separate them:
       // "the seats always say this" is not the same problem as "the question was
