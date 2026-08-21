@@ -277,6 +277,39 @@ const BENCHED_SEATS = byTier('BENCH');
 const SEAT_BY_ID = Object.fromEntries(SEATS.map(s => [s.id, s]));
 
 /**
+ * Preference order for the SYNTHESIS seat — the one that merges the other seats'
+ * answers after a convene.
+ *
+ * MOVED HERE 2026-08-21. council.js hardcoded
+ * `SYNTH_FALLBACK_CHAIN = ['deepseek', 'xai', 'cerebras']`, which made it a
+ * SECOND, PRIVATE COPY of seat placement living outside the file that declares
+ * itself the single source of truth — the exact drift this file's header
+ * documents four prior instances of. It had already rotted: `cerebras` was
+ * benched on HTTP 402 Payment Required, so the last-resort synthesiser was a seat
+ * that could not answer, and the failure surfaced as a payment error rather than
+ * "no synth seat available".
+ *
+ * Derived, not written down: benched seats are filtered out, so benching a seat
+ * anywhere in this file now removes it from synthesis automatically. `groq` was
+ * added to keep THREE live links, which is what the original chain intended
+ * before cerebras died — it is the weakest of the three and is genuinely a last
+ * resort, but a live last resort beats a dead one.
+ *
+ * NOT ordered by raw capability. Synthesis is a MERGE job, not an opinion job:
+ * the seat is summarising answers that already exist, so cheap-and-reliable beats
+ * frontier-and-slow. That is why the deepseek WORKER seat leads a chain whose
+ * second link is a LEAD seat.
+ */
+const SYNTH_PREFERENCE = ['deepseek', 'xai', 'cerebras', 'groq'];
+
+/**
+ * Live synthesis chain. Filtering introduces a new way to fail — bench enough
+ * seats and synthesis would silently vanish — so tests/council/roster.test.js
+ * asserts this is never empty.
+ */
+const SYNTH_CHAIN = SYNTH_PREFERENCE.filter(id => !byTier('BENCH').includes(id));
+
+/**
  * Provider model-catalogue endpoints, for rot detection. A seat whose model id
  * has vanished from its provider is the exact failure this file exists to stop.
  *
@@ -308,4 +341,4 @@ const KNOWN_ALIASES = {
   deepseek: ['deepseek-chat'],
 };
 
-module.exports = { SEATS, SEAT_BY_ID, LEAD_SEATS, WORKER_SEATS, BENCHED_SEATS, CATALOGUES, KNOWN_ALIASES };
+module.exports = { SEATS, SEAT_BY_ID, LEAD_SEATS, WORKER_SEATS, BENCHED_SEATS, SYNTH_PREFERENCE, SYNTH_CHAIN, CATALOGUES, KNOWN_ALIASES };

@@ -9,12 +9,12 @@
  *   node scripts/council/council.js ledger [N]      # recent dispatches + today's per-provider summary
  *   node scripts/council/health.js                  # probe every seat, exit 1 if a roster seat is down
  *
- * LEAD roster (default, decorrelated — ideate/decide):
- *   claude (Opus 5) · codex (GPT-5.6 Sol) · xai (Grok 4.5) · gemini (3.6-flash)
- * WORKER roster (--workers, correlated — execute):
- *   groq · gemini · deepseek · cerebras
- * Also callable via --to: geminipro (LIVE 2026-08-20 — Gemini 3.1 Pro (High) via agy
- * OAuth on the student AI Pro plan; was 0-for-3/ineligible before that).
+ * WHO IS IN THE ROSTER: see roster.js. Deliberately NOT repeated here — this
+ * header used to list the seats and drifted (2026-08-21 it still advertised
+ * Grok 4.5, a LEAD `gemini` seat that had been benched on a privacy finding, and
+ * `cerebras` as a worker while it was 402-ing). A comment cannot be kept in sync
+ * with a data structure, so it should not try. Print the live roster with:
+ *   node scripts/council/health.js            # probes every seat, live
  * Every dispatch is logged to dashboard/data/council-ledger.jsonl.
  *
  * v2 (2026-07-18):
@@ -22,7 +22,7 @@
  *  - one automatic retry on transient failures (never for codex — its failures are timeouts)
  *  - role lenses: with 3+ seats each seat answers through a distinct lens (disable with --no-lenses)
  *  - --rounds 2: debate round — each seat critiques the others' answers, then revises
- *  - synthesis falls back deepseek → xai → cerebras, and truncates seat answers first
+ *  - synthesis falls back through roster.js SYNTH_CHAIN, and truncates seat answers first
  */
 'use strict';
 
@@ -32,7 +32,7 @@ const budget = require('./budget');
 
 // Tiered roster (2026-08-02, Woody's call) — see roster.js for the tier
 // rationale and the ledger evidence behind each seat's placement.
-const { LEAD_SEATS, WORKER_SEATS } = require('./roster');
+const { LEAD_SEATS, WORKER_SEATS, SYNTH_CHAIN } = require('./roster');
 
 const DEFAULT_SEATS = LEAD_SEATS;
 
@@ -66,7 +66,12 @@ const LENS_SETS = {
 };
 const LENSES = LENS_SETS.default;
 
-const SYNTH_FALLBACK_CHAIN = ['deepseek', 'xai', 'cerebras'];
+// Synthesis seat order lives in roster.js so it cannot drift out of sync with the
+// tiers. It USED to be hardcoded here as ['deepseek','xai','cerebras'] — and had
+// already rotted: cerebras was benched on HTTP 402, so the last-resort synthesiser
+// could not answer and the failure read as a payment error instead of "no synth
+// seat available". Benching a seat now removes it from synthesis automatically.
+const SYNTH_FALLBACK_CHAIN = SYNTH_CHAIN;
 const SYNTH_BLOCK_MAX_CHARS = 6000; // per-seat cap fed into the synthesis prompt
 const DEBATE_BLOCK_MAX_CHARS = 4000; // per-seat cap fed into round-2 prompts
 
