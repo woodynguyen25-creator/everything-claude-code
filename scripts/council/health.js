@@ -31,7 +31,7 @@ const path = require('path');
 const fs = require('fs');
 const { execFileSync } = require('child_process');
 const { loadEnv, SEATS } = require('./providers');
-const { buildEntry, appendEntry } = require('./ledger');
+const { dispatch } = require('./dispatch');
 const { LEAD_SEATS, WORKER_SEATS, BENCHED_SEATS, SEATS: ROSTER, CATALOGUES, KNOWN_ALIASES, AGENT_SEATS } = require('./roster');
 
 const PROMPT = 'Reply with exactly one word: PONG';
@@ -69,12 +69,17 @@ async function probe(seat, env, { allowRetry = true } = {}) {
   const timeoutMs = (TIMEOUT_S[seat] || DEFAULT_TIMEOUT_S) * 1000;
   const started = Date.now();
   try {
-    const r = await SEATS[seat](PROMPT, env, { timeoutMs });
-    // Probes are PHYSICAL dispatches: metered ones bill (fractions of a cent, but
-    // the ledger's contract is EVERY attempt, or the cap sums a fiction). kind:
-    // 'probe' so latency stats can exclude one-word PONGs — see ledger.js.
-    try { appendEntry(buildEntry(r, { tag: 'health', promptChars: PROMPT.length, kind: 'probe' })); } catch { /* best-effort */ }
+    // Through the dispatch boundary (both agent seats flagged the old direct
+    // SEATS call as a second, drifting implementation of one-call-one-row, and
+    // an ungated path to metered spend). Probes now inherit the row write, the
+    // budget gate, and the degeneracy check for free. kind: 'probe' so latency
+    // stats can exclude one-word PONGs — see ledger.js.
+    const r = await dispatch(seat, PROMPT, env, { timeoutMs }, { tag: 'health', kind: 'probe' });
     const res = { seat, ok: Boolean(r.ok), model: r.model || '?', ms: r.ms ?? Date.now() - started, error: r.error, text: (r.text || '').trim() };
+    // A metered probe refused by the monthly cap is NOT an outage. Without this,
+    // reaching the cap would flip every metered seat to DOWN and exit 1 — the
+    // monitor manufacturing an outage out of its own safety rail.
+    if (!res.ok && /^budget:/.test(String(res.error || ''))) return { ...res, capped: true };
     if (!res.ok && isThrottled(res) && allowRetry) {
       await new Promise(resolve => setTimeout(resolve, THROTTLE_BACKOFF_MS));
       const retry = await probe(seat, env, { allowRetry: false });
@@ -237,8 +242,15 @@ async function discoverModels(env) {
       const url = isQuery ? `${cat.url}${cat.url.includes('?') ? '&' : '?'}key=${env[cat.key]}` : cat.url;
       const headers = isQuery ? {} : { Authorization: `Bearer ${env[cat.key]}` };
       const r = await fetch(url, { headers, signal: AbortSignal.timeout(30_000) });
+      // Status check BEFORE parsing (codex-seat review): a 401/429 with a JSON
+      // error body parsed as an EMPTY catalogue, which reads as every model
+      // departing at once - and then OVERWRITES the good baseline. An auth blip
+      // must not erase history.
+      if (!r.ok) throw new Error(`HTTP ${r.status}`);
       const j = await r.json();
-      current[prov] = (j.data || j.models || []).map(m => (m.id || m.name || '').replace(/^models\//, '')).filter(Boolean).sort();
+      const ids = (j.data || j.models || []).map(m => (m.id || m.name || '').replace(/^models\//, '')).filter(Boolean).sort();
+      if (ids.length === 0) throw new Error('empty catalogue - refusing to record mass departure');
+      current[prov] = ids;
     } catch (e) {
       console.log(`  ??   ${prov.padEnd(11)} catalogue unreachable (${String(e.message).slice(0, 50)}) — keeping last-seen list`);
       if (seen[prov]) current[prov] = seen[prov]; // an outage must not read as mass-departure
@@ -298,14 +310,15 @@ async function main() {
 
   // Only roster seats gate the exit code; benched seats are known-dead.
   const rosterResults = results.filter(r => roster.includes(r.seat));
-  const down = rosterResults.filter(r => !r.ok);
+  const down = rosterResults.filter(r => !r.ok && !r.capped);
+  const capped = rosterResults.filter(r => r.capped);
 
   if (asJson) {
     console.log(JSON.stringify({ ok: down.length === 0, down: down.map(d => d.seat), results }, null, 2));
   } else {
     for (const r of results.sort((a, b) => Number(b.ok) - Number(a.ok))) {
       const detail = r.ok ? r.text.slice(0, 40) : String(r.error || '').replace(/\s+/g, ' ').slice(0, 80);
-      const state = r.ok ? 'UP  ' : (r.throttled ? 'THRT' : 'DOWN');
+      const state = r.ok ? 'UP  ' : (r.capped ? 'CAP ' : (r.throttled ? 'THRT' : 'DOWN'));
       console.log(
         `  ${state} ${r.seat.padEnd(11)} ${tierOf(r.seat).padEnd(10)} ${String(r.model).padEnd(24)} ${String(`${r.ms}ms`).padStart(8)}  ${detail}`,
       );
@@ -316,6 +329,9 @@ async function main() {
     if (dead.length > 0) console.log(`[health] DOWN: ${dead.map(d => d.seat).join(', ')}`);
     if (throttled.length > 0) {
       console.log(`[health] THROTTLED (alive, rate-limited — not a broken seat): ${throttled.map(d => d.seat).join(', ')}`);
+    }
+    if (capped.length > 0) {
+      console.log(`[health] CAPPED (probe refused by the monthly budget ceiling — not an outage): ${capped.map(d => d.seat).join(', ')}`);
     }
   }
 

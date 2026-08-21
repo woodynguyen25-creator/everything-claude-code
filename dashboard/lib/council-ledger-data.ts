@@ -43,27 +43,31 @@ export type CouncilLedgerData = {
 
 const LEDGER_PATH = path.join(process.cwd(), 'data', 'council-ledger.jsonl');
 const CACHE_TTL_MS = 30_000;
-const CHARS_PER_TOKEN = 4; // rough heuristic; ledger logs chars, not tokens
 
-// Blended $/1M-token estimates (input+output averaged) so the meter reflects
-// real drawdown ordering, not exact billing. Codex/Gemini/DeepSeek are paid
-// seats; cerebras/groq are free tiers (estUsd ~ 0).
-const PRICING: Record<string, { perMTokens: number; paid: boolean }> = {
-  codex: { perMTokens: 12, paid: true }, // GPT-5.5 via ChatGPT/Codex subscription
-  gemini: { perMTokens: 1.5, paid: true },
-  deepseek: { perMTokens: 0.5, paid: true },
-  cerebras: { perMTokens: 0, paid: false },
-  groq: { perMTokens: 0, paid: false },
-};
+/**
+ * REWRITTEN 2026-08-21 (claude-seat review): this file carried a FOURTH private
+ * copy of pricing that contradicted budget.js in DIRECTION — it showed codex
+ * ($12/Mtok, "paid") as the expensive seat and groq ($0, "free") as free, while
+ * the source of truth prices codex at $0 marginal (subscription) and groq as
+ * METERED. The cost view rendered free seats expensive and billed seats free.
+ * Rows now carry real `usd` (provider-reported where available), so this file
+ * SUMS instead of re-pricing. Rows without usd predate cost accounting and
+ * count 0 here — the authoritative month-to-date lives in budget.js, and the
+ * dashboard shows recorded spend, never a second opinion of it.
+ * Metered set mirrors budget.js PRICING (a seat is "paid" if per-token).
+ */
+const METERED = new Set(['xai', 'deepseek', 'groq', 'cerebras']);
+
+/**
+ * One-word pings (health probes, preflights) MUST NOT enter latency/failure
+ * stats — codex measured today's xai average at 56.5s with preflights mixed in
+ * vs 65.5s real. Negative filter: rows that predate `kind` are real work.
+ * Mirrors scripts/council/ledger.js isTimingRow.
+ */
+const NON_TIMING_KINDS = new Set(['probe', 'preflight']);
+const isTimingRow = (e: LedgerEntry) => !NON_TIMING_KINDS.has((e as { kind?: string }).kind ?? '');
 
 let cache: { at: number; value: CouncilLedgerData } | null = null;
-
-function estUsd(provider: string, promptChars: number, outputChars: number): number {
-  const p = PRICING[provider];
-  if (!p || p.perMTokens === 0) return 0;
-  const tokens = (promptChars + outputChars) / CHARS_PER_TOKEN;
-  return (tokens / 1_000_000) * p.perMTokens;
-}
 
 function readEntries(): LedgerEntry[] {
   const raw = fs.readFileSync(LEDGER_PATH, 'utf8');
@@ -86,6 +90,7 @@ function build(): CouncilLedgerData {
 
   const byProvider = new Map<string, ProviderRollup>();
   for (const e of today) {
+    if (!isTimingRow(e)) continue; // probes/preflights poison every stat below
     const cur =
       byProvider.get(e.provider) ??
       {
@@ -97,13 +102,13 @@ function build(): CouncilLedgerData {
         avgMs: 0,
         outputChars: 0,
         estUsd: 0,
-        paid: PRICING[e.provider]?.paid ?? false,
+        paid: METERED.has(e.provider),
       };
     cur.calls += 1;
     cur.ok += e.ok ? 1 : 0;
     cur.totalMs += e.ms || 0;
     cur.outputChars += e.outputChars || 0;
-    cur.estUsd += estUsd(e.provider, e.promptChars || 0, e.outputChars || 0);
+    cur.estUsd += Number((e as { usd?: number }).usd) || 0; // recorded spend, not a re-estimate
     byProvider.set(e.provider, cur);
   }
 
@@ -116,7 +121,7 @@ function build(): CouncilLedgerData {
     }))
     .sort((a, b) => b.calls - a.calls);
 
-  const recent = entries.slice(-12).reverse();
+  const recent = entries.filter(isTimingRow).slice(-12).reverse();
 
   return {
     generatedAt: new Date().toISOString(),

@@ -107,7 +107,9 @@ function selectWorker(agent: CouncilAgent, usage: ReturnType<typeof readTriadUsa
     return null;
   }
   if (agent === 'sauron') {
-    if (process.env.GEMINI_API_KEY) return 'gemini';
+    // gemini REMOVED 2026-08-21: the free-tier API key is the trains-on-input
+    // path the council benched, and God Mode prompts carry the same personal
+    // content. Deepseek/codex carry Sauron until billing is attached.
     if (deepseekOpen) return 'deepseek';
     if (codexOpen) return 'codex';
     return null;
@@ -148,8 +150,8 @@ Return strict JSON:
   "mode": "triad" | "quad",
   "rationale": "one short sentence",
   "plan": [
-    { "step": "Worker", "worker": "deepseek|codex|gemini|cerebras", "why": "one short sentence" },
-    { "step": "Critic Ring", "worker": "cerebras+groq+gemini", "why": "only if quad" }
+    { "step": "Worker", "worker": "deepseek|codex|cerebras", "why": "one short sentence" },
+    { "step": "Critic Ring", "worker": "cerebras+groq", "why": "only if quad" }
   ]
 }`;
 
@@ -206,15 +208,9 @@ async function runCriticRing(prompt: string, answers: string, workerOutput: stri
   });
   if (taste.ok) critics.push(`### taste\n${taste.text}`);
 
-  if (process.env.GEMINI_API_KEY) {
-    const intent = await callGemini({
-      model: MODEL_MAP.gemini,
-      system: 'You are a user-intent critic. Return 3 bullets or "No quarrel here."',
-      prompt: `Question: ${prompt}\nAnswers: ${answers}\nDraft:\n${workerOutput}`,
-      maxTokens: 500,
-    });
-    if (intent.ok) critics.push(`### intent\n${intent.text}`);
-  }
+  // Third (user-intent) critic REMOVED 2026-08-21 with the free-tier gemini path
+  // (trains-on-input). Two critics remain; restore a third from a verified-private
+  // provider if the ring needs the extra lens.
 
   return critics;
 }

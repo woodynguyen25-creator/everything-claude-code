@@ -46,7 +46,13 @@ function fakeSeats() {
     },
     codex: async () => ({ provider: 'codex', model: 'fake-sol', ok: false, text: '', ms: 9, error: 'timeout after 1ms' }),
     thrower: async () => { throw new Error('socket exploded'); },
-    verdictMid: async () => ({ provider: 'verdictMid', model: 'f', ok: true, ms: 1, text: 'VERDICT: GO — early hedge\nBut actually there are many caveats.\nStill thinking.\nNo commitment here.' }),
+    // Verdict buried EARLY in a long answer — must not count under strict.
+    // (Strict scope widened 3→5 lines on 2026-08-21 after a real verdict with a
+    // 3-line source footer was dropped, so this fixture keeps 6 lines after it.)
+    verdictMid: async () => ({ provider: 'verdictMid', model: 'f', ok: true, ms: 1, text: 'VERDICT: GO — early hedge\nCaveat one applies.\nCaveat two applies.\nCaveat three applies.\nCaveat four applies.\nCaveat five applies.\nNo commitment here.' }),
+    verdictFooter: async () => ({ provider: 'verdictFooter', model: 'f', ok: true, ms: 1, text: 'Analysis paragraph.\n\nVERDICT: NO-GO — cap fails open\nSources: budget.js:191\nSee also ledger.js:79\nReviewed at HEAD f6ffe10b' }),
+    verdictGood: async () => ({ provider: 'verdictGood', model: 'f', ok: true, ms: 1, text: 'All checks pass.\nVERDICT: GOOD' }),
+    verdictModify: async () => ({ provider: 'verdictModify', model: 'f', ok: true, ms: 1, text: 'Needs one change.\nVERDICT: MODIFY — rename the flag' }),
     verdictEnd: async () => ({ provider: 'verdictEnd', model: 'f', ok: true, ms: 1, text: 'Reasoning first.\n\nVERDICT: NO-GO — the cap fails open' }),
   };
 }
@@ -110,6 +116,40 @@ async function main() {
     const r = await dispatch('verdictEnd', 'q', {}, {}, { verdicts: true, strictVerdict: true, ledgerPath: L }, fakeSeats());
     assert.equal(r.verdict, 'NO-GO');
     assert.equal(readRecent(10, L)[0].verdict, 'NO-GO');
+    fs.unlinkSync(L);
+  });
+
+  await test('a verdict followed by a short source footer STILL parses (codex regression)', async () => {
+    const L = tmpLedger();
+    const r = await dispatch('verdictFooter', 'q', {}, {}, { verdicts: true, strictVerdict: true, ledgerPath: L }, fakeSeats());
+    assert.equal(r.verdict, 'NO-GO', 'three footer lines must not swallow a real verdict');
+    fs.unlinkSync(L);
+  });
+
+  await test('VERDICT: GOOD does NOT parse as GO (word-boundary anchor)', async () => {
+    // codex probe 2026-08-21: the unanchored regex read "VERDICT: GOOD" as GO.
+    const L = tmpLedger();
+    const r = await dispatch('verdictGood', 'q', {}, {}, { verdicts: true, strictVerdict: true, ledgerPath: L }, fakeSeats());
+    assert.equal(r.verdict, null);
+    fs.unlinkSync(L);
+  });
+
+  await test('--binary ENFORCES: MODIFY parses as NO VERDICT in binary mode', async () => {
+    // codex: "my probe returned MODIFY under strict extraction" — the flag changed
+    // prompt wording only. Now a binary-mode MODIFY lands in the read-their-answers
+    // bucket instead of silently rejoining the ternary cohort.
+    const L = tmpLedger();
+    const rB = await dispatch('verdictModify', 'q', {}, {}, { verdicts: true, strictVerdict: true, binaryVerdict: true, ledgerPath: L }, fakeSeats());
+    assert.equal(rB.verdict, null, 'binary mode refuses MODIFY');
+    const rT = await dispatch('verdictModify', 'q', {}, {}, { verdicts: true, strictVerdict: true, ledgerPath: L }, fakeSeats());
+    assert.equal(rT.verdict, 'MODIFY', 'ternary mode keeps it');
+    fs.unlinkSync(L);
+  });
+
+  await test('decisionMode lands in the ledger row (cohorts must be separable)', async () => {
+    const L = tmpLedger();
+    await dispatch('verdictEnd', 'q', {}, {}, { verdicts: true, strictVerdict: true, decisionMode: 'binary', ledgerPath: L }, fakeSeats());
+    assert.equal(readRecent(5, L)[0].decisionMode, 'binary');
     fs.unlinkSync(L);
   });
 

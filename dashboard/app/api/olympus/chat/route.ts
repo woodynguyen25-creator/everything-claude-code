@@ -7,8 +7,14 @@
  * Body: { question: string; decision_id?: string }
  * Response: { answer: string; latency_ms: number }
  *
- * LLM cascade: Groq llama-3.3-70b → Gemini Flash → DeepSeek chat
+ * LLM cascade: Groq qwen3.6-27b → DeepSeek chat
  * Falls back to each provider if the previous returns 429 or errors.
+ *
+ * 2026-08-21: llama-3.3-70b was GONE from Groq's live catalogue (the first
+ * link of this cascade routed to a 404), and free-tier Gemini was REMOVED —
+ * Google states free-tier input is used for product improvement, and this
+ * endpoint feeds it FUND STATE. Same finding that benched the council's
+ * gemini seat; a fallback chain is where that path activates unwatched.
  */
 
 import { NextRequest, NextResponse } from 'next/server';
@@ -22,7 +28,6 @@ export const maxDuration = 30;
 // ---------------------------------------------------------------------------
 
 const GROQ_URL     = 'https://api.groq.com/openai/v1/chat/completions';
-const GEMINI_URL   = 'https://generativelanguage.googleapis.com/v1beta/openai/chat/completions';
 const DEEPSEEK_URL = 'https://api.deepseek.com/chat/completions';
 
 async function callLLM(
@@ -33,18 +38,11 @@ async function callLLM(
     {
       url:   GROQ_URL,
       key:   process.env.GROQ_API_KEY,
-      model: 'llama-3.3-70b-versatile',
+      model: 'qwen/qwen3.6-27b', // llama-3.3-70b GONE from the catalogue 2026-08-21
       name:  'Groq',
     },
-    {
-      url:   GEMINI_URL,
-      key:   process.env.GEMINI_API_KEY,
-      // 3.6, not 3.5: re-measured 2026-08-05 (n=5) — 3.6 5/5 range 1125-1293ms,
-      // 3.5 5/5 but range 1142-24539ms. The 08-02 3.6 "403 flap" was the
-      // suspended AI-Studio project on the old key, not the model.
-      model: 'gemini-3.6-flash',
-      name:  'Gemini',
-    },
+    // Gemini link removed 2026-08-21 — free tier trains on input; this endpoint
+    // carries fund state. See header note.
     {
       url:   DEEPSEEK_URL,
       key:   process.env.DEEPSEEK_API_KEY,

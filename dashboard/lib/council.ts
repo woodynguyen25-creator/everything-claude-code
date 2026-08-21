@@ -105,8 +105,9 @@ const CONFIG: Record<CouncilAgent, CouncilConfig> = {
     sigilSrc: '/art/agents/sigils/fenrir.webp',
     chain: 'critic',
     primaryProvider: 'codex-cli',
-    primaryModel: 'gpt-5.5',
-    modelLabel: 'GPT-5.5 Codex',
+    // gpt-5.5 400s on ChatGPT-account codex; gpt-5.6-sol is the validated id (2026-08-21)
+    primaryModel: 'gpt-5.6-sol',
+    modelLabel: 'GPT-5.6 Sol',
     summonLabel: String(copy.button.summon),
     emptyHeading: 'Fenrir growls',
     thinking: String(copy.loading.agentFenrir),

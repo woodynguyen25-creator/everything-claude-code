@@ -27,7 +27,8 @@
 'use strict';
 
 const { SEATS } = require('./providers');
-const { buildEntry, appendEntry } = require('./ledger');
+const { buildEntry, appendEntry, DEFAULT_LEDGER } = require('./ledger');
+const budget = require('./budget');
 
 /**
  * Pull a machine-readable verdict off an answer.
@@ -44,14 +45,27 @@ const { buildEntry, appendEntry } = require('./ledger');
  * the end parses as NO VERDICT, and council.js already surfaces those seats
  * with "read their answers, do not assume assent".
  */
-function extractVerdict(text, { strict = false } = {}) {
+function extractVerdict(text, { strict = false, binary = false } = {}) {
   const src = String(text || '');
+  // Strict scope is the last 5 non-empty lines (was 3): a legitimate verdict
+  // followed by a short source/footer block was being dropped (codex probe,
+  // 2026-08-21). Still the TAIL of the answer - the point stands that a verdict
+  // must commit the conclusion, not paragraph two.
   const scope = strict
-    ? src.split(/\r?\n/).map(l => l.trim()).filter(Boolean).slice(-3).join('\n')
+    ? src.split(/\r?\n/).map(l => l.trim()).filter(Boolean).slice(-5).join('\n')
     : src;
-  const matches = scope.match(/VERDICT:\s*(GO|NO-?GO|MODIFY)/gi);
+  // \b anchor: without it 'VERDICT: GOOD' parsed as GO (found by the codex
+  // seat probing this very function). NO-?GO before GO so the alternation cannot
+  // shortcut, and the boundary kills GOOD/GONE/MODIFYING style false hits.
+  const matches = scope.match(/VERDICT:\s*(NO-?GO|GO|MODIFY)\b/gi);
   if (!matches) return null;
-  return matches[matches.length - 1].replace(/VERDICT:\s*/i, '').toUpperCase().replace('NOGO', 'NO-GO');
+  const v = matches[matches.length - 1].replace(/VERDICT:\s*/i, '').toUpperCase().replace('NOGO', 'NO-GO');
+  // --binary is an ENFORCED contract, not prompt decoration (codex: 'my probe
+  // returned MODIFY under strict extraction'). A MODIFY in binary mode parses as
+  // NO VERDICT, so the seat lands in the 'read their answers, do not assume
+  // assent' bucket instead of silently rejoining the ternary cohort.
+  if (binary && v === 'MODIFY') return null;
+  return v;
 }
 
 /**
@@ -113,6 +127,24 @@ function isRetryable(result) {
 async function dispatch(seat, prompt, env, opts = {}, meta = {}, seatsMap = SEATS) {
   const runner = seatsMap[seat];
   if (!runner) throw new Error(`dispatch: unknown seat "${seat}"`);
+  // THE CEILING LIVES ON THE BOUNDARY (claude-seat review, 2026-08-21). It used
+  // to be a single call site in council.js before round 1 — which left round 2,
+  // the synthesis fallback chain, and every future caller dispatching metered
+  // seats ungated. "No metered call without a gate" enforced by a call site is
+  // one new caller away from false; enforced here, it is structural. Per-run
+  // exposure was cents, but the property is what matters. Subscription seats
+  // never gate (they cannot overrun); meta.forceBudget carries --force-budget.
+  // Only applied to the REAL seats map: injected test maps carry fake seats
+  // whose ids budget.js cannot price, and unknown-must-not-read-as-free would
+  // wrongly gate them.
+  if (seatsMap === SEATS && budget.isMetered(seat) && !meta.forceBudget) {
+    const g = budget.gate([seat], meta.ledgerPath || DEFAULT_LEDGER);
+    if (g.blocked.includes(seat)) {
+      // No physical attempt happened, so NO ledger row — a row here would count
+      // phantom dispatches into the very total that triggered the block.
+      return { provider: seat, model: 'blocked', ok: false, text: '', ms: 0, error: `budget: monthly cap reached ($${g.mtd.usd.toFixed(2)}/$${g.cap}) — metered dispatch refused (--force-budget to override)` };
+    }
+  }
   let result;
   try {
     result = await runner(prompt, env, opts);
@@ -129,10 +161,10 @@ async function dispatch(seat, prompt, env, opts = {}, meta = {}, seatsMap = SEAT
     result.error = `degenerate output: ${result.text.length} chars of looping repetition`;
   }
   if (meta.retried) result.retried = true;
-  if (meta.verdicts) result.verdict = extractVerdict(result.text, { strict: Boolean(meta.strictVerdict) });
+  if (meta.verdicts) result.verdict = extractVerdict(result.text, { strict: Boolean(meta.strictVerdict), binary: Boolean(meta.binaryVerdict) });
   try {
     appendEntry(
-      buildEntry(result, { tag: meta.tag || '', promptChars: prompt.length, round: meta.round, kind: meta.kind }),
+      buildEntry(result, { tag: meta.tag || '', promptChars: prompt.length, round: meta.round, kind: meta.kind, decisionMode: meta.decisionMode }),
       meta.ledgerPath,
     );
   } catch (e) {

@@ -25,7 +25,7 @@ const DEFAULT_LEDGER = path.resolve(__dirname, '..', '..', 'dashboard', 'data', 
  * re-creates the sized-timeouts-off-the-health-probe mistake the xai seat already
  * documents. budget.js deliberately does NOT filter — money is money.
  */
-function buildEntry(result, { tag = '', promptChars = 0, round = undefined, kind = undefined } = {}) {
+function buildEntry(result, { tag = '', promptChars = 0, round = undefined, kind = undefined, decisionMode = undefined } = {}) {
   const outputChars = result.text ? result.text.length : 0;
   // Real spend, priced from provider-reported usage where the provider returns it.
   // Recorded per row so month-to-date spend is a SUM of measurements rather than a
@@ -51,6 +51,10 @@ function buildEntry(result, { tag = '', promptChars = 0, round = undefined, kind
     usdEstimated: cost && cost.estimated ? true : undefined,
     round,
     kind,
+    // 'binary' | 'ternary' | undefined(organic). Without this column, binary-mode
+    // and ternary-mode verdicts pool indistinguishably and the comparison --binary
+    // exists for cannot be computed from the data it records (claude-seat review).
+    decisionMode,
     retried: result.retried || undefined,
     // Machine-readable stance when the seat emitted a VERDICT line (--decide
     // mode, or organically). Accrues the data that makes the council's dissent
@@ -96,6 +100,20 @@ function appendEntries(entries, ledgerPath = DEFAULT_LEDGER) {
  */
 function appendEntry(entry, ledgerPath = DEFAULT_LEDGER) {
   appendEntries([entry], ledgerPath);
+}
+
+/**
+ * Kinds whose rows are one-word pings, NOT real work. EVERY consumer computing
+ * latency, failure rate, or output stats MUST exclude them via isTimingRow() —
+ * the contract used to exist only as prose and no code enforced it (both agent
+ * seats flagged it 2026-08-21; codex measured today's xai average at 56.5s with
+ * preflights mixed in vs 65.5s for real calls). Negative filter on purpose:
+ * 99.4% of historical rows predate `kind` and must keep counting as real work.
+ * budget consumers do NOT use this — money is money, probes bill too.
+ */
+const NON_TIMING_KINDS = new Set(['probe', 'preflight']);
+function isTimingRow(e) {
+  return !NON_TIMING_KINDS.has(e && e.kind);
 }
 
 const TRANSCRIPT_DIR = path.resolve(__dirname, '..', '..', 'dashboard', 'data', 'council-transcripts');
@@ -151,6 +169,7 @@ function summarize(entries, dayIso = new Date().toISOString().slice(0, 10)) {
   const byProvider = {};
   for (const e of entries) {
     if (!e.ts || !e.ts.startsWith(dayIso)) continue;
+    if (!isTimingRow(e)) continue; // PONGs poison ms/output averages — see isTimingRow
     const cur = byProvider[e.provider] || { calls: 0, ok: 0, ms: 0, outputChars: 0 };
     byProvider[e.provider] = {
       calls: cur.calls + 1,
@@ -162,4 +181,4 @@ function summarize(entries, dayIso = new Date().toISOString().slice(0, 10)) {
   return byProvider;
 }
 
-module.exports = { DEFAULT_LEDGER, TRANSCRIPT_DIR, buildEntry, appendEntry, appendEntries, saveTranscript, readRecent, summarize };
+module.exports = { DEFAULT_LEDGER, TRANSCRIPT_DIR, NON_TIMING_KINDS, isTimingRow, buildEntry, appendEntry, appendEntries, saveTranscript, readRecent, summarize };

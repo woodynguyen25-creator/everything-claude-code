@@ -48,7 +48,7 @@ function getHistory(id: string): Message[] {
 // Uses stdin pipe (-d @-) to avoid all shell-escaping issues with the payload.
 function callModelRouter(
   messages: Message[],
-  model = 'llama-3.3-70b-versatile',
+  model = 'qwen/qwen3.6-27b' /* llama-3.3-70b GONE from Groq catalogue 2026-08-21 */,
 ): Promise<{ text: string; durationMs: number }> {
   return new Promise((resolve, reject) => {
     const t0 = Date.now();
@@ -127,7 +127,7 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
   history.push({ role: 'user', content: msg });
 
   try {
-    const model = body.model ?? 'llama-3.3-70b-versatile';
+    const model = body.model ?? 'qwen/qwen3.6-27b' /* llama-3.3-70b GONE from Groq catalogue 2026-08-21 */;
     const { text, durationMs } = await callModelRouter(history, model);
 
     history.push({ role: 'assistant', content: text });
