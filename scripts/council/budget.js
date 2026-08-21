@@ -54,7 +54,24 @@ const PRICING = {
   agyopus: null,
 };
 
-const DEFAULT_CAP_USD = Number(process.env.COUNCIL_MONTHLY_CAP_USD || 10);
+/**
+ * A malformed cap MUST NOT disable the ceiling. Measured 2026-08-21 (council audit):
+ * Number('abc') -> NaN, and `mtd.usd >= NaN` is false, so a typo'd env var made
+ * gate() allow every metered seat while printing "$NaN MTD". A module advertising
+ * fail-closed that fails open on a typo is worse than no cap, because it is trusted.
+ */
+function resolveCap(raw) {
+  if (raw === undefined || raw === null || raw === '') return 10;
+  const n = Number(raw);
+  if (!Number.isFinite(n) || n < 0) {
+    process.stderr.write(`[budget] ⚠ COUNCIL_MONTHLY_CAP_USD="${raw}" is not a valid number — falling back to $10 rather than disabling the cap
+`);
+    return 10;
+  }
+  return n;
+}
+
+const DEFAULT_CAP_USD = resolveCap(process.env.COUNCIL_MONTHLY_CAP_USD);
 
 /** Seats that bill per token. Everything else is subscription-metered or free. */
 function isMetered(seatId) {
@@ -114,8 +131,16 @@ function monthToDate(ledgerPath, now = new Date()) {
   let raw;
   try {
     raw = fs.readFileSync(ledgerPath, 'utf8');
-  } catch {
-    return out; // no ledger yet is a legitimate zero, unlike a corrupt one
+  } catch (e) {
+    // ENOENT is a genuine zero: no convene has happened yet.
+    // ANY OTHER failure (locked, permission denied, is-a-directory) means spend is
+    // UNKNOWN, and unknown must never read as free — that is the same fail-open
+    // hole the per-line parser already closes. Flagged as unreadable so gate()
+    // treats it as over-cap. Found by the council audit 2026-08-21.
+    if (e && e.code === 'ENOENT') return out;
+    out.unreadable = true;
+    out.readError = e && e.code ? e.code : 'unknown';
+    return out;
   }
 
   for (const line of raw.split(/\r?\n/)) {
@@ -159,8 +184,12 @@ function monthToDate(ledgerPath, now = new Date()) {
  * @returns {{allowed:string[], blocked:string[], mtd:object, cap:number, over:boolean}}
  */
 function gate(seatIds, ledgerPath, { cap = DEFAULT_CAP_USD, force = false } = {}) {
+  // Validate the CALLER's cap too, not just the env default — a NaN passed in here
+  // makes every comparison false and silently disables the ceiling.
+  cap = resolveCap(cap);
   const mtd = monthToDate(ledgerPath);
-  const over = mtd.usd >= cap;
+  // Unreadable ledger => spend unknown => treat as over. Fail closed.
+  const over = mtd.unreadable === true || mtd.usd >= cap;
   if (force || !over) {
     return { allowed: [...seatIds], blocked: [], mtd, cap, over };
   }
@@ -174,6 +203,7 @@ function line(mtd, cap) {
   const bits = [`[budget] $${mtd.usd.toFixed(4)} / $${cap.toFixed(2)} MTD (${pct}%)`];
   if (mtd.estimatedRows) bits.push(`${mtd.estimatedRows} row(s) ESTIMATED, not provider-reported`);
   if (mtd.unparseable) bits.push(`⚠ ${mtd.unparseable} UNPARSEABLE row(s) — counted against the cap`);
+  if (mtd.unreadable) bits.push(`⛔ LEDGER UNREADABLE (${mtd.readError}) — spend unknown, treating as OVER cap`);
   return bits.join(' · ');
 }
 

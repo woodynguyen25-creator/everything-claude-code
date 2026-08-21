@@ -76,7 +76,7 @@ function truncate(text, max) {
 }
 
 function parseArgs(argv) {
-  const args = { question: '', to: DEFAULT_SEATS, tag: '', synth: false, timeoutS: 240, rounds: 1, lenses: true, lensSet: 'default', force: false, decide: false };
+  const args = { question: '', to: DEFAULT_SEATS, tag: '', synth: false, timeoutS: 240, rounds: 1, lenses: true, lensSet: 'default', force: false, forceBudget: false, decide: false };
   const rest = [];
   for (let i = 0; i < argv.length; i += 1) {
     const a = argv[i];
@@ -98,6 +98,11 @@ function parseArgs(argv) {
     // Skip the API-seat preflight and convene regardless (e.g. deliberately
     // convening a degraded council, or when the preflight itself is suspect).
     else if (a === '--force') args.force = true;
+    // DELIBERATELY SEPARATE from --force. The audit (2026-08-21) found --force was
+    // both the preflight-failure workaround AND the spend-cap override, so the
+    // documented recovery for a dead API key silently disabled the only ceiling.
+    // Overriding a health check and authorising more spend are different decisions.
+    else if (a === '--force-budget') args.forceBudget = true;
     // Decision mode: force every seat to end with a machine-readable
     // VERDICT line, tally the verdicts, and persist them to the ledger so
     // the council's dissent rate becomes measurable over time.
@@ -296,12 +301,12 @@ async function main() {
   // Subscription-metered seats (claude/codex/agy*) are never blocked: they cannot
   // cause an overrun, and cutting them off when the METERED budget is exhausted
   // would disable the free tier exactly when it is the only affordable option.
-  const budgetGate = budget.gate(args.to, DEFAULT_LEDGER, { force: args.force });
+  const budgetGate = budget.gate(args.to, DEFAULT_LEDGER, { force: args.forceBudget });
   console.log(`[council] ${budget.line(budgetGate.mtd, budgetGate.cap)}`);
   if (budgetGate.over) {
     if (budgetGate.blocked.length) {
       console.log(`[council] ⛔ MONTHLY CAP REACHED — metered seats skipped: ${budgetGate.blocked.join(', ')}`);
-      console.log('[council]    subscription-metered seats still run. Override with --force, or raise COUNCIL_MONTHLY_CAP_USD.');
+      console.log('[council]    subscription-metered seats still run. Override with --force-budget, or raise COUNCIL_MONTHLY_CAP_USD.');
       args.to = budgetGate.allowed;
     }
     if (!args.to.length) {

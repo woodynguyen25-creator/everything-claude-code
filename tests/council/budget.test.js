@@ -136,6 +136,44 @@ function runTests() {
     assert.strictEqual(m.unparseable, 0);
   })) passed++; else failed++;
 
+  // --- Holes the first version of this suite MISSED, found by the council audit
+  // 2026-08-21. Every one of them made a module that advertises "fail-closed"
+  // fail OPEN, which is worse than no cap because the cap is trusted.
+
+  if (test('a malformed cap FALLS BACK instead of disabling the ceiling', () => {
+    // Number('abc') is NaN, and `spend >= NaN` is false — so a typo'd env var
+    // silently allowed every metered seat while printing "$NaN MTD".
+    const f = tmpLedger([JSON.stringify({ ts: isoThisMonth(), provider: 'xai', usd: 500 })]);
+    for (const bad of [Number('abc'), -5, null, 'twenty']) {
+      const g = budget.gate(['xai'], f, { cap: bad });
+      assert.strictEqual(g.cap, 10, `cap=${String(bad)} must fall back to 10`);
+      assert.strictEqual(g.over, true, `cap=${String(bad)} must still enforce`);
+      assert.deepStrictEqual(g.blocked, ['xai']);
+    }
+    fs.unlinkSync(f);
+  })) passed++; else failed++;
+
+  if (test('an UNREADABLE ledger fails closed (unknown spend is not free spend)', () => {
+    // Distinct from a MISSING ledger. Previously every read error was caught as
+    // "$0 spent", so a locked or permission-denied file disabled the cap.
+    const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'budget-unreadable-'));
+    const m = budget.monthToDate(dir); // a directory read throws EISDIR
+    assert.strictEqual(m.unreadable, true, 'must be flagged unreadable');
+    const g = budget.gate(['xai', 'claude'], dir, { cap: 10 });
+    assert.strictEqual(g.over, true, 'unknown spend must be treated as over cap');
+    assert.deepStrictEqual(g.blocked, ['xai'], 'metered blocked');
+    assert.deepStrictEqual(g.allowed, ['claude'], 'subscription seat still allowed');
+    fs.rmdirSync(dir);
+  })) passed++; else failed++;
+
+  if (test('MISSING vs UNREADABLE are not conflated', () => {
+    const missing = budget.monthToDate(path.join(os.tmpdir(), 'no-such-ledger-xyz.jsonl'));
+    assert.notStrictEqual(missing.unreadable, true, 'ENOENT is a genuine zero');
+    const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'budget-conflate-'));
+    assert.strictEqual(budget.monthToDate(dir).unreadable, true);
+    fs.rmdirSync(dir);
+  })) passed++; else failed++;
+
   console.log('\n=== Test Results ===');
   console.log(`Passed: ${passed}`);
   console.log(`Failed: ${failed}`);
