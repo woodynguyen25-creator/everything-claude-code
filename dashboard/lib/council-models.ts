@@ -33,7 +33,8 @@ const COUNCIL_MODELS: Record<CouncilAgent, CouncilModelConfig> = {
     godModeLabel: 'Oracle Mode',
   },
   fenrir: {
-    normal: { provider: 'codex-cli', model: 'gpt-5.5', label: 'GPT-5.5 Codex' },
+    // gpt-5.5 400s on ChatGPT-account codex — gpt-5.6-sol is the validated id (2026-08-21)
+    normal: { provider: 'codex-cli', model: 'gpt-5.6-sol', label: 'GPT-5.6 Sol' },
     supercharged: { provider: 'claude-cli', model: 'claude-fable-5', label: 'Claude CLI — Fable 5' },
     godModeLabel: 'Fenrir Unchained',
   },
@@ -42,7 +43,11 @@ const COUNCIL_MODELS: Record<CouncilAgent, CouncilModelConfig> = {
     // 3.5-flash 5/5 med 2026ms but range 1142-24539 — a 20x tail that stalls the
     // council past its own timeout. The earlier "3.6 flaps 403 2/3" note was the
     // SUSPENDED project on the old key, not the model. Back on 3.6.
-    normal: { provider: 'gemini', model: 'gemini-3.6-flash', label: 'Gemini 3.6 Flash' },
+    // SWAPPED OFF free-tier Gemini 2026-08-21: the council benched that path because
+    // Google states free-tier input is used for product improvement, and dashboard
+    // chats carry the same personal/trading content as council prompts. Haiku on the
+    // Claude CLI is $0 marginal on the Max sub and verified-private.
+    normal: { provider: 'claude-cli', model: 'claude-haiku-4-5-20251001', label: 'Claude CLI — Haiku 4.5' },
     supercharged: { provider: 'claude-cli', model: 'claude-fable-5', label: 'Claude CLI — Fable 5' },
     godModeLabel: 'The Eye Opens',
   },

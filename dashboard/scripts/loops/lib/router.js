@@ -79,12 +79,16 @@ const MODEL_MAP = {
   cerebras: 'gpt-oss-120b',      // primary — 1% failure over 176 calls, ~390ms
   cerebrasFast: 'gemma-4-31b',   // smaller/cheaper; measured 388ms, sound reasoning
   cerebrasMid: 'gpt-oss-120b',   // same as primary; Cerebras has no middle tier
-  groq: 'llama-3.3-70b-versatile',
-  groqSmall: 'llama-3.1-8b-instant',  // replaces decommissioned gemma2-9b-it
-  groqLlama: 'llama-3.3-70b-versatile',
+  // 2026-08-21: BOTH llama ids are gone from Groq's live catalogue (verified
+  // against council-catalogue-seen.json, refreshed the same day) — the same
+  // silent rot this map's own header documents, recurring inside the map.
+  // qwen3.6-27b is the id the council's groq seat already validated 2026-08-17.
+  groq: 'qwen/qwen3.6-27b',
+  groqSmall: 'openai/gpt-oss-20b',    // live small tier; llama-3.1-8b-instant is GONE
+  groqLlama: 'qwen/qwen3.6-27b',      // alias kept for callers; no llama exists on this key anymore
   deepseek: 'deepseek-chat',
   deepseekReasoner: 'deepseek-reasoner',
-  codex: 'gpt-5.4',
+  codex: 'gpt-5.6-sol', // was gpt-5.4 — pre-Sol id; the CLI validates only gpt-5.6-sol (2026-08-21)
   ollamaCoder: 'deepseek-coder-v2:16b',
   // 2026-08-02: key rotated to a fresh AI-Studio project (prior project was
   // SUSPENDED — 403 on every model).
@@ -104,7 +108,7 @@ const MODEL_MAP = {
   haiku: 'claude-haiku-4-5-20251001',
   sonnet: 'claude-sonnet-4-6',
   opus: 'claude-opus-4-7',
-  gpt55: 'gpt-5.5',
+  gpt55: 'gpt-5.6-sol', // alias kept; 'gpt-5.5' 400s on ChatGPT-account codex
 };
 
 // -----------------------------------------------------------------------------

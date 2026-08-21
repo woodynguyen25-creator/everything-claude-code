@@ -124,11 +124,15 @@ const CONFIG: Record<CouncilAgent, CouncilConfig> = {
     heroSrc: '/art/agents/heroes/sauron.webp',
     sigilSrc: '/art/agents/sigils/sauron.webp',
     chain: 'bulkExecutor',
-    primaryProvider: 'gemini',
-    // 2026-08-05 (n=5): 3.6-flash 5/5 med 1242ms range 1125-1293; 3.5-flash 5/5 but
-    // range 1142-24539ms. The 08-02 "3.6 flaps 403" was the suspended project.
-    primaryModel: 'gemini-3.6-flash',
-    modelLabel: 'Gemini 3.6 Flash',
+    // SWAPPED OFF free-tier Gemini 2026-08-21 — same privacy finding that benched
+    // the council's gemini seat: Google states free-tier input is used for product
+    // improvement, and Sauron chats carry the same personal content as council
+    // prompts. Haiku rides the Max sub: $0 marginal, verified-private.
+    // (Prior latency note, kept: 3.6-flash n=5 med 1242ms; the 403 flap was the
+    // suspended project, not the model. Restore only if billing is attached.)
+    primaryProvider: 'claude-cli',
+    primaryModel: 'claude-haiku-4-5-20251001',
+    modelLabel: 'Claude Haiku 4.5',
     summonLabel: String(copy.button.summon),
     emptyHeading: 'Sauron sees',
     thinking: String(copy.loading.agentSauron),

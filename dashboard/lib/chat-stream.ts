@@ -28,44 +28,47 @@ export type StreamEvent =
 
 const activeControllers = new Map<number, AbortController>();
 
+// FREE-TIER GEMINI REMOVED FROM EVERY CHAIN 2026-08-21. Google states free-tier
+// API input is "used to improve our products" — the same finding that benched the
+// council's gemini seat — and agent chats carry personal/trading content. A
+// fallback chain is the WORST place for that path: it activates silently, exactly
+// when nobody is looking. Restore only if billing is attached to the AI-Studio
+// project (which flips Google's flag to No).
 const providerOrderByAgent: Record<CouncilAgent, ProviderKey[]> = {
-  'lebot-james': ['claude-cli', 'cerebras', 'gemini'],
-  thor: ['claude-cli', 'cerebras', 'groq', 'gemini'],
-  perseus: ['deepseek', 'cerebras', 'groq', 'gemini', 'ollama'],
-  fenrir: ['codex-cli', 'claude-cli', 'cerebras', 'groq', 'gemini'],
-  sauron: ['gemini', 'cerebras', 'groq', 'ollama'],
+  'lebot-james': ['claude-cli', 'cerebras'],
+  thor: ['claude-cli', 'cerebras', 'groq'],
+  perseus: ['deepseek', 'cerebras', 'groq', 'ollama'],
+  fenrir: ['codex-cli', 'claude-cli', 'cerebras', 'groq'],
+  sauron: ['claude-cli', 'deepseek', 'cerebras', 'groq', 'ollama'],
 };
 
 const providerModelMap: Record<CouncilAgent, Partial<Record<ProviderKey, string>>> = {
   'lebot-james': {
     'claude-cli': 'claude-fable-5',
     cerebras: routerLib.MODEL_MAP.cerebras,
-    gemini: routerLib.MODEL_MAP.gemini,
   },
   thor: {
     'claude-cli': 'claude-sonnet-4-6',
     cerebras: routerLib.MODEL_MAP.cerebras,
     groq: routerLib.MODEL_MAP.groqLlama,
-    gemini: routerLib.MODEL_MAP.gemini,
   },
   perseus: {
     deepseek: routerLib.MODEL_MAP.deepseek,
     cerebras: routerLib.MODEL_MAP.cerebras,
     groq: routerLib.MODEL_MAP.groq,
-    gemini: routerLib.MODEL_MAP.gemini,
     ollama: routerLib.MODEL_MAP.ollama,
   },
   fenrir: {
-    'codex-cli': 'gpt-5.5',
+    'codex-cli': 'gpt-5.6-sol', // was gpt-5.5, which 400s on ChatGPT-account codex
     'claude-cli': 'claude-sonnet-4-6',
     cerebras: routerLib.MODEL_MAP.cerebras,
     groq: routerLib.MODEL_MAP.groqLlama,
-    gemini: routerLib.MODEL_MAP.gemini,
   },
   sauron: {
+    'claude-cli': routerLib.MODEL_MAP.haiku, // $0 on the Max sub, verified-private
+    deepseek: routerLib.MODEL_MAP.deepseek,
     cerebras: routerLib.MODEL_MAP.cerebras,
     groq: routerLib.MODEL_MAP.groq,
-    gemini: routerLib.MODEL_MAP.gemini,
     ollama: routerLib.MODEL_MAP.ollama,
   },
 };
