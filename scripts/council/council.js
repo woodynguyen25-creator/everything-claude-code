@@ -29,6 +29,7 @@
 const { loadEnv, SEATS } = require('./providers');
 const { buildEntry, appendEntry, saveTranscript, readRecent, summarize, DEFAULT_LEDGER } = require('./ledger');
 const budget = require('./budget');
+const verdictBias = require('./verdict-bias');
 
 // Tiered roster (2026-08-02, Woody's call) — see roster.js for the tier
 // rationale and the ledger evidence behind each seat's placement.
@@ -328,6 +329,11 @@ async function main() {
     ? '\n\n[DECISION MODE] End your answer with exactly one line: "VERDICT: GO", "VERDICT: NO-GO", or "VERDICT: MODIFY" followed by " — " and a one-clause reason. You MUST pick one; "it depends" is not a verdict. If you pick MODIFY, the clause must name the single change that flips you to GO.'
     : '';
 
+  // Snapshot each seat's PRIOR verdict record before dispatching. Ledger rows are
+  // now written per-dispatch, so reading this after the round would score a seat
+  // against a distribution that already contains the verdict being scored.
+  const priorVerdicts = args.decide ? verdictBias.distribution(DEFAULT_LEDGER) : {};
+
   const round1 = await Promise.all(args.to.map((seat, i) => {
     const lens = useLenses ? `\n\n[LENS — apply to your answer] ${lensTable[i % lensTable.length]}` : '';
     return callSeat(seat, args.question + lens + decideSuffix, env, seatOpts(seat)).then(r => {
@@ -375,11 +381,36 @@ async function main() {
     // DECORRELATED error, and 3+ seats landing identically is the signature of
     // an echo (shared framing, a leading question, or correlated seats) as
     // often as it is a genuinely one-sided question. Flag it; the human decides.
+    // SEAT BIAS, measured from the council's own history rather than asserted.
+    // The 8/21 self-audit found the seats are not neutral instruments: claude has
+    // returned NO-GO 0 times in 25 verdicts and codex has returned GO 0 times in 26.
+    // A verdict from a seat that has never cast its opposite is close to the only
+    // thing that seat could have said, so counting it equally in the tally reads
+    // the ROSTER'S SHAPE as evidence about the QUESTION.
+    const biasReport = verdictBias.assessUnanimity(
+      voted.map(r => ({ provider: r.provider, verdict: r.verdict })),
+      priorVerdicts,
+    );
+    const biasLines = verdictBias.lines(biasReport);
+    if (biasLines.length) {
+      console.log("[council] seat-bias check (from this ledger's own verdict history):");
+      for (const l of biasLines) console.log(l);
+    }
+
     if (voted.length >= 3 && Object.keys(tally).length === 1) {
       const v = voted[0].verdict;
-      console.log(`[council] ⚠ UNANIMOUS ${v} (${voted.length}/${voted.length}). Before acting, ask: was the question leading? ` +
-        'Would the opposite framing also come back unanimous?' +
-        (voted.some(r => r.provider === 'claude') ? ' Note: the claude seat is the LEAST decorrelated seat — its agreement is near-zero evidence.' : ''));
+      // Two DIFFERENT failure modes used to share this one alarm. Separate them:
+      // "the seats always say this" is not the same problem as "the question was
+      // leading", and the fix for each is different (change the roster vs. change
+      // the prompt).
+      if (biasReport.allStructural) {
+        console.log(`[council] ⛔ UNANIMOUS ${v} — but EVERY agreeing seat has never once cast the opposite verdict.`);
+        console.log('[council]    This is SEAT CORRELATION, not consensus. Re-run including a seat that can disagree (xai uses the full range).');
+      } else {
+        console.log(`[council] ⚠ UNANIMOUS ${v} (${voted.length}/${voted.length}). Before acting, ask: was the question leading? ` +
+          'Would the opposite framing also come back unanimous?' +
+          (voted.some(r => r.provider === 'claude') ? ' Note: the claude seat is the LEAST decorrelated seat — its agreement is near-zero evidence.' : ''));
+      }
     }
   }
   if (transcript) console.log(`[council] full text saved: ${transcript}`);
