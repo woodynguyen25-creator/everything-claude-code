@@ -279,29 +279,38 @@ async function main() {
   // before answering, so a short global --timeout can't guillotine them.
   // claude measured ~8s on a trivial prompt but boots MCP servers + skills on
   // real ones; codex is far worse (182s average, 600s hard timeouts observed).
-  // RAISED 2026-08-21 from { codex: 600, claude: 300 }. Both were set BELOW the p90
-  // of their own SUCCESSFUL calls, so the council was killing calls that were on
-  // track to answer — the same defect already fixed in health.js, where a 45s probe
-  // timeout reported the roster's most reliable seat as DOWN. A monitor that causes
-  // the failure it reports is worse than no monitor.
+  // RAISED 2026-08-21 from { codex: 600, claude: 300 }. Sized to cover each seat's
+  // measured p99, from this repo's ledger (SUCCESSFUL calls only):
   //
-  // Measured from this repo's ledger (successful calls only):
-  //   claude  n=66   86% ok   med 204s   p90 366s   p99 453s   6 of 9 failures were TIMEOUTS
-  //   codex   n=183  83% ok   med 112s   p90 477s   p99 840s  23 of 31 failures were TIMEOUTS
+  //   claude  n=66   86% ok   med 204s   p90 366s   p99 453s   -> 600s
+  //   codex   n=183  83% ok   med 112s   p90 480s   p99 840s   -> 900s
   //
-  // So codex's reputation as the unreliable seat is mostly OURS: without the cut-off
-  // its ceiling is ~96%, not 83%. claude's is ~95%, not 86%. And 20 claude calls
-  // finished between 240s and 300s — they barely made it under the old cap.
+  // ⚠ CORRECTION. An earlier version of this comment, and the commit that
+  // introduced it, claimed "both caps sat BELOW the p90 of their own successful
+  // calls". That is TRUE FOR CLAUDE ONLY (300s cap vs 366s p90). It is FALSE for
+  // codex: its old 600s cap was ABOVE its 480s p90. Caught by the codex seat
+  // reviewing this change. The codex cap is therefore justified by p99 (840s), not
+  // by p90 — a weaker argument than the one originally given, and codex was
+  // initially set to 1200s on that bad reasoning. Corrected to 900s: it covers p99
+  // with margin without imposing a 20-minute floor on every default convene, since
+  // round 1 is a Promise.all and one slow LEAD seat holds the entire result.
   //
-  // Those percentiles are RIGHT-CENSORED: every call that would have finished above
-  // the old cap is missing from the sample, so the true p90 is HIGHER than the number
-  // above. Hence generous headroom rather than p90 + a few seconds.
+  // The claude half stands and bit twice in one day: a live convene logged
+  // "claude failed (timeout after 300000ms) — retrying once", then timed out again.
+  // 20 claude calls finished between 240s and 300s — barely under the old cap.
   //
-  // A timeout here is not a cheap failure. codex never retries (its failures are
-  // timeouts, so a retry just burns the clock twice), so a cut-off call costs the
-  // full wait and returns nothing. Both seats are subscription-metered, so waiting
-  // longer costs $0 — only wall-clock. Override per-run with --timeout.
-  const CLI_MIN_TIMEOUT_S = { codex: 1200, claude: 600 };
+  // ⚠ DO NOT read the timeout count as recoverable failures. Of codex's 24 timeouts
+  // only 10 were at the 600s default; 7 were at 240s and 5 at 300s (runs that passed
+  // an explicitly LOWER --timeout), and 1 each at 900s and 1200s — those would not
+  // have survived this change either. Any "ceiling reliability" figure computed by
+  // assuming every timed-out call would have finished is an optimistic upper bound,
+  // not an expected rate.
+  //
+  // Still worth the headroom: codex never retries (its failures ARE timeouts, so a
+  // retry just burns the clock twice), so a cut-off call costs the full wait and
+  // returns nothing. Both seats are subscription-metered — waiting costs $0, only
+  // wall-clock. Override per-run with --timeout.
+  const CLI_MIN_TIMEOUT_S = { codex: 900, claude: 600 };
   // Woody 8/06: Sol's depth is tiered — 'medium' for quick market scans, 'high' default,
   // 'xhigh' for his real position ideas (xhigh was the 7/26 timeout cause; when used,
   // pair it with --timeout 900+; the codex floor below already guarantees 600s).
@@ -425,9 +434,9 @@ async function main() {
       // "the seats always say this" is not the same problem as "the question was
       // leading", and the fix for each is different (change the roster vs. change
       // the prompt).
-      if (biasReport.allStructural) {
-        console.log(`[council] ⛔ UNANIMOUS ${v} — but EVERY agreeing seat has never once cast the opposite verdict.`);
-        console.log('[council]    This is SEAT CORRELATION, not consensus. Re-run including a seat that can disagree (xai uses the full range).');
+      if (biasReport.allDominant) {
+        console.log(`[council] ⛔ UNANIMOUS ${v} — but that is the DEFAULT answer of every agreeing seat.`);
+        console.log('[council]    This is SEAT CORRELATION, not consensus. Re-run including a seat whose norm differs (xai uses the full range).');
       } else {
         console.log(`[council] ⚠ UNANIMOUS ${v} (${voted.length}/${voted.length}). Before acting, ask: was the question leading? ` +
           'Would the opposite framing also come back unanimous?' +

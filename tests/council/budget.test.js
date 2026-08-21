@@ -99,6 +99,39 @@ function runTests() {
     fs.unlinkSync(f);
   })) passed++; else failed++;
 
+  if (test('FAILS CLOSED FOR REAL: an unparseable row BLOCKS metered dispatch', () => {
+    // Found by the codex seat 2026-08-21, reviewing this very module. The test
+    // above passed and the code comments claimed an unparseable row "counts
+    // AGAINST the cap" — but monthToDate only incremented a COUNTER and `continue`d,
+    // and gate() consulted nothing but `usd` and `unreadable`. Measured proof of the
+    // hole: a ledger of {usd:0.01} + one torn line gave
+    //     usd=0.01  unparseable=1  over=false  xai ALLOWED
+    // so the row contributed $0.00 and the ceiling did not move.
+    //
+    // The old test asserted the counter incremented, never that dispatch was
+    // blocked — it validated the bookkeeping and named itself after the behaviour.
+    // That is the "a green suite proves nothing until you've seen it go red" rule,
+    // failing inside a suite written to enforce fail-closed spend accounting.
+    const f = tmpLedger([
+      JSON.stringify({ ts: isoThisMonth(), provider: 'xai', usd: 0.01 }),
+      '{ this is a TORN row',
+    ]);
+    const g = budget.gate(['xai', 'claude'], f, { cap: 10 });
+    assert.strictEqual(g.over, true, 'a torn row means UNKNOWN spend, which must not read as free');
+    assert.deepStrictEqual(g.blocked, ['xai'], 'metered seats blocked');
+    assert.deepStrictEqual(g.allowed, ['claude'], 'subscription seats still allowed');
+    fs.unlinkSync(f);
+  })) passed++; else failed++;
+
+  if (test('a clean ledger well under cap is NOT blocked (the gate must still open)', () => {
+    // Guards the fix above from becoming a gate that never opens.
+    const f = tmpLedger([JSON.stringify({ ts: isoThisMonth(), provider: 'xai', usd: 0.01 })]);
+    const g = budget.gate(['xai'], f, { cap: 10 });
+    assert.strictEqual(g.over, false);
+    assert.deepStrictEqual(g.blocked, []);
+    fs.unlinkSync(f);
+  })) passed++; else failed++;
+
   if (test('re-prices legacy rows that predate cost accounting', () => {
     // Without this, all pre-8/21 history reads as free and the cap starts from a
     // false zero — the exact blind spot that made a $15 charge unexplainable.

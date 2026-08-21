@@ -76,8 +76,9 @@ function appendEntries(entries, ledgerPath = DEFAULT_LEDGER) {
  * process complete. Rows are small because they store METADATA only (answer text
  * goes to saveTranscript): the real ledger's median row is 210 bytes, p99 is 284,
  * max is 556 — orders of magnitude below where a single append could tear.
- * If that ever changes, the downstream guard still holds: budget.js counts an
- * unparseable row AGAINST the cap rather than skipping it.
+ * If that ever changes, the downstream guard now genuinely holds: budget.js BLOCKS
+ * metered dispatch when any row is unparseable. That was a false claim in this very
+ * comment until 2026-08-21 — gate() incremented a counter and allowed the run.
  */
 function appendEntry(entry, ledgerPath = DEFAULT_LEDGER) {
   appendEntries([entry], ledgerPath);

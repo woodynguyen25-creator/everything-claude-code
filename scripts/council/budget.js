@@ -188,8 +188,25 @@ function gate(seatIds, ledgerPath, { cap = DEFAULT_CAP_USD, force = false } = {}
   // makes every comparison false and silently disables the ceiling.
   cap = resolveCap(cap);
   const mtd = monthToDate(ledgerPath);
-  // Unreadable ledger => spend unknown => treat as over. Fail closed.
-  const over = mtd.unreadable === true || mtd.usd >= cap;
+  // Three ways spend can be UNKNOWN, and all three must fail closed:
+  //   1. the ledger cannot be read at all
+  //   2. a row cannot be PARSED — its cost is unknowable, so it is not $0
+  //   3. known spend has reached the ceiling
+  //
+  // (2) was a FAIL-OPEN hole until 2026-08-21, found by the codex seat reviewing
+  // this module. monthToDate incremented `unparseable` and moved on; gate() never
+  // consulted it. Measured: a ledger of {usd:0.01} plus one torn line returned
+  // `usd=0.01 unparseable=1 over=false xai ALLOWED` — the row contributed $0.00.
+  // Both this file and ledger.js carried comments asserting the opposite, and the
+  // test named "FAILS CLOSED" asserted only that a COUNTER incremented, never that
+  // dispatch was blocked. A module that advertises fail-closed and fails open on a
+  // corrupt row is worse than no cap, because the cap is trusted.
+  //
+  // Blocking on a single torn row is deliberately strict. It is affordable because
+  // torn rows should be vanishingly rare — rows are metadata only (median 210
+  // bytes, max 557) and 8 concurrent processes x 200 rows produced 0 tears — and
+  // because the escape hatch is one flag (--force-budget) rather than a code change.
+  const over = mtd.unreadable === true || mtd.unparseable > 0 || mtd.usd >= cap;
   if (force || !over) {
     return { allowed: [...seatIds], blocked: [], mtd, cap, over };
   }
@@ -202,7 +219,7 @@ function line(mtd, cap) {
   const pct = cap > 0 ? Math.round((mtd.usd / cap) * 100) : 0;
   const bits = [`[budget] $${mtd.usd.toFixed(4)} / $${cap.toFixed(2)} MTD (${pct}%)`];
   if (mtd.estimatedRows) bits.push(`${mtd.estimatedRows} row(s) ESTIMATED, not provider-reported`);
-  if (mtd.unparseable) bits.push(`⚠ ${mtd.unparseable} UNPARSEABLE row(s) — counted against the cap`);
+  if (mtd.unparseable) bits.push(`⛔ ${mtd.unparseable} UNPARSEABLE row(s) — spend unknown, BLOCKING metered seats (--force-budget to override)`);
   if (mtd.unreadable) bits.push(`⛔ LEDGER UNREADABLE (${mtd.readError}) — spend unknown, treating as OVER cap`);
   return bits.join(' · ');
 }

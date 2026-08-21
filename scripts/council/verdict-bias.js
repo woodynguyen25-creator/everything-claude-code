@@ -47,6 +47,28 @@ const OPPOSITE = { GO: 'NO-GO', 'NO-GO': 'GO', MODIFY: null };
  */
 const MIN_HISTORY = 8;
 
+/**
+ * A verdict at or above this share of a seat's history is that seat's DEFAULT
+ * answer, so hearing it again is weak evidence. At or below RARE_RATE it is a
+ * departure from the seat's norm and deserves MORE weight, not less.
+ *
+ * CORRECTION 2026-08-21, found by the codex seat reviewing this module on the day
+ * it shipped. The first version flagged a verdict as "structural" whenever the
+ * seat had never cast the OPPOSITE one, and printed "near-structural, not a
+ * judgement". That is backwards. Never saying NO-GO makes claude's SILENCE on
+ * blocking uninformative; it does not make claude's GO uninformative — claude GO
+ * is 3/25 (12%), which is rare and therefore notable.
+ *
+ * The error was not theoretical. On its first live run the module annotated
+ * codex=NO-GO as "near-structural, not a judgement" — and that NO-GO was a
+ * substantive review that correctly identified four real defects in this repo,
+ * including a fail-OPEN hole in budget.js. codex NO-GO is 33% of its history and
+ * its modal answer is MODIFY at 67%, so the NO-GO was a DEPARTURE from its norm.
+ * The tool was dismissing exactly the signal it should have amplified.
+ */
+const DOMINANT_RATE = 0.60;
+const RARE_RATE = 0.20;
+
 /** @returns {Record<string, {GO:number, MODIFY:number, 'NO-GO':number, n:number}>} */
 function distribution(ledgerPath) {
   const out = {};
@@ -89,12 +111,19 @@ function assess(seat, verdict, dist) {
   const opposingCount = opposing ? d[opposing] : 0;
   const count = d[verdict] || 0;
   const thin = d.n < MIN_HISTORY;
+  const rate = d.n > 0 ? count / d.n : 0;
 
   const base = {
-    seat, verdict, n: d.n, count,
-    rate: d.n > 0 ? count / d.n : 0,
+    seat, verdict, n: d.n, count, rate,
     opposing, opposingCount,
-    structural: false, thin,
+    // The seat has never cast the OPPOSITE verdict. This says something about the
+    // ABSENCE of that verdict, not about the one in hand — see the correction note.
+    cannotOppose: false,
+    // This verdict is simply what the seat usually says => weak signal.
+    dominant: false,
+    // This verdict is a departure from the seat's norm => stronger signal.
+    rare: false,
+    thin,
     note: '',
   };
 
@@ -103,12 +132,22 @@ function assess(seat, verdict, dist) {
     base.note = `only ${d.n} prior verdict(s) — too few to judge; treat at face value but unverified`;
     return base;
   }
-  if (opposing && opposingCount === 0) {
-    base.structural = true;
-    base.note = `has NEVER returned ${opposing} in ${d.n} verdicts — this ${verdict} is near-structural, not a judgement`;
-    return base;
+
+  base.cannotOppose = Boolean(opposing) && opposingCount === 0;
+  base.dominant = rate >= DOMINANT_RATE;
+  base.rare = rate <= RARE_RATE;
+
+  const pct = Math.round(rate * 100);
+  if (base.dominant) {
+    base.note = `${verdict} is this seat's DEFAULT answer (${count}/${d.n} = ${pct}%) — weak signal, it says this most of the time`;
+  } else if (base.rare) {
+    base.note = `${verdict} is RARE for this seat (${count}/${d.n} = ${pct}%) — a departure from its norm, worth extra weight`;
+  } else {
+    base.note = `${count}/${d.n} ${verdict} historically (${pct}%)`;
   }
-  base.note = `${count}/${d.n} ${verdict} historically${opposing ? `; has returned ${opposing} ${opposingCount}x` : ''}`;
+  if (base.cannotOppose) {
+    base.note += `; note it has NEVER returned ${opposing} in ${d.n} verdicts, so the ABSENCE of ${opposing} from this seat means nothing`;
+  }
   return base;
 }
 
@@ -127,14 +166,15 @@ function assessUnanimity(voted, dist) {
   const seats = valid.map(v => assess(v.provider, v.verdict, dist));
   const distinct = new Set(valid.map(v => v.verdict));
   const unanimous = valid.length >= 2 && distinct.size === 1;
-  const structuralCount = seats.filter(s => s.structural).length;
+  const dominantCount = seats.filter(s => s.dominant).length;
   return {
     unanimous,
     verdict: unanimous ? valid[0].verdict : null,
     seats,
-    structuralCount,
-    // Only meaningful when unanimous: every agreeing seat was going to say this.
-    allStructural: unanimous && seats.length > 0 && structuralCount === seats.length,
+    dominantCount,
+    // Only meaningful when unanimous: this verdict is the DEFAULT answer of every
+    // agreeing seat, so the agreement is the roster's shape rather than a finding.
+    allDominant: unanimous && seats.length > 0 && dominantCount === seats.length,
     thinCount: seats.filter(s => s.thin).length,
   };
 }
@@ -143,13 +183,15 @@ function assessUnanimity(voted, dist) {
 function lines(unanimityResult) {
   const out = [];
   for (const s of unanimityResult.seats) {
-    if (s.structural) out.push(`  ⚠ ${s.seat}=${s.verdict}: ${s.note}`);
+    if (s.dominant || s.rare || s.cannotOppose) {
+      out.push(`  ${s.rare ? '★' : '⚠'} ${s.seat}=${s.verdict}: ${s.note}`);
+    }
   }
-  if (unanimityResult.allStructural && unanimityResult.unanimous) {
-    out.push(`  ⛔ UNANIMOUS ${unanimityResult.verdict} but EVERY agreeing seat has never cast the opposite verdict.`);
-    out.push('     This is the roster\'s shape, not evidence about the question. Get a seat that can disagree.');
+  if (unanimityResult.allDominant && unanimityResult.unanimous) {
+    out.push(`  ⛔ UNANIMOUS ${unanimityResult.verdict}, but that is the DEFAULT answer of every agreeing seat.`);
+    out.push('     This is the roster\'s shape, not evidence about the question. Get a seat whose norm differs.');
   }
   return out;
 }
 
-module.exports = { VERDICTS, OPPOSITE, MIN_HISTORY, distribution, assess, assessUnanimity, lines };
+module.exports = { VERDICTS, OPPOSITE, MIN_HISTORY, DOMINANT_RATE, RARE_RATE, distribution, assess, assessUnanimity, lines };

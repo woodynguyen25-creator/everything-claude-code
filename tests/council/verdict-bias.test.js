@@ -82,36 +82,70 @@ test('a missing or unreadable ledger yields an empty distribution, not a throw',
   fs.rmdirSync(dir);
 });
 
-test('flags a seat that has NEVER cast the opposing verdict', () => {
-  // claude: 22 MODIFY, 3 GO, 0 NO-GO. Its GO is weak evidence of approval because
-  // it has never once disapproved.
+test('a RARE verdict is marked rare, NOT dismissed', () => {
+  // CORRECTION 2026-08-21. The first version called claude=GO "near-structural, not
+  // a judgement" purely because claude never says NO-GO. Backwards: claude GO is
+  // 3/25 = 12%, a DEPARTURE from its 88%-MODIFY norm, so it deserves MORE weight.
   const d = { claude: { GO: 3, MODIFY: 22, 'NO-GO': 0, n: 25 } };
   const a = bias.assess('claude', 'GO', d);
-  assert.equal(a.structural, true, 'GO from a seat that never says NO-GO is structural');
-  assert.equal(a.opposing, 'NO-GO');
-  assert.equal(a.opposingCount, 0);
-  assert.match(a.note, /never/i);
+  assert.equal(a.rare, true, 'a 12% verdict is rare for this seat');
+  assert.equal(a.dominant, false);
+  assert.match(a.note, /RARE|extra weight/i);
 });
 
-test('flags the mirror case — a NO-GO from a seat that never approves', () => {
+test('never casting the opposite is reported as cannotOppose, about the ABSENCE only', () => {
+  // The real, narrower claim: claude never returning NO-GO means claude's SILENCE
+  // on blocking is uninformative. It says nothing about the verdict in hand.
+  const d = { claude: { GO: 3, MODIFY: 22, 'NO-GO': 0, n: 25 } };
+  const a = bias.assess('claude', 'GO', d);
+  assert.equal(a.cannotOppose, true);
+  assert.equal(a.opposing, 'NO-GO');
+  assert.equal(a.opposingCount, 0);
+  assert.match(a.note, /ABSENCE of NO-GO/);
+});
+
+test('a DEFAULT verdict is the weak signal, not the rare one', () => {
+  const d = { claude: { GO: 3, MODIFY: 22, 'NO-GO': 0, n: 25 } };
+  const a = bias.assess('claude', 'MODIFY', d);
+  assert.equal(a.dominant, true, '88% is this seat saying its usual thing');
+  assert.equal(a.rare, false);
+  assert.match(a.note, /DEFAULT answer|weak signal/i);
+});
+
+test("REGRESSION: codex=NO-GO is NOT dismissed — it caught 4 real defects", () => {
+  // The live failure that forced this correction. On its first real run the module
+  // annotated codex=NO-GO "near-structural, not a judgement". That NO-GO was a
+  // substantive review which correctly found a fail-OPEN hole in budget.js, two
+  // unrecorded dispatch paths, and a false p90 claim. codex NO-GO is 33% of its
+  // history and its modal answer is MODIFY at 67% — a departure, not a default.
+  const d = { codex: { GO: 0, MODIFY: 18, 'NO-GO': 9, n: 27 } };
+  const a = bias.assess('codex', 'NO-GO', d);
+  assert.equal(a.dominant, false, 'NO-GO is NOT codex default — MODIFY is');
+  assert.ok(!/not a judgement/i.test(a.note), 'must not dismiss the verdict');
+});
+
+test('mirror case: codex never approves, so absence of GO is uninformative', () => {
   const d = { codex: { GO: 0, MODIFY: 18, 'NO-GO': 8, n: 26 } };
   const a = bias.assess('codex', 'NO-GO', d);
-  assert.equal(a.structural, true);
+  assert.equal(a.cannotOppose, true);
   assert.equal(a.opposing, 'GO');
   assert.equal(a.opposingCount, 0);
 });
 
 test('does NOT flag a seat that uses the full range', () => {
-  // xai casts all three. Its verdicts are worth their face value.
+  // xai casts all three, none dominant. Its verdicts are worth their face value.
   const d = { xai: { GO: 8, MODIFY: 13, 'NO-GO': 11, n: 32 } };
-  assert.equal(bias.assess('xai', 'GO', d).structural, false);
-  assert.equal(bias.assess('xai', 'NO-GO', d).structural, false);
+  for (const v of ['GO', 'NO-GO', 'MODIFY']) {
+    const a = bias.assess('xai', v, d);
+    assert.equal(a.cannotOppose, false, v);
+    assert.equal(a.dominant, false, v);
+  }
 });
 
-test('MODIFY has no opposite, so it is never called structural', () => {
+test('MODIFY has no opposite, so cannotOppose never applies to it', () => {
   const d = { claude: { GO: 3, MODIFY: 22, 'NO-GO': 0, n: 25 } };
   const a = bias.assess('claude', 'MODIFY', d);
-  assert.equal(a.structural, false);
+  assert.equal(a.cannotOppose, false);
   assert.equal(a.opposing, null);
 });
 
@@ -128,7 +162,8 @@ test('thin history is reported as THIN, never as clean', () => {
 test('an unseen seat is THIN, not balanced', () => {
   const a = bias.assess('brand-new-seat', 'GO', {});
   assert.equal(a.thin, true);
-  assert.equal(a.structural, false);
+  assert.equal(a.cannotOppose, false);
+  assert.equal(a.dominant, false);
   assert.equal(a.n, 0);
 });
 
@@ -141,12 +176,12 @@ test('unanimity is called STRUCTURAL when every seat is biased toward that verdi
     gemini: { GO: 1, MODIFY: 10, 'NO-GO': 0, n: 11 },
   };
   const u = bias.assessUnanimity([
-    { provider: 'claude', verdict: 'GO' },
-    { provider: 'gemini', verdict: 'GO' },
+    { provider: 'claude', verdict: 'MODIFY' },
+    { provider: 'gemini', verdict: 'MODIFY' },
   ], d);
   assert.equal(u.unanimous, true);
-  assert.equal(u.structuralCount, 2);
-  assert.equal(u.allStructural, true);
+  assert.equal(u.dominantCount, 2, 'MODIFY is the default of both seats');
+  assert.equal(u.allDominant, true);
 });
 
 test('unanimity among balanced seats is NOT called structural', () => {
@@ -160,8 +195,8 @@ test('unanimity among balanced seats is NOT called structural', () => {
     { provider: 'codex', verdict: 'NO-GO' },
   ], d);
   assert.equal(u.unanimous, true);
-  assert.equal(u.structuralCount, 1, 'only codex is structural here');
-  assert.equal(u.allStructural, false, 'xai casting NO-GO is real information');
+  assert.equal(u.dominantCount, 0, 'NO-GO is neither seat default');
+  assert.equal(u.allDominant, false, 'two seats leaving their norm IS information');
 });
 
 test('a split verdict is not unanimous regardless of bias', () => {
