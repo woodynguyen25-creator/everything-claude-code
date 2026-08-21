@@ -279,7 +279,29 @@ async function main() {
   // before answering, so a short global --timeout can't guillotine them.
   // claude measured ~8s on a trivial prompt but boots MCP servers + skills on
   // real ones; codex is far worse (182s average, 600s hard timeouts observed).
-  const CLI_MIN_TIMEOUT_S = { codex: 600, claude: 300 };
+  // RAISED 2026-08-21 from { codex: 600, claude: 300 }. Both were set BELOW the p90
+  // of their own SUCCESSFUL calls, so the council was killing calls that were on
+  // track to answer — the same defect already fixed in health.js, where a 45s probe
+  // timeout reported the roster's most reliable seat as DOWN. A monitor that causes
+  // the failure it reports is worse than no monitor.
+  //
+  // Measured from this repo's ledger (successful calls only):
+  //   claude  n=66   86% ok   med 204s   p90 366s   p99 453s   6 of 9 failures were TIMEOUTS
+  //   codex   n=183  83% ok   med 112s   p90 477s   p99 840s  23 of 31 failures were TIMEOUTS
+  //
+  // So codex's reputation as the unreliable seat is mostly OURS: without the cut-off
+  // its ceiling is ~96%, not 83%. claude's is ~95%, not 86%. And 20 claude calls
+  // finished between 240s and 300s — they barely made it under the old cap.
+  //
+  // Those percentiles are RIGHT-CENSORED: every call that would have finished above
+  // the old cap is missing from the sample, so the true p90 is HIGHER than the number
+  // above. Hence generous headroom rather than p90 + a few seconds.
+  //
+  // A timeout here is not a cheap failure. codex never retries (its failures are
+  // timeouts, so a retry just burns the clock twice), so a cut-off call costs the
+  // full wait and returns nothing. Both seats are subscription-metered, so waiting
+  // longer costs $0 — only wall-clock. Override per-run with --timeout.
+  const CLI_MIN_TIMEOUT_S = { codex: 1200, claude: 600 };
   // Woody 8/06: Sol's depth is tiered — 'medium' for quick market scans, 'high' default,
   // 'xhigh' for his real position ideas (xhigh was the 7/26 timeout cause; when used,
   // pair it with --timeout 900+; the codex floor below already guarantees 600s).
