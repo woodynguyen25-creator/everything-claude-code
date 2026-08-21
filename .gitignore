@@ -154,3 +154,43 @@ contexts/whop-impact-team-sales-*.md
 contexts/ai-agency-course-*.md
 contexts/aios-leveling-*.md
 contexts/motionsites-case-study-*.md
+
+# Skills IMPORTED from external projects (audit 2026-08-20).
+# 29 skill dirs under skills/ carry an `origin:` naming ANOTHER PROJECT'S REPO
+# (Superpowers, justinqwerty/design-skills, flatitas/OhMySkills,
+# arnwaldn/atum-system) rather than "ECC" or "community". SKILL-PLACEMENT-POLICY
+# puts imported skills in ~/.claude/skills/imported/ and marks them NOT shipped —
+# these are in the shipped path by accident. With a PUBLIC upstream remote, an
+# accidental `git add -A` would redistribute four other projects' work under
+# licences nobody has checked.
+# They still LOAD fine untracked — Claude Code reads the working directory.
+# To ship any of them: verify its upstream licence, then delete its line here.
+skills/accessibility-audit/
+skills/design-critique/
+skills/design-elevation/
+skills/design-sprint/
+skills/design-style/
+skills/error-memory/
+skills/full-handoff/
+skills/hooked-ux/
+skills/implicit-preferences/
+skills/interaction-design/
+skills/isolate-before-iterate/
+skills/mid-task-triage/
+skills/never-give-up/
+skills/pre-debug-check/
+skills/predictive-next/
+skills/react-best-practices/
+skills/refactoring-ui/
+skills/reflexion/
+skills/review-handoff/
+skills/sanity-check/
+skills/skill-awareness/
+skills/smart-clarify/
+skills/structured-build/
+skills/systematic-debugging/
+skills/task-router/
+skills/total-recall/
+skills/ui-ux-pro-max/
+skills/verification-before-completion/
+skills/website-design-agent/
