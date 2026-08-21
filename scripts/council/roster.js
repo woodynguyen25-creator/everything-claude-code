@@ -46,6 +46,10 @@
 const SEATS = [
   {
     id: 'claude',
+    // Data-use terms for THIS path. Machine-readable so a future gate can refuse
+    // to route sensitive prompts to a seat that may train on them, rather than
+    // relying on a comment nobody reads. 'UNVERIFIED' is NOT 'safe'.
+    dataTerms: 'verified-private', // Anthropic API/Console: published retention controls + zero-data-retention docs. Consumer Claude plan for the CLI path.
     tiers: ['LEAD'],
     role: 'ARCHITECT - systems reasoning, long-context synthesis, final review',
     lab: 'anthropic',
@@ -58,6 +62,10 @@ const SEATS = [
   },
   {
     id: 'codex',
+    // Data-use terms for THIS path. Machine-readable so a future gate can refuse
+    // to route sensitive prompts to a seat that may train on them, rather than
+    // relying on a comment nobody reads. 'UNVERIFIED' is NOT 'safe'.
+    dataTerms: 'verified-private', // OpenAI states API inputs/outputs are NOT used for training by default.
     tiers: ['LEAD'],
     role: 'ENGINEER - code correctness, implementation realism, spec rigour',
     lab: 'openai',
@@ -70,6 +78,10 @@ const SEATS = [
   },
   {
     id: 'xai',
+    // Data-use terms for THIS path. Machine-readable so a future gate can refuse
+    // to route sensitive prompts to a seat that may train on them, rather than
+    // relying on a comment nobody reads. 'UNVERIFIED' is NOT 'safe'.
+    dataTerms: 'verified-private', // xAI exposes a Zero Data Retention setting for eligible API teams.
     tiers: ['LEAD'],
     role: 'CONTRARIAN - red-team, premise attack, uncomfortable truths',
     lab: 'xai',
@@ -90,6 +102,10 @@ const SEATS = [
   },
   {
     id: 'gemini',
+    // Data-use terms for THIS path. Machine-readable so a future gate can refuse
+    // to route sensitive prompts to a seat that may train on them, rather than
+    // relying on a comment nobody reads. 'UNVERIFIED' is NOT 'safe'.
+    dataTerms: 'TRAINS-ON-INPUT', // CONFIRMED BAD: ai.google.dev pricing states free tier = 'Used to improve our products: Yes'. This is why the seat is benched.
     tiers: ['BENCH'],
     // BENCHED 2026-08-21 on a PRIVACY finding, not a capability one.
     // ai.google.dev/gemini-api/docs/pricing states per model, under
@@ -129,6 +145,10 @@ const SEATS = [
   },
   {
     id: 'deepseek',
+    // Data-use terms for THIS path. Machine-readable so a future gate can refuse
+    // to route sensitive prompts to a seat that may train on them, rather than
+    // relying on a comment nobody reads. 'UNVERIFIED' is NOT 'safe'.
+    dataTerms: 'UNVERIFIED', // Not audited.
     tiers: ['WORKER'],
     role: 'SYNTHESIST - merges seat answers, drafts, bulk reasoning',
     lab: 'deepseek',
@@ -141,6 +161,10 @@ const SEATS = [
   },
   {
     id: 'cerebras',
+    // Data-use terms for THIS path. Machine-readable so a future gate can refuse
+    // to route sensitive prompts to a seat that may train on them, rather than
+    // relying on a comment nobody reads. 'UNVERIFIED' is NOT 'safe'.
+    dataTerms: 'UNVERIFIED', // Not audited.
     tiers: ['BENCH'],
     // BENCHED 2026-08-20: HTTP 402 Payment Required on every chat call.
     // NOT a 429 and not a dead key - the /models catalogue still answers on the
@@ -158,6 +182,10 @@ const SEATS = [
   },
   {
     id: 'groq',
+    // Data-use terms for THIS path. Machine-readable so a future gate can refuse
+    // to route sensitive prompts to a seat that may train on them, rather than
+    // relying on a comment nobody reads. 'UNVERIFIED' is NOT 'safe'.
+    dataTerms: 'UNVERIFIED', // Not audited.
     tiers: ['WORKER'],
     role: 'CHEAP DRAFT - throwaway passes where substance barely matters',
     lab: 'meta',
@@ -176,6 +204,10 @@ const SEATS = [
   },
   {
     id: 'geminipro',
+    // Data-use terms for THIS path. Machine-readable so a future gate can refuse
+    // to route sensitive prompts to a seat that may train on them, rather than
+    // relying on a comment nobody reads. 'UNVERIFIED' is NOT 'safe'.
+    dataTerms: 'UNVERIFIED', // Rides the CONSUMER AI Pro sub via the agy OAuth CLI. Google's Code Assist privacy notice does NOT state whether prompts train models, and the page for individuals only covers the June-2026 deprecation. UNRESOLVED as of 2026-08-21.
     tiers: ['LEAD'],
     role: 'FRONTIER-GOOGLE - the Google lead seat, on a real Pro model',
     lab: 'google',
@@ -195,6 +227,10 @@ const SEATS = [
   },
   {
     id: 'agyopus',
+    // Data-use terms for THIS path. Machine-readable so a future gate can refuse
+    // to route sensitive prompts to a seat that may train on them, rather than
+    // relying on a comment nobody reads. 'UNVERIFIED' is NOT 'safe'.
+    dataTerms: 'UNVERIFIED', // Same consumer OAuth wallet as geminipro.
     tiers: ['BENCH'],
     role: 'FREE LABOUR - Opus-class reasoning on Google’s wallet, not a vote',
     lab: 'anthropic',
@@ -207,6 +243,10 @@ const SEATS = [
   },
   {
     id: 'agyflash',
+    // Data-use terms for THIS path. Machine-readable so a future gate can refuse
+    // to route sensitive prompts to a seat that may train on them, rather than
+    // relying on a comment nobody reads. 'UNVERIFIED' is NOT 'safe'.
+    dataTerms: 'UNVERIFIED', // Same consumer OAuth wallet as geminipro.
     tiers: ['WORKER'],
     // PROMOTED to WORKER 2026-08-20 to backfill cerebras (HTTP 402). Free on the
     // Google OAuth wallet and 6.6s - slower than cerebras's 0.4s, so this is a

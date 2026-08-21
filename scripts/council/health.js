@@ -168,6 +168,17 @@ async function checkModels(env) {
   }
 
   console.log(`\n[health] ${ROSTER.length - rot - skipped} verified · ${rot} unlisted · ${skipped} not checkable`);
+
+  // DATA-TERMS AUDIT. A seat can be perfectly healthy and still be the wrong place
+  // to send a trading position. Surfaced on every run because the gemini seat spent
+  // months on a free-tier key that Google states trains on input, and the only
+  // record of that risk was a code comment nobody was reading.
+  const badTerms = ROSTER.filter(s => s.dataTerms === 'TRAINS-ON-INPUT');
+  const unkTerms = ROSTER.filter(s => s.dataTerms === 'UNVERIFIED');
+  const leadUnk = unkTerms.filter(s => LEAD_SEATS.includes(s.id));
+  if (badTerms.length) console.log(`[health] TRAINS ON INPUT: ${badTerms.map(s => s.id).join(', ')} - never send sensitive prompts here`);
+  if (leadUnk.length) console.log(`[health] WARN LEAD seat(s) with UNVERIFIED data terms: ${leadUnk.map(s => s.id).join(', ')} - LEAD sees everything; verify or demote`);
+  if (unkTerms.length) console.log(`[health]   unverified terms (not proven unsafe, not proven safe): ${unkTerms.map(s => s.id).join(', ')}`);
   return rot;
 }
 
