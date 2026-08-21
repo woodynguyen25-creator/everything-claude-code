@@ -13,7 +13,8 @@
  *   claude (Opus 5) · codex (GPT-5.6 Sol) · xai (Grok 4.5) · gemini (3.6-flash)
  * WORKER roster (--workers, correlated — execute):
  *   groq · gemini · deepseek · cerebras
- * Also callable via --to: geminipro (DEAD — 0-for-3, agy ineligible).
+ * Also callable via --to: geminipro (LIVE 2026-08-20 — Gemini 3.1 Pro (High) via agy
+ * OAuth on the student AI Pro plan; was 0-for-3/ineligible before that).
  * Every dispatch is logged to dashboard/data/council-ledger.jsonl.
  *
  * v2 (2026-07-18):
@@ -27,6 +28,7 @@
 
 const { loadEnv, SEATS } = require('./providers');
 const { buildEntry, appendEntries, saveTranscript, readRecent, summarize, DEFAULT_LEDGER } = require('./ledger');
+const budget = require('./budget');
 
 // Tiered roster (2026-08-02, Woody's call) — see roster.js for the tier
 // rationale and the ledger evidence behind each seat's placement.
@@ -92,6 +94,7 @@ function parseArgs(argv) {
     else if (a === '--trading') args.lensSet = 'trading';
     else if (a === '--lens-set') args.lensSet = String(argv[++i] || 'default');
     else if (a === '--timeout') args.timeoutS = Number(argv[++i]) || 240;
+    else if (a === '--sol-effort') args.solEffort = ['medium', 'high', 'xhigh'].includes(String(argv[++i])) ? argv[i] : '';
     // Skip the API-seat preflight and convene regardless (e.g. deliberately
     // convening a degraded council, or when the preflight itself is suspect).
     else if (a === '--force') args.force = true;
@@ -266,7 +269,13 @@ async function main() {
   // claude measured ~8s on a trivial prompt but boots MCP servers + skills on
   // real ones; codex is far worse (182s average, 600s hard timeouts observed).
   const CLI_MIN_TIMEOUT_S = { codex: 600, claude: 300 };
-  const seatOpts = seat => ({ timeoutMs: Math.max(args.timeoutS, CLI_MIN_TIMEOUT_S[seat] || 0) * 1000 });
+  // Woody 8/06: Sol's depth is tiered — 'medium' for quick market scans, 'high' default,
+  // 'xhigh' for his real position ideas (xhigh was the 7/26 timeout cause; when used,
+  // pair it with --timeout 900+; the codex floor below already guarantees 600s).
+  const seatOpts = seat => ({
+    timeoutMs: Math.max(args.timeoutS, CLI_MIN_TIMEOUT_S[seat] || 0) * 1000,
+    ...(seat === 'codex' && args.solEffort ? { effort: args.solEffort } : {}),
+  });
   const opts = { timeoutMs: args.timeoutS * 1000 };
   const useLenses = args.lenses && args.to.length >= 3; // 1-2 seats = targeted ask, lenses off
   const lensTable = LENS_SETS[args.lensSet] || LENS_SETS.default;
@@ -281,6 +290,26 @@ async function main() {
   // ledger unauditable exactly where audits matter (which convene was this?).
   // Nag, never block — a blocked convene is worse than an unlabeled one.
   if (!args.tag) console.log('[council] note: untagged convene — pass --tag <purpose> so this run is auditable in the ledger');
+  // BUDGET GATE. The council previously had no spend ceiling of any kind — a loop,
+  // a retry storm or a --rounds run on a long prompt could bill without limit, and
+  // an audit on 8/21 could account for only ~$1.50 of a ~$15 xAI charge.
+  // Subscription-metered seats (claude/codex/agy*) are never blocked: they cannot
+  // cause an overrun, and cutting them off when the METERED budget is exhausted
+  // would disable the free tier exactly when it is the only affordable option.
+  const budgetGate = budget.gate(args.to, DEFAULT_LEDGER, { force: args.force });
+  console.log(`[council] ${budget.line(budgetGate.mtd, budgetGate.cap)}`);
+  if (budgetGate.over) {
+    if (budgetGate.blocked.length) {
+      console.log(`[council] ⛔ MONTHLY CAP REACHED — metered seats skipped: ${budgetGate.blocked.join(', ')}`);
+      console.log('[council]    subscription-metered seats still run. Override with --force, or raise COUNCIL_MONTHLY_CAP_USD.');
+      args.to = budgetGate.allowed;
+    }
+    if (!args.to.length) {
+      console.log('[council] every requested seat is metered and the cap is reached. Aborting rather than billing.');
+      process.exit(2);
+    }
+  }
+
   console.log(`[council] dispatching to ${args.to.join(', ')}${lensLabel} — results stream as seats finish …`);
 
   // Decision mode: every seat must END with a verdict it can be held to.

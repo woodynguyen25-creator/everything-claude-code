@@ -303,7 +303,10 @@ async function runOpenAiCompat(provider, baseUrl, keyName, model, prompt, env, {
     if (!res.ok) return { provider, model, ok: false, text: '', ms: Date.now() - started, error: `HTTP ${res.status}` };
     const data = await res.json();
     const text = stripThink(data?.choices?.[0]?.message?.content ?? '');
-    return { provider, model, ok: Boolean(text), text, ms: Date.now() - started, error: text ? undefined : 'empty response' };
+    // Provider-reported usage is the ONLY trustworthy basis for cost: the old
+    // chars/4 estimate billed a ~6-token prompt as 510 tokens on grok, and it
+    // cannot see reasoning tokens at all. Passed through for budget.js.
+    return { provider, model, ok: Boolean(text), text, ms: Date.now() - started, usage: data && data.usage, error: text ? undefined : 'empty response' };
   } catch (e) {
     return { provider, model, ok: false, text: '', ms: Date.now() - started, error: e.message };
   }

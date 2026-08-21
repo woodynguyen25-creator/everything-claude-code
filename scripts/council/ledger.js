@@ -4,6 +4,8 @@
  */
 'use strict';
 
+const { costOf } = require('./budget');
+
 const fs = require('node:fs');
 const path = require('node:path');
 
@@ -12,6 +14,11 @@ const DEFAULT_LEDGER = path.resolve(__dirname, '..', '..', 'dashboard', 'data', 
 /** Build one immutable ledger entry from a provider result. Token counts are chars/4 estimates. */
 function buildEntry(result, { tag = '', promptChars = 0, round = undefined } = {}) {
   const outputChars = result.text ? result.text.length : 0;
+  // Real spend, priced from provider-reported usage where the provider returns it.
+  // Recorded per row so month-to-date spend is a SUM of measurements rather than a
+  // reconstruction: a ~$15 xAI charge could only be explained to ~$1.50 on 8/21
+  // precisely because no row carried a cost. null = subscription-metered seat.
+  const cost = costOf(result.provider, { usage: result.usage, promptChars, outputChars });
   return {
     ts: new Date().toISOString(),
     provider: result.provider,
@@ -22,6 +29,13 @@ function buildEntry(result, { tag = '', promptChars = 0, round = undefined } = {
     outputChars,
     promptTokensEst: Math.ceil(promptChars / 4),
     outputTokensEst: Math.ceil(outputChars / 4),
+    // Provider-reported token counts when available — these are what actually bill.
+    promptTokens: cost ? cost.inTok : undefined,
+    outputTokens: cost ? cost.outTok : undefined,
+    usd: cost ? cost.usd : undefined,
+    // True when priced off chars/4 rather than provider usage. Never mix the two
+    // silently: one is a measurement, the other is a guess that reads LOW.
+    usdEstimated: cost && cost.estimated ? true : undefined,
     round,
     retried: result.retried || undefined,
     // Machine-readable stance when the seat emitted a VERDICT line (--decide

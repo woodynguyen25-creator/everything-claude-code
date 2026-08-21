@@ -90,7 +90,22 @@ const SEATS = [
   },
   {
     id: 'gemini',
-    tiers: ['WORKER'],
+    tiers: ['BENCH'],
+    // BENCHED 2026-08-21 on a PRIVACY finding, not a capability one.
+    // ai.google.dev/gemini-api/docs/pricing states per model, under
+    // "Used to improve our products": FREE tier = Yes, PAID tier = No.
+    // This seat runs on a FREE-tier AI Studio key - re-confirmed 2026-08-20 when
+    // every Pro id returned 429, which is the free-tier signature. Council prompts
+    // carry trading positions, client details and personal context; that is the
+    // stated reason dashboard/data/council-transcripts/ is gitignored. So every
+    // convene including this seat was shipping exactly that content to Google on
+    // the tier where it is used for product improvement.
+    // Restore to WORKER by attaching BILLING to the AI-Studio project (which flips
+    // the flag to "No"), NOT by swapping the model id - the tier is the issue.
+    // agyflash covers the freed worker slot. Do NOT assume agyflash is safer on
+    // privacy: it rides the CONSUMER AI Pro sub, whose data terms are unverified
+    // and typically less protective than paid API. Verify before trusting it with
+    // sensitive prompts.
     role: 'BREADTH - cheap bulk grinding at ~1.2s per call',
     lab: 'google',
     model: 'gemini-3.6-flash',
