@@ -36,7 +36,13 @@ const PROMPT = 'Reply with exactly one word: PONG';
 
 // CLI seats boot a full agent session before answering, so they need headroom.
 // The pure-API seats should answer in single-digit seconds or something is wrong.
-const TIMEOUT_S = { codex: 180, claude: 120, geminipro: 90, agyopus: 90, agyflash: 90 };
+const TIMEOUT_S = { codex: 180, claude: 120, geminipro: 90, agyopus: 90, agyflash: 90, xai: 90, gemini: 60 };
+// xai raised 45->90 on 2026-08-21. It is NOT slow on average, it has a FAT TAIL:
+// three identical one-word PONG probes ran 8.4s / 40.9s / 7.4s, and the ledger shows
+// real prompts at median 48.1s / p90 104.1s over 221 calls. The 45s default was
+// reporting the roster's most reliable seat (100% ok, n=221) as DOWN on a timeout it
+// caused itself — the monitor manufacturing the outage it reports.
+// gemini raised for the same reason: 27.9s observed on a PONG, p90 24.5s in ledger.
 // agy seats measured 2026-08-20 at 7.9-23.8s. 90s is headroom for a cold
 // CLI spawn plus agy's per-invocation network eligibility probe, not a
 // tolerance for slowness - anything near the cap deserves a look.
