@@ -53,7 +53,16 @@ function parseCodexOutput(stdout) {
   return clean.trim();
 }
 
-/** GPT-5.5 via local codex CLI; prompt over stdin to avoid Windows quoting issues. */
+// The npm `codex` command is a .cmd shim that just runs `node …/codex/bin/codex.js`.
+// Spawning that JS entry directly (shell:false) removes the shell layer entirely:
+// no DEP0190 deprecation warning on every convene, no cmd.exe quoting semantics.
+// Falls back to the shim via shell:true if the npm layout ever changes.
+const CODEX_JS = path.join(
+  process.env.APPDATA || path.join(process.env.USERPROFILE || '', 'AppData', 'Roaming'),
+  'npm', 'node_modules', '@openai', 'codex', 'bin', 'codex.js',
+);
+
+/** GPT-5.6 Sol via local codex CLI; prompt over stdin to avoid Windows quoting issues. */
 function runCodex(prompt, { timeoutMs = 900_000, effort = 'high' } = {}) {
   const started = Date.now();
   return new Promise(resolve => {
@@ -63,10 +72,10 @@ function runCodex(prompt, { timeoutMs = 900_000, effort = 'high' } = {}) {
     // NOTE: 'gpt-5.5-codex' 400s on ChatGPT-account codex; plain 'gpt-5.6-sol' is the valid id.
     // Pin effort=high explicitly so the council seat stays fast + predictable regardless of
     // whatever ~/.codex/config.toml drifts to (it had crept to 'xhigh' = the timeout cause, 2026-07-26).
-    const child = spawn('codex', ['exec', '--skip-git-repo-check', '--model', 'gpt-5.6-sol', '-c', `model_reasoning_effort=${effort}`, '-'], {
-      shell: true,
-      windowsHide: true,
-    });
+    const codexArgs = ['exec', '--skip-git-repo-check', '--model', 'gpt-5.6-sol', '-c', `model_reasoning_effort=${effort}`, '-'];
+    const child = fs.existsSync(CODEX_JS)
+      ? spawn(process.execPath, [CODEX_JS, ...codexArgs], { shell: false, windowsHide: true })
+      : spawn('codex', codexArgs, { shell: true, windowsHide: true }); // shim fallback; args are fixed strings
     let out = '';
     let err = '';
     const timer = setTimeout(() => {
@@ -92,9 +101,12 @@ function runCodex(prompt, { timeoutMs = 900_000, effort = 'high' } = {}) {
  *
  * 2026-08-02 — key rotated to a fresh AI-Studio project (the prior project was
  * SUSPENDED: 403 "your project has been denied access", which is what drove the
- * seat's 44% lifetime failure rate alongside 429s). Model default moved
- * 3.6-flash → 3.5-flash on measured stability: over 3 back-to-back calls,
- * 3.5-flash went 3/3 while 3.6-flash and flash-latest each flapped 403 mid-run.
+ * seat's 44% lifetime failure rate alongside 429s). Default is gemini-3.6-flash,
+ * chosen on measured latency VARIANCE (roster.js has the n=5 table) — an earlier
+ * draft of this comment claimed 3.5-flash was the default, contradicting the
+ * signature below it. The code was right; the comment was drift.
+ * NOTE 2026-08-21: this seat is BENCHED on a privacy finding (free tier trains
+ * on input) — see roster.js. The runner stays for the day billing is attached.
  *
  * Free tier reaches FLASH ONLY. Every pro id (3.1-pro, 3-pro, 2.5-pro) returns
  * 429 RESOURCE_EXHAUSTED — the AI-Pro consumer sub grants no API quota; that is
@@ -262,11 +274,11 @@ function runAgy(prompt, { seat = 'geminipro', timeoutMs = 300_000, model = AGY_P
  */
 const CLAUDE_BIN = path.join(process.env.USERPROFILE || '', '.local', 'bin', 'claude.exe');
 
-function runClaude(prompt, { timeoutMs = 300_000, model = 'claude-opus-5' } = {}) {
+function runClaude(prompt, { timeoutMs = 300_000, model = 'claude-opus-5', seat = 'claude' } = {}) {
   const started = Date.now();
   return new Promise(resolve => {
     const done = (ok, text, error) =>
-      resolve({ provider: 'claude', model, ok, text, ms: Date.now() - started, error });
+      resolve({ provider: seat, model, ok, text, ms: Date.now() - started, error });
     const bin = fs.existsSync(CLAUDE_BIN) ? CLAUDE_BIN : 'claude';
     const child = spawn(bin, ['-p', '--model', model], { shell: false, windowsHide: true });
     let out = '';
@@ -328,14 +340,21 @@ function stripThink(text = '') {
 
 const SEATS = {
   claude: (prompt, env, opts) => runClaude(prompt, opts),
+  // haiku — the CLAUDE-SUBAGENT worker seat (added 2026-08-21, Woody's call:
+  // "we can just summon sub-agents from Claude to be our workers"). Same
+  // claude.exe, same Max sub, $0 marginal — a FREE worker on a wallet already
+  // paid for. Probed before adding: PONG in 10.5s, exit 0. Worker tier only:
+  // correlation with the claude LEAD seat is fine there (workers execute, they
+  // don't vote), and one-seat-per-lab is a LEAD-tier invariant.
+  haiku: (prompt, env, opts) => runClaude(prompt, { ...opts, model: 'claude-haiku-4-5-20251001', seat: 'haiku' }),
   codex: (prompt, env, opts) => runCodex(prompt, opts),
   gemini: (prompt, env, opts) => runGemini(prompt, env, opts),
   // ── agy-backed seats (Google student AI Pro plan, $0 marginal) ──────────
-  // geminipro REVIVED 2026-08-20 on the student AI Pro plan. Serves Gemini 3.1
-  // Pro via agy OAuth and TAKES OVER the Google LEAD slot from the flash-tier
-  // `gemini` API seat — roster.js pre-registered exactly this swap ("defer to
-  // geminipro if Antigravity ever clears"). One seat per lab is preserved:
-  // `gemini` drops to WORKER rather than sitting alongside it in LEAD.
+  // geminipro — Gemini 3.1 Pro via agy OAuth. REVIVED 2026-08-20 by the student
+  // AI Pro plan, then BENCHED 2026-08-21: antigravity.google/terms says
+  // Interactions train Google's ML AND "employees and contractors may access,
+  // view, review" them, on every tier. See roster.js for the restore condition
+  // (opt out in Antigravity settings, CONFIRM the toggle, flip dataTerms).
   geminipro: (prompt, env, opts) => runAgy(prompt, { seat: 'geminipro', model: AGY_PRO, ...opts }),
   // agyopus — Claude Opus 4.6 on the GOOGLE wallet, $0 marginal, ~7-10s.
   //
@@ -379,7 +398,7 @@ const SEATS = {
   // — pick from /models, prefer a non-gpt-oss family for seat diversity.
   groq: (prompt, env, opts) =>
     runOpenAiCompat('groq', 'https://api.groq.com/openai/v1', 'GROQ_API_KEY', 'qwen/qwen3.6-27b', prompt, env, opts),
-  // xAI Grok 4.5 — 500k ctx, $2.00/$6.00 per M (the priciest seat; economical
+  // xAI Grok 4.6 — 500k ctx, $2.00/$6.00 per M (the priciest seat; economical
   // ONLY while xAI's data-sharing free credits are active). Seat id is 'xai',
   // not 'grok', to keep it one typo away from 'groq' (a different vendor).
   xai: (prompt, env, opts) =>

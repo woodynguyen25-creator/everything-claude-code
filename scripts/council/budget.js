@@ -48,6 +48,7 @@ const PRICING = {
   gemini: { in: 0, out: 0 },
 
   claude: null,
+  haiku: null, // same Anthropic sub as claude — the subagent worker seat
   codex: null,
   geminipro: null,
   agyflash: null,

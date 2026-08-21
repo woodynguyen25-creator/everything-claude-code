@@ -11,8 +11,21 @@ const path = require('node:path');
 
 const DEFAULT_LEDGER = path.resolve(__dirname, '..', '..', 'dashboard', 'data', 'council-ledger.jsonl');
 
-/** Build one immutable ledger entry from a provider result. Token counts are chars/4 estimates. */
-function buildEntry(result, { tag = '', promptChars = 0, round = undefined } = {}) {
+/**
+ * Build one immutable ledger entry from a provider result. Token counts are chars/4 estimates.
+ *
+ * `kind` classifies the PHYSICAL call so consumers can filter:
+ *   convene   — a real council question (round 1)
+ *   debate    — round 2
+ *   synth     — a synthesis attempt (including failed fallback links)
+ *   preflight — the one-word PONG before a CLI convene
+ *   probe     — a health.js liveness ping
+ * ⚠ LATENCY STATS MUST FILTER OUT probe/preflight ROWS. A one-word PONG answers in
+ * ~1-8s where a real prompt takes 24-480s; mixing them craters every percentile and
+ * re-creates the sized-timeouts-off-the-health-probe mistake the xai seat already
+ * documents. budget.js deliberately does NOT filter — money is money.
+ */
+function buildEntry(result, { tag = '', promptChars = 0, round = undefined, kind = undefined } = {}) {
   const outputChars = result.text ? result.text.length : 0;
   // Real spend, priced from provider-reported usage where the provider returns it.
   // Recorded per row so month-to-date spend is a SUM of measurements rather than a
@@ -37,6 +50,7 @@ function buildEntry(result, { tag = '', promptChars = 0, round = undefined } = {
     // silently: one is a measurement, the other is a guess that reads LOW.
     usdEstimated: cost && cost.estimated ? true : undefined,
     round,
+    kind,
     retried: result.retried || undefined,
     // Machine-readable stance when the seat emitted a VERDICT line (--decide
     // mode, or organically). Accrues the data that makes the council's dissent

@@ -162,6 +162,37 @@ const SEATS = [
     verified: '2026-08-05',
   },
   {
+    id: 'haiku',
+    // Same Anthropic CLI path as the claude seat — published retention controls,
+    // consumer Max plan. Verified-private by the same evidence.
+    dataTerms: 'verified-private',
+    // Spawns the full claude CLI, so it CAN read files and run commands.
+    toolAccess: 'agent',
+    tiers: ['WORKER'],
+    role: 'SUBAGENT-GRINDER - fast cheap execution with real tool access, on the Anthropic sub',
+    lab: 'anthropic',
+    model: 'claude-haiku-4-5-20251001',
+    // ADDED 2026-08-21 on Woody's direction: "we can just summon sub-agents from
+    // Claude to be our workers." This makes that a first-class seat instead of an
+    // ad-hoc pattern. $0 marginal on the Max sub he already pays; probed before
+    // adding (PONG 10.5s, exit 0). It is the ONLY worker with tool access — the
+    // other workers are raw HTTPS — so specs that need a seat to CHECK something
+    // (read a file, run a test) route here, not to deepseek/groq.
+    // Lab correlation with the claude LEAD seat is acceptable BY DESIGN: workers
+    // execute a fixed spec, they do not vote, and one-seat-per-lab is a LEAD-tier
+    // invariant (see the tier doctrine at the top of this file).
+    // ⚠ CONTEXT INHERITANCE, demonstrated on its first live convene (2026-08-21):
+    // like the claude seat, `claude -p` loads Woody's CLAUDE.md/memory, and haiku
+    // answered a GENERIC council question by citing OUR OWN roster memory instead.
+    // Helpful for executing specs against this system; near-zero evidence when
+    // asked for an independent opinion. Never promote to LEAD.
+    mandate:
+      'Free tool-capable grinding. The worker tier was down to two raw-API seats after cerebras (402) and the agy seats (privacy) were benched; this restores execution capacity on a wallet already paid for.',
+    swapWhen:
+      'A newer Haiku ships (swap the model id), or the Max plan is dropped. If Anthropic sub-metering ever throttles bulk -p calls, fall back to deepseek for volume.',
+    verified: '2026-08-21',
+  },
+  {
     id: 'deepseek',
     // API seat: a raw HTTPS call. NO filesystem, NO commands, NO verification.
     // Asking it to 'check the tree' produces a confident stub — measured 2026-08-21,
@@ -177,7 +208,7 @@ const SEATS = [
     lab: 'deepseek',
     model: 'deepseek-chat',
     mandate:
-      'Most-dispatched seat (349 calls) and the default synthesis provider. Best paid value in the roster.',
+      'Most-dispatched seat and the default synthesis provider. Best paid value in the roster. STACK RULING (Woody, 2026-08-21): the paid stack is Claude Max + ChatGPT Plus + xAI metered + Google AI Pro (free student) + the droplet; DeepSeek is the one discretionary metered extra and stays because its lifetime cost (~$0.55 over 74 days) is noise next to the synthesis reliability it buys. If its bill ever matters, `haiku` absorbs the grinding at $0.',
     swapWhen:
       'KEEP deepseek-chat for now despite it no longer appearing in the catalogue (allowlisted in KNOWN_ALIASES). Measured n=3 on 2026-08-20: deepseek-chat 1.6s / ~50 output tokens; deepseek-v4-flash 11.6s / 1086-1965 output tokens; deepseek-v4-pro 12.9s / 674-1599. The v4 models are REASONERS that burn 20-40x the output tokens on a task asking for 40 words, and this is a WORKER seat whose job is fast, cheap execution of a fixed spec - deepseek-chat is the right tool for that role and is 8x faster. Pinned successor if deepseek-chat is withdrawn: deepseek-v4-flash (peak $0.44 in / $1.32 out per M; v4-pro is 3x that at $1.32/$3.96). DeepSeek discounts off-peak by 50%, so batch grinding is materially cheaper outside peak hours.',
     verified: '2026-08-04',

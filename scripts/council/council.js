@@ -27,13 +27,17 @@
 'use strict';
 
 const { loadEnv, SEATS } = require('./providers');
-const { buildEntry, appendEntry, saveTranscript, readRecent, summarize, DEFAULT_LEDGER } = require('./ledger');
+const { saveTranscript, readRecent, summarize, DEFAULT_LEDGER } = require('./ledger');
 const budget = require('./budget');
 const verdictBias = require('./verdict-bias');
+// THE dispatch boundary (2026-08-21): every physical provider attempt goes through
+// dispatch.js and gets a ledger row - retries, preflights and synthesis fallbacks
+// included. council.js never calls SEATS directly for anything that bills.
+const { dispatch, dispatchWithRetry, extractVerdict } = require('./dispatch');
 
 // Tiered roster (2026-08-02, Woody's call) — see roster.js for the tier
 // rationale and the ledger evidence behind each seat's placement.
-const { LEAD_SEATS, WORKER_SEATS, SYNTH_CHAIN } = require('./roster');
+const { LEAD_SEATS, WORKER_SEATS, BENCHED_SEATS, SYNTH_CHAIN, AGENT_SEATS, SEAT_BY_ID } = require('./roster');
 
 const DEFAULT_SEATS = LEAD_SEATS;
 
@@ -113,6 +117,12 @@ function parseArgs(argv) {
     // VERDICT line, tally the verdicts, and persist them to the ledger so
     // the council's dissent rate becomes measurable over time.
     else if (a === '--decide') args.decide = true;
+    // --binary: decision mode WITHOUT the MODIFY escape. MODIFY is 69% of all
+    // recorded verdicts, and the codex review argued it has reopened the
+    // 'it depends' hatch --decide exists to close: 'not ready' is a NO-GO with a
+    // named blocker, not a third bucket. Kept as an OPT-IN flag rather than the
+    // default so the two modes can be compared on the ledger before deciding.
+    else if (a === '--binary') { args.decide = true; args.binary = true; }
     else rest.push(a);
   }
   args.question = rest.join(' ').trim();
@@ -136,35 +146,6 @@ function printLedger(n) {
   }
 }
 
-function isRetryable(result) {
-  if (result.ok) return false;
-  if (result.provider === 'codex') return false; // codex failures are timeouts; a retry doubles the wait
-  return !/missing/i.test(String(result.error || '')); // missing API key will not fix itself
-}
-
-/** One seat call with a single retry on transient failure. */
-async function callSeat(seat, prompt, env, opts) {
-  let result = await SEATS[seat](prompt, env, opts);
-  if (isRetryable(result)) {
-    process.stderr.write(`[council] ${seat} failed (${result.error}) — retrying once…\n`);
-    result = await SEATS[seat](prompt, env, opts);
-    result.retried = true;
-  }
-  return result;
-}
-
-/**
- * Pull a machine-readable verdict off a seat's answer (last VERDICT: line wins,
- * so a seat that quotes another seat's verdict doesn't get misread). Extraction
- * is unconditional — any answer that happens to carry a VERDICT line gets
- * recorded — but the line is only DEMANDED of seats in --decide mode.
- */
-function extractVerdict(text) {
-  const matches = String(text || '').match(/VERDICT:\s*(GO|NO-?GO|MODIFY)/gi);
-  if (!matches) return null;
-  return matches[matches.length - 1].replace(/VERDICT:\s*/i, '').toUpperCase().replace('NOGO', 'NO-GO');
-}
-
 function printResult(result, label = '') {
   const tagStr = label ? ` ${label}` : '';
   console.log(`\n===== ${result.provider.toUpperCase()}${tagStr} (${result.model}, ${(result.ms / 1000).toFixed(1)}s${result.retried ? ', retried' : ''}) =====`);
@@ -172,7 +153,7 @@ function printResult(result, label = '') {
 }
 
 /** Synthesis with a provider fallback chain instead of a hardcoded single seat. */
-async function synthesize(question, results, env) {
+async function synthesize(question, results, env, tag = '') {
   const blocks = results
     .filter(r => r.ok)
     .map(r => `--- ${r.provider.toUpperCase()} (${r.model}) ---\n${truncate(r.text, SYNTH_BLOCK_MAX_CHARS)}`)
@@ -180,15 +161,17 @@ async function synthesize(question, results, env) {
   const prompt = `Multiple AI models answered the same question. Synthesize for the human director:\n1. CONSENSUS — points most/all agree on (terse bullets).\n2. DISAGREEMENTS — where they diverge, who says what, and which position looks stronger.\n3. UNIQUE — any insight only one model surfaced that deserves attention.\nNo preamble.\n\nQUESTION: ${question}\n\nANSWERS:\n${blocks}`;
   let last = { provider: 'synth', model: 'none', ok: false, text: '', ms: 0, error: 'no synth seat available' };
   for (const seat of SYNTH_FALLBACK_CHAIN) {
-    last = await SEATS[seat](prompt, env, { timeoutMs: 120_000 });
+    // Through the dispatch boundary: a FAILED fallback attempt billed too, and
+    // used to vanish - only the final result ever reached the ledger.
+    last = await dispatch(seat, prompt, env, { timeoutMs: 120_000 }, { tag: `${tag}#synth`, kind: 'synth' });
     if (last.ok) return last;
-    process.stderr.write(`[council] synth via ${seat} failed (${last.error}) — falling back…\n`);
+    process.stderr.write(`[council] synth via ${seat} failed (${last.error}) - falling back…` + '\n');
   }
   return last;
 }
 
 /** Debate round: each seat sees the others' round-1 answers, critiques, and revises. */
-async function debateRound(question, seats, round1, env, opts, tag) {
+async function debateRound(question, seats, round1, env, seatOpts, tag, decide) {
   const okResults = round1.filter(r => r.ok);
   if (okResults.length < 2) {
     process.stderr.write('[council] fewer than 2 seats answered — skipping debate round\n');
@@ -203,10 +186,14 @@ async function debateRound(question, seats, round1, env, opts, tag) {
       .map(r => `--- ${r.provider.toUpperCase()} ---\n${truncate(r.text, DEBATE_BLOCK_MAX_CHARS)}`)
       .join('\n\n');
     const prompt = `QUESTION: ${question}\n\nYOUR ROUND-1 ANSWER:\n${truncate(mine.text, DEBATE_BLOCK_MAX_CHARS)}\n\nOTHER COUNCIL MEMBERS' ANSWERS:\n${others}\n\nROUND 2: Where are the others wrong or missing something you caught? Where are they right and you were wrong? Then give your REVISED final answer. Be terse — revised answer only needs what changed plus your final position.`;
-    return callSeat(seat, prompt, env, opts).then(r => {
-      r.verdict = extractVerdict(r.text);
+    // seatOpts, NOT the bare global opts. Round 2 previously used the global
+    // timeout WITHOUT the CLI floors, so codex entered every debate round with
+    // the 240s default against its own 480s p90 - 7 of its ledger timeouts are
+    // at exactly 240000ms. The debate round was structurally rigged to kill its
+    // slowest seat. Found in the 2026-08-21 full-system review.
+    return dispatchWithRetry(seat, prompt, env, seatOpts(seat),
+      { tag: `${tag}#r2`, round: 2, kind: 'debate', verdicts: true, strictVerdict: decide }).then(r => {
       printResult(r, 'R2');
-      appendEntry(buildEntry(r, { tag: `${tag}#r2`, promptChars: prompt.length, round: 2 }));
       return r;
     });
   });
@@ -222,9 +209,10 @@ async function main() {
 
   const args = parseArgs(argv);
   if (!args.question) {
-    console.error(`Usage: council.js "Question..." [--to ${Object.keys(SEATS).join(',')}] [--workers] [--tag purpose] [--synth] [--rounds 2] [--no-lenses] [--timeout 180] [--force] [--decide]`);
+    console.error(`Usage: council.js "Question..." [--to seat,seat] [--workers] [--tag purpose] [--synth] [--rounds 2] [--no-lenses] [--trading] [--timeout 240] [--sol-effort medium|high|xhigh] [--force] [--force-budget] [--decide] [--binary]`);
     console.error(`  LEAD (default): ${LEAD_SEATS.join(', ')}`);
     console.error(`  WORKER (--workers): ${WORKER_SEATS.join(', ')}`);
+    console.error(`  BENCHED (callable via --to, excluded from rosters): ${BENCHED_SEATS.join(', ')}`);
     process.exitCode = 1;
     return;
   }
@@ -234,37 +222,56 @@ async function main() {
     process.exitCode = 1;
     return;
   }
-  // gemini seat: key rotated 2026-08-02 to a fresh AI-Studio project after the
-  // prior project was SUSPENDED (403 on every model, incl. flash). Now on
-  // gemini-3.6-flash — see roster.js for the latency-variance measurement that
-  // chose it over 3.5-flash. Lifetime failure rate is 44% — ON PROBATION, but note
-  // most of that predates the key rotation. Watch the ledger.
-
   const env = loadEnv();
 
-  // ── API-seat preflight ────────────────────────────────────────────────────
-  // Fires ONLY when the dispatch includes a CLI seat (codex boots a ~60-180s
-  // agent session; claude ~10s+). Rationale: a dead API key discovered mid-
-  // convene wastes the whole CLI spend, and the degraded-quorum alarm can only
-  // say so AFTER the money is gone. A ~1s parallel ping of the API-backed seats
-  // beforehand converts that into an abort that costs nothing.
-  // Deliberately NOT done for pure-API dispatches (--workers, --to gemini,...):
-  // the dispatch itself is as cheap as the preflight, so a ping only doubles
-  // the request count — and on cerebras (5 req/MIN free tier) doubling requests
-  // is how the health check once manufactured its own outage. See
-  // feedback: monitors-must-not-cause-outages.
-  const CLI_SEATS = new Set(['codex', 'claude', 'geminipro']);
-  const cliInRoster = args.to.some(s => CLI_SEATS.has(s));
-  const apiSeats = args.to.filter(s => !CLI_SEATS.has(s));
+  // 245 of the first 1,177 ledger entries (21%) were untagged, which makes the
+  // ledger unauditable exactly where audits matter. Nag, never block.
+  if (!args.tag) console.log('[council] note: untagged convene - pass --tag <purpose> so this run is auditable in the ledger');
+
+  // BUDGET GATE - and it runs BEFORE the preflight, not after. The preflight
+  // pings METERED seats, so the old order meant an over-cap council still
+  // billed xai/deepseek/groq one PONG each before the ceiling was ever
+  // consulted - metered spend dispatched outside the only control on metered
+  // spend (2026-08-21 review). Subscription seats are never blocked: they
+  // cannot overrun, and cutting them off when the metered budget is exhausted
+  // would disable the free tier exactly when it is the only affordable option.
+  const budgetGate = budget.gate(args.to, DEFAULT_LEDGER, { force: args.forceBudget });
+  console.log(`[council] ${budget.line(budgetGate.mtd, budgetGate.cap)}`);
+  if (budgetGate.over) {
+    if (budgetGate.blocked.length) {
+      console.log(`[council] ⛔ MONTHLY CAP REACHED - metered seats skipped: ${budgetGate.blocked.join(', ')}`);
+      console.log('[council]    subscription-metered seats still run. Override with --force-budget, or raise COUNCIL_MONTHLY_CAP_USD.');
+      args.to = budgetGate.allowed;
+    }
+    if (!args.to.length) {
+      console.log('[council] every requested seat is metered and the cap is reached. Aborting rather than billing.');
+      process.exit(2);
+    }
+  }
+
+  // ── API-seat preflight ─────────────────────────────────────────────────
+  // Fires ONLY when the dispatch includes an agent-CLI seat (codex boots a
+  // ~60-480s agent session): a dead API key discovered mid-convene wastes the
+  // whole CLI spend, and the degraded-quorum alarm can only say so AFTER the
+  // money is gone. A ~1s parallel ping converts that into a free abort.
+  // NOT done for pure-API dispatches: the dispatch is as cheap as the ping,
+  // and on rate-limited free tiers doubling requests is how the health check
+  // once manufactured its own outage.
+  // The CLI set is roster.AGENT_SEATS - it was a hardcoded local Set here and
+  // had already drifted from the roster once (2026-08-21 review).
+  const cliInRoster = args.to.some(x => AGENT_SEATS.includes(x));
+  const apiSeats = args.to.filter(x => !AGENT_SEATS.includes(x));
   if (cliInRoster && apiSeats.length > 0 && !args.force) {
     const pings = await Promise.all(apiSeats.map(seat =>
-      SEATS[seat]('Reply with exactly one word: PONG', env, { timeoutMs: 15_000 })
+      // Through the dispatch boundary: preflight PONGs are metered spend and
+      // were previously invisible to both the ledger and the cap.
+      dispatch(seat, 'Reply with exactly one word: PONG', env, { timeoutMs: 15_000 }, { tag: 'preflight', kind: 'preflight' })
         .then(r => ({ seat, ok: Boolean(r.ok), error: r.error }))
         .catch(e => ({ seat, ok: false, error: e.message })),
     ));
-    const deadApi = pings.filter(p => !p.ok);
+    const deadApi = pings.filter(x => !x.ok);
     if (deadApi.length > 0) {
-      console.error('[council] PREFLIGHT FAILED — refusing to convene (the CLI seats are the expensive part; fix the cheap seats first):');
+      console.error('[council] PREFLIGHT FAILED - refusing to convene (the CLI seats are the expensive part; fix the cheap seats first):');
       for (const d of deadApi) console.error(`  DOWN ${d.seat}: ${String(d.error || '').slice(0, 100)}`);
       console.error('[council] Diagnose: node scripts/council/health.js · Convene anyway: --force');
       process.exitCode = 1;
@@ -318,7 +325,6 @@ async function main() {
     timeoutMs: Math.max(args.timeoutS, CLI_MIN_TIMEOUT_S[seat] || 0) * 1000,
     ...(seat === 'codex' && args.solEffort ? { effort: args.solEffort } : {}),
   });
-  const opts = { timeoutMs: args.timeoutS * 1000 };
   const useLenses = args.lenses && args.to.length >= 3; // 1-2 seats = targeted ask, lenses off
   const lensTable = LENS_SETS[args.lensSet] || LENS_SETS.default;
   const lensNames = args.lensSet === 'trading'
@@ -328,37 +334,17 @@ async function main() {
         ? ` — ${args.to.map((s, i) => `${s}=${lensNames[i % lensNames.length]}`).join(' ')}`
         : ' (role lenses on)')
     : '';
-  // 245 of the first 1,177 ledger entries (21%) were untagged, which makes the
-  // ledger unauditable exactly where audits matter (which convene was this?).
-  // Nag, never block — a blocked convene is worse than an unlabeled one.
-  if (!args.tag) console.log('[council] note: untagged convene — pass --tag <purpose> so this run is auditable in the ledger');
-  // BUDGET GATE. The council previously had no spend ceiling of any kind — a loop,
-  // a retry storm or a --rounds run on a long prompt could bill without limit, and
-  // an audit on 8/21 could account for only ~$1.50 of a ~$15 xAI charge.
-  // Subscription-metered seats (claude/codex/agy*) are never blocked: they cannot
-  // cause an overrun, and cutting them off when the METERED budget is exhausted
-  // would disable the free tier exactly when it is the only affordable option.
-  const budgetGate = budget.gate(args.to, DEFAULT_LEDGER, { force: args.forceBudget });
-  console.log(`[council] ${budget.line(budgetGate.mtd, budgetGate.cap)}`);
-  if (budgetGate.over) {
-    if (budgetGate.blocked.length) {
-      console.log(`[council] ⛔ MONTHLY CAP REACHED — metered seats skipped: ${budgetGate.blocked.join(', ')}`);
-      console.log('[council]    subscription-metered seats still run. Override with --force-budget, or raise COUNCIL_MONTHLY_CAP_USD.');
-      args.to = budgetGate.allowed;
-    }
-    if (!args.to.length) {
-      console.log('[council] every requested seat is metered and the cap is reached. Aborting rather than billing.');
-      process.exit(2);
-    }
-  }
-
   console.log(`[council] dispatching to ${args.to.join(', ')}${lensLabel} — results stream as seats finish …`);
 
   // Decision mode: every seat must END with a verdict it can be held to.
-  // "It depends" is the yes-man's exit hatch — close it.
-  const decideSuffix = args.decide
-    ? '\n\n[DECISION MODE] End your answer with exactly one line: "VERDICT: GO", "VERDICT: NO-GO", or "VERDICT: MODIFY" followed by " — " and a one-clause reason. You MUST pick one; "it depends" is not a verdict. If you pick MODIFY, the clause must name the single change that flips you to GO.'
-    : '';
+  // "It depends" is the yes-man's exit hatch — close it. Extraction is STRICT in
+  // this mode (dispatch.js): the VERDICT line must sit in the last 3 non-empty
+  // lines, so a seat cannot "decide" in paragraph two and hedge for ten more.
+  const decideSuffix = args.binary
+    ? '\n\n[DECISION MODE — BINARY] End your answer with exactly one line: "VERDICT: GO" or "VERDICT: NO-GO" followed by " — " and a one-clause reason. There is no MODIFY: if the work is not ready, that is NO-GO, and the clause must name the single blocker.'
+    : args.decide
+      ? '\n\n[DECISION MODE] End your answer with exactly one line: "VERDICT: GO", "VERDICT: NO-GO", or "VERDICT: MODIFY" followed by " — " and a one-clause reason. You MUST pick one; "it depends" is not a verdict. If you pick MODIFY, the clause must name the single change that flips you to GO.'
+      : '';
 
   // Snapshot each seat's PRIOR verdict record before dispatching. Ledger rows are
   // now written per-dispatch, so reading this after the round would score a seat
@@ -366,24 +352,27 @@ async function main() {
   const priorVerdicts = args.decide ? verdictBias.distribution(DEFAULT_LEDGER) : {};
 
   const round1 = await Promise.all(args.to.map((seat, i) => {
-    const lens = useLenses ? `\n\n[LENS — apply to your answer] ${lensTable[i % lensTable.length]}` : '';
-    return callSeat(seat, args.question + lens + decideSuffix, env, seatOpts(seat)).then(r => {
-      r.verdict = extractVerdict(r.text);
+    // Seat identity + lens travel together. The lens forces a PERSPECTIVE; the
+    // role line tells the seat what JOB it holds in this system (from roster.js),
+    // so a red-team lens on the CONTRARIAN seat reads as its mandate rather than
+    // an arbitrary costume. Only with 3+ seats — a 1-2 seat ask is targeted.
+    const roleLine = useLenses && SEAT_BY_ID[seat] ? `\n\n[YOUR SEAT] ${SEAT_BY_ID[seat].role}` : '';
+    const lens = useLenses ? `${roleLine}\n[LENS — apply to your answer] ${lensTable[i % lensTable.length]}` : '';
+    return dispatchWithRetry(seat, args.question + lens + decideSuffix, env, seatOpts(seat),
+      { tag: args.tag, round: 1, kind: 'convene', verdicts: true, strictVerdict: args.decide }).then(r => {
       printResult(r);
-      appendEntry(buildEntry(r, { tag: args.tag, promptChars: args.question.length, round: 1 }));
       return r;
     });
   }));
 
   let finalResults = round1;
   if (args.rounds >= 2) {
-    finalResults = await debateRound(args.question, args.to, round1, env, opts, args.tag);
+    finalResults = await debateRound(args.question, args.to, round1, env, seatOpts, args.tag, args.decide);
   }
 
   const transcriptResults = [...finalResults];
   if (args.synth) {
-    const synth = await synthesize(args.question, finalResults, env);
-    appendEntry(buildEntry(synth, { tag: `${args.tag}#synth`, promptChars: args.question.length }));
+    const synth = await synthesize(args.question, finalResults, env, args.tag);
     transcriptResults.push({ ...synth, provider: `${synth.provider} (SYNTHESIS)` });
     console.log(`\n===== SYNTHESIS (${synth.provider}/${synth.model}) =====`);
     console.log(synth.ok ? synth.text : `[FAILED: ${synth.error}]`);
