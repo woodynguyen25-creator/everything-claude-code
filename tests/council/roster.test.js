@@ -25,6 +25,7 @@ const assert = require('node:assert/strict');
 
 const {
   SEATS, SEAT_BY_ID, LEAD_SEATS, WORKER_SEATS, BENCHED_SEATS, SYNTH_CHAIN,
+  AGENT_SEATS, API_SEATS,
 } = require('../../scripts/council/roster');
 
 let passed = 0;
@@ -117,6 +118,32 @@ test('LEAD tier keeps one seat per lab (decorrelation invariant)', () => {
   const labs = LEAD_SEATS.map(id => SEAT_BY_ID[id].lab);
   const dupes = labs.filter((l, i) => labs.indexOf(l) !== i);
   assert.equal(dupes.length, 0, `LEAD tier has ${dupes.join(', ')} twice — agreement between them is not independent evidence`);
+});
+
+test('every seat declares toolAccess as agent or api', () => {
+  // Recorded 2026-08-21 after a brief told the whole LEAD roster it had filesystem
+  // access. `xai` is a raw HTTPS call: it burned a dispatch on a 3.5s stub that
+  // narrated a repo inspection it could not perform. The capability existed only
+  // inside providers.js's implementation, so nothing could have caught the mismatch.
+  for (const s of SEATS) {
+    assert.ok(['agent', 'api'].includes(s.toolAccess), `${s.id} has toolAccess="${s.toolAccess}"`);
+  }
+});
+
+test('AGENT_SEATS and API_SEATS partition the roster exactly', () => {
+  assert.equal(AGENT_SEATS.length + API_SEATS.length, SEATS.length, 'every seat lands in exactly one bucket');
+  for (const id of AGENT_SEATS) assert.ok(!API_SEATS.includes(id), `${id} is in both buckets`);
+});
+
+test('at least one ACTIVE seat can actually verify a claim', () => {
+  // The council's single most valuable output (8/21 audit) came from the one seat
+  // that checked the brief against the disk instead of answering it as given. A
+  // roster of pure API seats cannot do that at all — it can only reason from what
+  // the orchestrator asserted, which is how a stale brief propagates into every
+  // seat at once and comes back looking like consensus.
+  const active = [...new Set([...LEAD_SEATS, ...WORKER_SEATS])];
+  const canVerify = active.filter(id => AGENT_SEATS.includes(id));
+  assert.ok(canVerify.length > 0, 'no active seat can check anything — every answer would be premise-bound');
 });
 
 console.log('\n=== Test Results ===');

@@ -35,6 +35,8 @@
  * @property {string} id      seat id used by --to, and the key into SEATS in providers.js
  * @property {Array<'LEAD'|'WORKER'|'BENCH'>} tiers  a seat may serve more than one
  * @property {string} role    the JOB this seat does - the durable part
+ * @property {'agent'|'api'} toolAccess  'agent' = spawns a CLI that can read files and run
+ *                                       commands; 'api' = a raw HTTPS call with none of that
  * @property {string} lab     vendor/lab, so decorrelation can be reasoned about
  * @property {string} model   the swappable part
  * @property {string} mandate why this seat exists in Woody's system
@@ -46,6 +48,9 @@
 const SEATS = [
   {
     id: 'claude',
+    // AGENT seat: spawns a real CLI session, so it CAN read the repo, run commands
+    // and verify claims. Ask it to check things.
+    toolAccess: 'agent',
     // Data-use terms for THIS path. Machine-readable so a future gate can refuse
     // to route sensitive prompts to a seat that may train on them, rather than
     // relying on a comment nobody reads. 'UNVERIFIED' is NOT 'safe'.
@@ -62,6 +67,9 @@ const SEATS = [
   },
   {
     id: 'codex',
+    // AGENT seat: spawns a real CLI session, so it CAN read the repo, run commands
+    // and verify claims. Ask it to check things.
+    toolAccess: 'agent',
     // Data-use terms for THIS path. Machine-readable so a future gate can refuse
     // to route sensitive prompts to a seat that may train on them, rather than
     // relying on a comment nobody reads. 'UNVERIFIED' is NOT 'safe'.
@@ -78,6 +86,11 @@ const SEATS = [
   },
   {
     id: 'xai',
+    // API seat: a raw HTTPS call. NO filesystem, NO commands, NO verification.
+    // Asking it to 'check the tree' produces a confident stub — measured 2026-08-21,
+    // when a brief told xai it had filesystem access and it burned a dispatch
+    // narrating tool use it could not perform.
+    toolAccess: 'api',
     // Data-use terms for THIS path. Machine-readable so a future gate can refuse
     // to route sensitive prompts to a seat that may train on them, rather than
     // relying on a comment nobody reads. 'UNVERIFIED' is NOT 'safe'.
@@ -102,6 +115,11 @@ const SEATS = [
   },
   {
     id: 'gemini',
+    // API seat: a raw HTTPS call. NO filesystem, NO commands, NO verification.
+    // Asking it to 'check the tree' produces a confident stub — measured 2026-08-21,
+    // when a brief told xai it had filesystem access and it burned a dispatch
+    // narrating tool use it could not perform.
+    toolAccess: 'api',
     // Data-use terms for THIS path. Machine-readable so a future gate can refuse
     // to route sensitive prompts to a seat that may train on them, rather than
     // relying on a comment nobody reads. 'UNVERIFIED' is NOT 'safe'.
@@ -145,6 +163,11 @@ const SEATS = [
   },
   {
     id: 'deepseek',
+    // API seat: a raw HTTPS call. NO filesystem, NO commands, NO verification.
+    // Asking it to 'check the tree' produces a confident stub — measured 2026-08-21,
+    // when a brief told xai it had filesystem access and it burned a dispatch
+    // narrating tool use it could not perform.
+    toolAccess: 'api',
     // Data-use terms for THIS path. Machine-readable so a future gate can refuse
     // to route sensitive prompts to a seat that may train on them, rather than
     // relying on a comment nobody reads. 'UNVERIFIED' is NOT 'safe'.
@@ -161,6 +184,11 @@ const SEATS = [
   },
   {
     id: 'cerebras',
+    // API seat: a raw HTTPS call. NO filesystem, NO commands, NO verification.
+    // Asking it to 'check the tree' produces a confident stub — measured 2026-08-21,
+    // when a brief told xai it had filesystem access and it burned a dispatch
+    // narrating tool use it could not perform.
+    toolAccess: 'api',
     // Data-use terms for THIS path. Machine-readable so a future gate can refuse
     // to route sensitive prompts to a seat that may train on them, rather than
     // relying on a comment nobody reads. 'UNVERIFIED' is NOT 'safe'.
@@ -182,6 +210,11 @@ const SEATS = [
   },
   {
     id: 'groq',
+    // API seat: a raw HTTPS call. NO filesystem, NO commands, NO verification.
+    // Asking it to 'check the tree' produces a confident stub — measured 2026-08-21,
+    // when a brief told xai it had filesystem access and it burned a dispatch
+    // narrating tool use it could not perform.
+    toolAccess: 'api',
     // Data-use terms for THIS path. Machine-readable so a future gate can refuse
     // to route sensitive prompts to a seat that may train on them, rather than
     // relying on a comment nobody reads. 'UNVERIFIED' is NOT 'safe'.
@@ -204,6 +237,9 @@ const SEATS = [
   },
   {
     id: 'geminipro',
+    // AGENT seat: spawns a real CLI session, so it CAN read the repo, run commands
+    // and verify claims. Ask it to check things.
+    toolAccess: 'agent',
     // Data-use terms for THIS path. Machine-readable so a future gate can refuse
     // to route sensitive prompts to a seat that may train on them, rather than
     // relying on a comment nobody reads. 'UNVERIFIED' is NOT 'safe'.
@@ -244,6 +280,9 @@ const SEATS = [
   },
   {
     id: 'agyopus',
+    // AGENT seat: spawns a real CLI session, so it CAN read the repo, run commands
+    // and verify claims. Ask it to check things.
+    toolAccess: 'agent',
     // Data-use terms for THIS path. Machine-readable so a future gate can refuse
     // to route sensitive prompts to a seat that may train on them, rather than
     // relying on a comment nobody reads. 'UNVERIFIED' is NOT 'safe'.
@@ -260,6 +299,9 @@ const SEATS = [
   },
   {
     id: 'agyflash',
+    // AGENT seat: spawns a real CLI session, so it CAN read the repo, run commands
+    // and verify claims. Ask it to check things.
+    toolAccess: 'agent',
     // Data-use terms for THIS path. Machine-readable so a future gate can refuse
     // to route sensitive prompts to a seat that may train on them, rather than
     // relying on a comment nobody reads. 'UNVERIFIED' is NOT 'safe'.
@@ -309,6 +351,21 @@ const BENCHED_SEATS = byTier('BENCH');
 
 /** Seat lookup by id, for tools that need role/model metadata. */
 const SEAT_BY_ID = Object.fromEntries(SEATS.map(s => [s.id, s]));
+
+/**
+ * Seats that can actually VERIFY a claim — they spawn a CLI with filesystem and
+ * command access. Everything else is a raw HTTPS call that can only reason from
+ * what is in the prompt.
+ *
+ * Recorded 2026-08-21 after a brief asserted "you have filesystem access" to the
+ * whole LEAD roster. `xai` is an API seat: it returned a 3.5s stub narrating a repo
+ * inspection it could not perform. The capability was nowhere in the roster, so
+ * nothing could have caught it. Of the current LEAD tier only claude and codex can
+ * check anything — which is also WHY the 8/21 audit's best answer came from a CLI
+ * seat: the API seats were structurally unable to refuse the premise.
+ */
+const AGENT_SEATS = SEATS.filter(s => s.toolAccess === 'agent').map(s => s.id);
+const API_SEATS = SEATS.filter(s => s.toolAccess === 'api').map(s => s.id);
 
 /**
  * Preference order for the SYNTHESIS seat — the one that merges the other seats'
@@ -375,4 +432,4 @@ const KNOWN_ALIASES = {
   deepseek: ['deepseek-chat'],
 };
 
-module.exports = { SEATS, SEAT_BY_ID, LEAD_SEATS, WORKER_SEATS, BENCHED_SEATS, SYNTH_PREFERENCE, SYNTH_CHAIN, CATALOGUES, KNOWN_ALIASES };
+module.exports = { SEATS, SEAT_BY_ID, LEAD_SEATS, WORKER_SEATS, BENCHED_SEATS, AGENT_SEATS, API_SEATS, SYNTH_PREFERENCE, SYNTH_CHAIN, CATALOGUES, KNOWN_ALIASES };

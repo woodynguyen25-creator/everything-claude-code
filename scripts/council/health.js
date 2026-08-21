@@ -30,7 +30,7 @@ const path = require('path');
 const fs = require('fs');
 const { execFileSync } = require('child_process');
 const { loadEnv, SEATS } = require('./providers');
-const { LEAD_SEATS, WORKER_SEATS, BENCHED_SEATS, SEATS: ROSTER, CATALOGUES, KNOWN_ALIASES } = require('./roster');
+const { LEAD_SEATS, WORKER_SEATS, BENCHED_SEATS, SEATS: ROSTER, CATALOGUES, KNOWN_ALIASES, AGENT_SEATS } = require('./roster');
 
 const PROMPT = 'Reply with exactly one word: PONG';
 
@@ -185,6 +185,21 @@ async function checkModels(env) {
   if (badTerms.length) console.log(`[health] TRAINS ON INPUT: ${badTerms.map(s => s.id).join(', ')} - never send sensitive prompts here`);
   if (leadUnk.length) console.log(`[health] WARN LEAD seat(s) with UNVERIFIED data terms: ${leadUnk.map(s => s.id).join(', ')} - LEAD sees everything; verify or demote`);
   if (unkTerms.length) console.log(`[health]   unverified terms (not proven unsafe, not proven safe): ${unkTerms.map(s => s.id).join(', ')}`);
+
+  // CAPABILITY AUDIT. Which seats can actually CHECK a claim, versus only reason
+  // from whatever the prompt asserted. Surfaced because a brief on 2026-08-21 told
+  // the whole LEAD roster it had filesystem access; `xai` is a raw HTTPS call and
+  // burned a dispatch on a 3.5s stub narrating a repo inspection it cannot perform.
+  // This is also the deeper reason the 8/21 audit's best answer came from a CLI
+  // seat: an API seat is structurally unable to refuse a false premise.
+  const active = [...new Set([...LEAD_SEATS, ...WORKER_SEATS])];
+  const canVerify = active.filter(id => AGENT_SEATS.includes(id));
+  const cannot = active.filter(id => !AGENT_SEATS.includes(id));
+  console.log(`[health] CAN VERIFY (agent CLI, reads files/runs commands): ${canVerify.join(', ') || 'NONE'}`);
+  console.log(`[health]   prompt-bound (raw API, cannot check anything): ${cannot.join(', ') || 'none'}`);
+  if (canVerify.length === 0) {
+    console.log('[health] ⛔ NO active seat can verify a claim — every answer is premise-bound and a bad brief propagates to all of them.');
+  }
   return rot;
 }
 
