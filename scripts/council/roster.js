@@ -207,8 +207,25 @@ const SEATS = [
     // Data-use terms for THIS path. Machine-readable so a future gate can refuse
     // to route sensitive prompts to a seat that may train on them, rather than
     // relying on a comment nobody reads. 'UNVERIFIED' is NOT 'safe'.
-    dataTerms: 'UNVERIFIED', // Rides the CONSUMER AI Pro sub via the agy OAuth CLI. Google's Code Assist privacy notice does NOT state whether prompts train models, and the page for individuals only covers the June-2026 deprecation. UNRESOLVED as of 2026-08-21.
-    tiers: ['LEAD'],
+    dataTerms: 'TRAINS-ON-INPUT', // CONFIRMED BAD 2026-08-21 from the PRIMARY source, antigravity.google/terms: "We use Interactions to evaluate, develop, and improve Google and Alphabet research, products, services and machine learning technologies" and "Google employees and contractors may access, view, review and use Interactions." Opt-out exists but is OFF BY DEFAULT and is not set on this machine.
+    // BENCHED 2026-08-21 on a VERIFIED privacy finding — same rule that benched the
+    // `gemini` seat that morning, applied to stronger evidence. The agy/Antigravity
+    // path is governed by antigravity.google/terms, which says Interactions are used
+    // to improve Google's machine-learning technologies AND that "Google employees and
+    // contractors may access, view, review and use Interactions." Council prompts carry
+    // trading positions and client detail — that is the documented reason
+    // dashboard/data/council-transcripts/ is gitignored — so this path was strictly
+    // WORSE than the free-tier API seat already benched for training, because it adds
+    // HUMAN review. Verified twice against the primary source; a secondary source
+    // claiming Antigravity "will not collect prompts" is WRONG, that sentence is not
+    // in the terms.
+    // The terms are NOT tier-differentiated: AI Pro / Ultra / student get the same
+    // treatment as free. Only Workspace/Cloud enterprise is carved out.
+    // RESTORE BY: opting out in Antigravity settings (the terms say "navigate to
+    // settings to change your preference on how such data is used"), CONFIRMING the
+    // toggle is off, then flipping dataTerms here. It is off-by-default in the wrong
+    // direction: no preference recorded on this machine == data IS being used.
+    tiers: ['BENCH'],
     role: 'FRONTIER-GOOGLE - the Google lead seat, on a real Pro model',
     lab: 'google',
     model: 'gemini-3.1-pro-high (via agy)',
@@ -230,7 +247,7 @@ const SEATS = [
     // Data-use terms for THIS path. Machine-readable so a future gate can refuse
     // to route sensitive prompts to a seat that may train on them, rather than
     // relying on a comment nobody reads. 'UNVERIFIED' is NOT 'safe'.
-    dataTerms: 'UNVERIFIED', // Same consumer OAuth wallet as geminipro.
+    dataTerms: 'TRAINS-ON-INPUT', // CONFIRMED BAD 2026-08-21 from the PRIMARY source, antigravity.google/terms: "We use Interactions to evaluate, develop, and improve Google and Alphabet research, products, services and machine learning technologies" and "Google employees and contractors may access, view, review and use Interactions." Opt-out exists but is OFF BY DEFAULT and is not set on this machine.
     tiers: ['BENCH'],
     role: 'FREE LABOUR - Opus-class reasoning on Google’s wallet, not a vote',
     lab: 'anthropic',
@@ -246,8 +263,25 @@ const SEATS = [
     // Data-use terms for THIS path. Machine-readable so a future gate can refuse
     // to route sensitive prompts to a seat that may train on them, rather than
     // relying on a comment nobody reads. 'UNVERIFIED' is NOT 'safe'.
-    dataTerms: 'UNVERIFIED', // Same consumer OAuth wallet as geminipro.
-    tiers: ['WORKER'],
+    dataTerms: 'TRAINS-ON-INPUT', // CONFIRMED BAD 2026-08-21 from the PRIMARY source, antigravity.google/terms: "We use Interactions to evaluate, develop, and improve Google and Alphabet research, products, services and machine learning technologies" and "Google employees and contractors may access, view, review and use Interactions." Opt-out exists but is OFF BY DEFAULT and is not set on this machine.
+    // BENCHED 2026-08-21 on a VERIFIED privacy finding — same rule that benched the
+    // `gemini` seat that morning, applied to stronger evidence. The agy/Antigravity
+    // path is governed by antigravity.google/terms, which says Interactions are used
+    // to improve Google's machine-learning technologies AND that "Google employees and
+    // contractors may access, view, review and use Interactions." Council prompts carry
+    // trading positions and client detail — that is the documented reason
+    // dashboard/data/council-transcripts/ is gitignored — so this path was strictly
+    // WORSE than the free-tier API seat already benched for training, because it adds
+    // HUMAN review. Verified twice against the primary source; a secondary source
+    // claiming Antigravity "will not collect prompts" is WRONG, that sentence is not
+    // in the terms.
+    // The terms are NOT tier-differentiated: AI Pro / Ultra / student get the same
+    // treatment as free. Only Workspace/Cloud enterprise is carved out.
+    // RESTORE BY: opting out in Antigravity settings (the terms say "navigate to
+    // settings to change your preference on how such data is used"), CONFIRMING the
+    // toggle is off, then flipping dataTerms here. It is off-by-default in the wrong
+    // direction: no preference recorded on this machine == data IS being used.
+    tiers: ['BENCH'],
     // PROMOTED to WORKER 2026-08-20 to backfill cerebras (HTTP 402). Free on the
     // Google OAuth wallet and 6.6s - slower than cerebras's 0.4s, so this is a
     // ROLE CHANGE from 'fastest' to 'free', not a like-for-like swap.
