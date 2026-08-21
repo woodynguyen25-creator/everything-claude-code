@@ -130,6 +130,41 @@ async function main() {
     await assert.rejects(() => dispatch('nope', 'q', {}, {}, {}, fakeSeats()), /unknown seat/);
   });
 
+  await test('DEGENERATE output is flagged as a FAILURE, not an answer', async () => {
+    // Live failure 2026-08-21: grok-4.6 returned 21,876 chars of ONE SENTENCE
+    // repeated 151 times ("I'll verify the tree first, then red-team…") — no
+    // content, no verdict — and the system counted it ok=true because text was
+    // non-empty. A repetition loop must never hold a quorum seat.
+    const L = tmpLedger();
+    const blob = "I'll verify the tree first, then red-team the hardening claims. ".repeat(150);
+    const seats = { loopy: async () => ({ provider: 'loopy', model: 'f', ok: true, ms: 1, text: blob }) };
+    const r = await dispatch('loopy', 'q', {}, {}, { ledgerPath: L }, seats);
+    assert.equal(r.ok, false, 'a repetition loop is not an answer');
+    assert.match(r.error, /degenerate/i);
+    const rows = readRecent(10, L);
+    assert.equal(rows[0].ok, false, 'the row records the failure');
+    fs.unlinkSync(L);
+  });
+
+  await test('a NORMAL long answer is not misflagged as degenerate', async () => {
+    const L = tmpLedger();
+    // Realistic long-form: varied sentences, some legitimately repeated structure.
+    const para = i => `Finding ${i}: the module handles case ${i} by checking invariant ${i * 7} and returns code ${i % 5}. `;
+    const text = Array.from({ length: 120 }, (_, i) => para(i)).join('');
+    const seats = { longy: async () => ({ provider: 'longy', model: 'f', ok: true, ms: 1, text }) };
+    const r = await dispatch('longy', 'q', {}, {}, { ledgerPath: L }, seats);
+    assert.equal(r.ok, true, 'varied long output must pass');
+    fs.unlinkSync(L);
+  });
+
+  await test('short answers are never degeneracy-checked (PONG must survive)', async () => {
+    const L = tmpLedger();
+    const seats = { pong: async () => ({ provider: 'pong', model: 'f', ok: true, ms: 1, text: 'PONG' }) };
+    const r = await dispatch('pong', 'q', {}, {}, { ledgerPath: L }, seats);
+    assert.equal(r.ok, true);
+    fs.unlinkSync(L);
+  });
+
   console.log('\n=== Test Results ===');
   console.log(`Passed: ${passed}`);
   console.log(`Failed: ${failed}`);

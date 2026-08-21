@@ -357,7 +357,15 @@ async function main() {
     // so a red-team lens on the CONTRARIAN seat reads as its mandate rather than
     // an arbitrary costume. Only with 3+ seats — a 1-2 seat ask is targeted.
     const roleLine = useLenses && SEAT_BY_ID[seat] ? `\n\n[YOUR SEAT] ${SEAT_BY_ID[seat].role}` : '';
-    const lens = useLenses ? `${roleLine}\n[LENS — apply to your answer] ${lensTable[i % lensTable.length]}` : '';
+    // API seats get told, EVERY time, that they have no tools. Twice in one day
+    // (2026-08-21) a brief invited seats to "verify against the tree" and xai —
+    // a raw HTTPS call — burned the dispatch narrating file reads it cannot do;
+    // the second time it looped one intent sentence for 21,876 chars. The seat
+    // cannot know what it is unless the dispatch says so.
+    const toolLine = SEAT_BY_ID[seat] && SEAT_BY_ID[seat].toolAccess === 'api'
+      ? '\n[NO TOOLS] You have NO filesystem, command, or browsing access. Do not attempt or narrate file/tool operations — reason only from what is in this prompt, and state when a claim would need verification you cannot perform.'
+      : '';
+    const lens = useLenses ? `${roleLine}${toolLine}\n[LENS — apply to your answer] ${lensTable[i % lensTable.length]}` : toolLine;
     return dispatchWithRetry(seat, args.question + lens + decideSuffix, env, seatOpts(seat),
       { tag: args.tag, round: 1, kind: 'convene', verdicts: true, strictVerdict: args.decide }).then(r => {
       printResult(r);

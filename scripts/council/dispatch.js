@@ -54,6 +54,45 @@ function extractVerdict(text, { strict = false } = {}) {
   return matches[matches.length - 1].replace(/VERDICT:\s*/i, '').toUpperCase().replace('NOGO', 'NO-GO');
 }
 
+/**
+ * Degenerate-output detector: a repetition loop is NOT an answer.
+ *
+ * Live failure 2026-08-21: grok-4.6 returned 21,876 chars of one sentence
+ * repeated 151 times — no content, no verdict — and the system counted it a
+ * valid seat answer because `ok` only checked that text was non-empty. Billed
+ * ~5k output tokens for nothing, held a quorum seat, and in --decide would
+ * have been reported as "no verdict line parsed" rather than as a failure.
+ *
+ * Detection is SENTENCE uniqueness: split on sentence boundaries and measure the
+ * distinct share. The live blob is two sentences alternating ~300 times (ratio
+ * ≈ 0.007); varied long-form prose is nearly all unique (ratio ≈ 1.0). A first
+ * draft used fixed-width shingles at a prime stride, reasoning that a prime
+ * "avoids phase-lock" — exactly backwards: a prime stride walks every residue of
+ * the loop's period and MAXIMIZES distinct windows (measured 0.35 on the live
+ * blob, above any sane threshold). The unit of repetition is the sentence, so
+ * the detector measures sentences. Tested against the real blob, not just
+ * synthetic fixtures.
+ *
+ * Conservative on purpose: only text over 2000 chars with 20+ sentences is
+ * checked, and the ratio must fall below 30%. A false "degenerate" drops a real
+ * answer, which is worse than letting a marginal one through — the human reads
+ * the text either way.
+ */
+const DEGENERATE_MIN_CHARS = 2000;
+const DEGENERATE_MIN_SENTENCES = 20;
+const DEGENERATE_MAX_UNIQUE_RATIO = 0.30;
+
+function looksDegenerate(text = '') {
+  const t = String(text);
+  if (t.length < DEGENERATE_MIN_CHARS) return false;
+  const sentences = t
+    .split(/[.!?\n]+\s*/)
+    .map(x => x.trim().toLowerCase())
+    .filter(x => x.length > 8); // ignore fragments and bullet glyphs
+  if (sentences.length < DEGENERATE_MIN_SENTENCES) return false;
+  return new Set(sentences).size / sentences.length < DEGENERATE_MAX_UNIQUE_RATIO;
+}
+
 /** A failed call worth ONE more attempt. Never codex: its failures are timeouts, and a retry just burns the clock twice. */
 function isRetryable(result) {
   if (result.ok) return false;
@@ -82,6 +121,13 @@ async function dispatch(seat, prompt, env, opts = {}, meta = {}, seatsMap = SEAT
     // a throw AFTER the provider accepted the request may still have billed.
     result = { provider: seat, model: '?', ok: false, text: '', ms: 0, error: `threw: ${e.message}` };
   }
+  // A repetition loop is a FAILURE wearing an answer's clothes. Demote it before
+  // anything downstream (quorum count, verdict tally, synthesis input) can treat
+  // it as content. The text is kept on the result for forensics.
+  if (result.ok && looksDegenerate(result.text)) {
+    result.ok = false;
+    result.error = `degenerate output: ${result.text.length} chars of looping repetition`;
+  }
   if (meta.retried) result.retried = true;
   if (meta.verdicts) result.verdict = extractVerdict(result.text, { strict: Boolean(meta.strictVerdict) });
   try {
@@ -109,4 +155,4 @@ async function dispatchWithRetry(seat, prompt, env, opts = {}, meta = {}, seatsM
   return dispatch(seat, prompt, env, opts, { ...meta, retried: true }, seatsMap);
 }
 
-module.exports = { dispatch, dispatchWithRetry, extractVerdict, isRetryable };
+module.exports = { dispatch, dispatchWithRetry, extractVerdict, isRetryable, looksDegenerate };
