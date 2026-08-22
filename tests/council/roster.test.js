@@ -146,6 +146,27 @@ test('at least one ACTIVE seat can actually verify a claim', () => {
   assert.ok(canVerify.length > 0, 'no active seat can check anything — every answer would be premise-bound');
 });
 
+test('providers, roster, and pricing agree on the seat universe (no orphan aliases)', () => {
+  // Found 2026-08-21 by exactly this audit: a `grok` alias lived in providers.js
+  // SEATS with no roster entry and no PRICING entry. Consequences of an id
+  // without a seat record: budget.isMetered('grok') was false, so `--to grok`
+  // BYPASSED the pre-dispatch budget gate while billing xAI for real — and the
+  // alias sat one letter from 'groq', the exact typo hazard the xai seat's id
+  // was chosen to prevent. Every gate keyed on seat records fails open for an
+  // unrecorded id, so the seat universe must be closed: one id, three records.
+  const { SEATS: RUNNERS } = require('../../scripts/council/providers');
+  const { PRICING } = require('../../scripts/council/budget');
+  const runnerIds = Object.keys(RUNNERS);
+  const rosterIds = SEATS.map(s => s.id);
+  for (const id of runnerIds) {
+    assert.ok(rosterIds.includes(id), `runner "${id}" has no roster entry — gates keyed on the roster fail open for it`);
+    assert.ok(id in PRICING, `runner "${id}" has no PRICING entry — budget treats unknown ids as subscription ($0)`);
+  }
+  for (const id of rosterIds) {
+    assert.ok(runnerIds.includes(id), `roster seat "${id}" has no runner — it would throw on dispatch`);
+  }
+});
+
 console.log('\n=== Test Results ===');
 console.log(`Passed: ${passed}`);
 console.log(`Failed: ${failed}`);

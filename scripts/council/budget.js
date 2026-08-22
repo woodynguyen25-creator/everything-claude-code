@@ -25,7 +25,6 @@
 'use strict';
 
 const fs = require('fs');
-const path = require('path');
 
 /**
  * USD per MILLION tokens, verified against vendor docs 2026-08-20/21.

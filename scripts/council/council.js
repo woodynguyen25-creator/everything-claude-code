@@ -33,7 +33,7 @@ const verdictBias = require('./verdict-bias');
 // THE dispatch boundary (2026-08-21): every physical provider attempt goes through
 // dispatch.js and gets a ledger row - retries, preflights and synthesis fallbacks
 // included. council.js never calls SEATS directly for anything that bills.
-const { dispatch, dispatchWithRetry, extractVerdict } = require('./dispatch');
+const { dispatch, dispatchWithRetry } = require('./dispatch');
 
 // Tiered roster (2026-08-02, Woody's call) — see roster.js for the tier
 // rationale and the ledger evidence behind each seat's placement.
@@ -69,7 +69,6 @@ const LENS_SETS = {
     'You are the HISTORIAN seat. Judge this ONLY against the operator\'s own measured track record as given in the packet. What has actually happened the last N times he was in a setup like this one? Where does the packet\'s framing contradict his own data? Be specific that you are reasoning from his record, not from general market wisdom — and if his record contradicts the consensus view in the packet, say so plainly.',
   ],
 };
-const LENSES = LENS_SETS.default;
 
 // Synthesis seat order lives in roster.js so it cannot drift out of sync with the
 // tiers. It USED to be hardcoded here as ['deepseek','xai','cerebras'] — and had

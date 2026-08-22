@@ -242,6 +242,20 @@ async function main() {
     assert.equal(dataTermsRefusal('not-a-seat', {}), null, 'unknown seats are not this gate\'s problem');
   });
 
+  await test('agy classifier: the REAL EOF error string classifies as transient', () => {
+    // Pins a bug eslint caught 2026-08-21: a heredoc edit turned the \b word
+    // boundaries into literal BACKSPACE chars (0x08), so the pattern matched
+    // nothing real and EOF-class transients classified as refusals — never
+    // retried. The earlier test missed it by feeding PRE-TAGGED strings to the
+    // downstream policy; this one exercises the upstream classifier with the
+    // verbatim error from the 2026-08-20 incident that benched geminipro.
+    const { isTransientAgyError } = require('../../scripts/council/providers');
+    assert.equal(isTransientAgyError('Eligibility check failed: Get https://www.googleapis.com/oauth2/v2/userinfo: EOF'), true, 'the documented real-world transient MUST classify as transient');
+    assert.equal(isTransientAgyError('dial tcp 142.250.0.1:443: i/o timeout'), true);
+    assert.equal(isTransientAgyError('account not eligible for Antigravity'), false, 'a refusal must never be retried into hiding');
+    assert.equal(isTransientAgyError('model not found'), false, 'unknown errors default to refusal (fail loud)');
+  });
+
   console.log('\n=== Test Results ===');
   console.log(`Passed: ${passed}`);
   console.log(`Failed: ${failed}`);

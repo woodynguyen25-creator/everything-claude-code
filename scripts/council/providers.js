@@ -188,7 +188,16 @@ const AGY_BIN = path.join(
  */
 function isTransientAgyError(msg = '') {
   if (/not eligible|VALIDATION_REQUIRED|Verify your account|PERMISSION_DENIED/i.test(msg)) return false;
-  return /EOF|context canceled|connection reset|i\/o timeout|deadline exceeded|TLS|dial tcp|no such host|temporarily/i.test(msg);
+  // ⚠ REPAIRED 2026-08-21, caught by eslint no-control-regex: a heredoc edit
+  // halved a double-backslash-b into a literal BACKSPACE (0x08), so the pattern
+  // was <BS>EOF<BS> - which matches nothing real. EOF-class transients therefore
+  // classified as REFUSALS and were never retried: the precise misread this
+  // function exists to prevent, reintroduced invisibly (terminals HIDE
+  // backspaces on display; only cat -A and the linter showed it). The word
+  // boundary is now built with a RegExp constructor so no source-editing tool
+  // can halve it again, and the test suite feeds the REAL error string.
+  const transient = new RegExp(String.raw`\bEOF\b|context canceled|connection reset|i/o timeout|deadline exceeded|TLS|dial tcp|no such host|temporarily`, 'i');
+  return transient.test(msg);
 }
 
 /**
@@ -408,8 +417,14 @@ const SEATS = {
   // not 'grok', to keep it one typo away from 'groq' (a different vendor).
   xai: (prompt, env, opts) =>
     runOpenAiCompat('xai', 'https://api.x.ai/v1', 'XAI_API_KEY', 'grok-4.6', prompt, env, opts),
-  grok: (prompt, env, opts) =>
-    runOpenAiCompat('xai', 'https://api.x.ai/v1', 'XAI_API_KEY', 'grok-4.6', prompt, env, opts),
+  // The `grok` ALIAS was deleted 2026-08-21, found by a cross-file consistency
+  // audit. It undid this seat's own naming rule twice over: the id is 'xai'
+  // precisely so a typo cannot confuse it with 'groq' — and the alias put
+  // 'grok' one letter from 'groq' again, routing the typo to the PRICIEST seat.
+  // Worse, the alias had no roster or PRICING entry, so budget.isMetered('grok')
+  // was false and `--to grok` bypassed the pre-dispatch budget gate entirely
+  // while billing xAI for real. An alias is a seat id without a seat record;
+  // every gate keyed on seat records fails open for it.
 };
 
 module.exports = { loadEnv, parseCodexOutput, stripAnsi, isTransientAgyError, SEATS };
