@@ -154,10 +154,13 @@ function looksDegenerate(text = '') {
 function isRetryable(result) {
   if (result.ok) return false;
   if (result.provider === 'codex') return false;
-  // Deterministic refusals (privacy gate, budget cap, missing key) return the
-  // same answer every time — a retry is pure noise. Observed live: a data-terms
-  // refusal was "retried once" the day the gate shipped.
-  return !/missing|^data-terms:|^budget:/i.test(String(result.error || ''));
+  // Deterministic refusals (privacy gate, budget cap, missing key, an agy
+  // entitlement refusal) return the same answer every time — a retry is pure
+  // noise, and retrying a dead entitlement HIDES it. agy transient network
+  // errors stay retryable; runAgy tags which is which because only providers.js
+  // knows agy's error shapes (its internal retry was removed so both physical
+  // attempts land in the ledger).
+  return !/missing|^data-terms:|^budget:|\[agy-refusal\]/i.test(String(result.error || ''));
 }
 
 /**

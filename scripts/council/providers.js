@@ -211,7 +211,7 @@ function isTransientAgyError(msg = '') {
  * Requires a ONE-TIME interactive `agy` login (creds in Windows Credential
  * Manager under LegacyGeneric:target=gemini:antigravity, NOT in ~/.gemini).
  */
-function runAgy(prompt, { seat = 'geminipro', timeoutMs = 300_000, model = AGY_PRO, effort = '', _retried = false } = {}) {
+function runAgy(prompt, { seat = 'geminipro', timeoutMs = 300_000, model = AGY_PRO, effort = '' } = {}) {
   const started = Date.now();
   const label = model || AGY_PRO;
   return new Promise(resolve => {
@@ -250,12 +250,17 @@ function runAgy(prompt, { seat = 'geminipro', timeoutMs = 300_000, model = AGY_P
       clearTimeout(timer);
       if (code === 0) return done(true, stripAnsi(out).trim());
       const detail = stripAnsi(err).slice(0, 300);
-      // One retry, and ONLY for a network-shaped failure. A genuine refusal
-      // must surface immediately — retrying it just hides a dead entitlement.
-      if (!_retried && isTransientAgyError(detail)) {
-        return resolve(runAgy(prompt, { seat, timeoutMs, model, effort, _retried: true }));
-      }
-      done(false, '', `exit ${code}: ${detail}`);
+      // INTERNAL RETRY REMOVED 2026-08-21 (codex-seat finding, promoted from
+      // deferred to live the day --public made these seats usable again): the
+      // recursion collapsed two PHYSICAL attempts into one dispatch result, so
+      // the first attempt never got a ledger row — the exact hole the dispatch
+      // boundary exists to close. Retry policy now lives in dispatch.js
+      // dispatchWithRetry, which logs BOTH attempts. The transient-vs-refusal
+      // classification stays here (isTransientAgyError, exported) because only
+      // this file knows agy's error shapes; a REAL refusal is marked
+      // non-retryable so a dead entitlement still surfaces immediately.
+      const kind = isTransientAgyError(detail) ? 'transient' : 'refusal';
+      done(false, '', `exit ${code} [agy-${kind}]: ${detail}`);
     });
     // prompt already passed via -p; close stdin so agy does not wait on it
     child.stdin.end();
@@ -407,4 +412,4 @@ const SEATS = {
     runOpenAiCompat('xai', 'https://api.x.ai/v1', 'XAI_API_KEY', 'grok-4.6', prompt, env, opts),
 };
 
-module.exports = { loadEnv, parseCodexOutput, stripAnsi, SEATS };
+module.exports = { loadEnv, parseCodexOutput, stripAnsi, isTransientAgyError, SEATS };

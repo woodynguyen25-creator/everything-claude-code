@@ -166,6 +166,11 @@ async function main() {
     assert.equal(isRetryable({ ok: true, provider: 'xai' }), false);
     assert.equal(isRetryable({ ok: false, provider: 'geminipro', error: 'data-terms: geminipro TRAINS ON INPUT' }), false, 'privacy refusal is deterministic');
     assert.equal(isRetryable({ ok: false, provider: 'xai', error: 'budget: monthly cap reached' }), false, 'budget refusal is deterministic');
+    // agy's internal retry was removed (it collapsed two physical attempts into
+    // one ledger row — codex finding, live again once --public re-enabled the
+    // seats). runAgy now TAGS the failure class; the boundary owns the policy.
+    assert.equal(isRetryable({ ok: false, provider: 'geminipro', error: 'exit 1 [agy-transient]: Eligibility check failed: EOF' }), true, 'network blip is worth one retry — and BOTH rows now land');
+    assert.equal(isRetryable({ ok: false, provider: 'geminipro', error: 'exit 1 [agy-refusal]: not eligible for Antigravity' }), false, 'a dead entitlement must surface, not be retried into hiding');
   });
 
   await test('unknown seat throws (a typo must not silently dispatch nothing)', async () => {
