@@ -146,6 +146,32 @@ test('at least one ACTIVE seat can actually verify a claim', () => {
   assert.ok(canVerify.length > 0, 'no active seat can check anything — every answer would be premise-bound');
 });
 
+test('PUBLIC tier: gated free-frontier seats auto-join rosters only under --public', () => {
+  // Woody's ruling 2026-08-22: "these should be members of the council." The
+  // public tier makes them members for every convene that can legally use them,
+  // while the default rosters stay privacy-safe and the dispatch gate backstops.
+  const { PUBLIC_LEAD_SEATS, PUBLIC_WORKER_SEATS } = require('../../scripts/council/roster');
+  assert.deepEqual(PUBLIC_LEAD_SEATS, ['geminipro'], 'the fourth lab joins LEAD in public mode');
+  assert.deepEqual(PUBLIC_WORKER_SEATS, ['agyflash'], '3.7 Flash High joins the workers in public mode');
+  for (const id of [...PUBLIC_LEAD_SEATS, ...PUBLIC_WORKER_SEATS]) {
+    const seat = SEAT_BY_ID[id];
+    assert.ok(seat, `${id} must exist`);
+    assert.ok(seat.tiers.includes('BENCH'), `${id} must stay BENCH for default (presumed-sensitive) rosters`);
+    assert.ok(!LEAD_SEATS.includes(id) && !WORKER_SEATS.includes(id), `${id} must not leak into default rosters`);
+  }
+});
+
+test('PUBLIC LEAD preserves one-seat-per-lab (agyopus stays out)', () => {
+  // The 2026-08-20 council rejected a second Anthropic LEAD seat 3/3: its
+  // agreement with `claude` would read as corroboration while being the same
+  // lab twice. The public tier must not resurrect that by the back door.
+  const { PUBLIC_LEAD_SEATS } = require('../../scripts/council/roster');
+  assert.ok(!PUBLIC_LEAD_SEATS.includes('agyopus'), 'agyopus is hand-summon only');
+  const labs = [...LEAD_SEATS, ...PUBLIC_LEAD_SEATS].map(id => SEAT_BY_ID[id].lab);
+  const dupes = labs.filter((l, i) => labs.indexOf(l) !== i);
+  assert.equal(dupes.length, 0, `public-extended LEAD doubles a lab: ${dupes.join(', ')}`);
+});
+
 test('providers, roster, and pricing agree on the seat universe (no orphan aliases)', () => {
   // Found 2026-08-21 by exactly this audit: a `grok` alias lived in providers.js
   // SEATS with no roster entry and no PRICING entry. Consequences of an id

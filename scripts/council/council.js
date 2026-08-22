@@ -37,7 +37,7 @@ const { dispatch, dispatchWithRetry } = require('./dispatch');
 
 // Tiered roster (2026-08-02, Woody's call) — see roster.js for the tier
 // rationale and the ledger evidence behind each seat's placement.
-const { LEAD_SEATS, WORKER_SEATS, BENCHED_SEATS, SYNTH_CHAIN, AGENT_SEATS, SEAT_BY_ID } = require('./roster');
+const { LEAD_SEATS, WORKER_SEATS, BENCHED_SEATS, PUBLIC_LEAD_SEATS, PUBLIC_WORKER_SEATS, SYNTH_CHAIN, AGENT_SEATS, SEAT_BY_ID } = require('./roster');
 
 const DEFAULT_SEATS = LEAD_SEATS;
 
@@ -234,6 +234,18 @@ async function main() {
     process.exitCode = 1;
     return;
   }
+  // PUBLIC-TIER AUTO-SEATING (Woody's ruling 2026-08-22: "these should be
+  // members of the council"). A --public convene on a DEFAULT roster gains the
+  // gated free-frontier seats automatically: geminipro joins LEAD as the fourth
+  // lab, agyflash joins the workers. Reference-equality check so an explicit
+  // --to list is never silently expanded — the operator's hand-picked roster is
+  // exact. Without --public these seats never enter a roster at all, and the
+  // dispatch-level data-terms gate backstops even a direct --to. Two layers.
+  if (args.publicContent) {
+    if (args.to === DEFAULT_SEATS) args.to = [...DEFAULT_SEATS, ...PUBLIC_LEAD_SEATS];
+    else if (args.to === WORKER_SEATS) args.to = [...WORKER_SEATS, ...PUBLIC_WORKER_SEATS];
+  }
+
   const env = loadEnv();
 
   // 245 of the first 1,177 ledger entries (21%) were untagged, which makes the

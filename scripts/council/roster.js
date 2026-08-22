@@ -293,6 +293,12 @@ const SEATS = [
     // toggle is off, then flipping dataTerms here. It is off-by-default in the wrong
     // direction: no preference recorded on this machine == data IS being used.
     tiers: ['BENCH'],
+    // PUBLIC-TIER MEMBER (Woody's ruling, 2026-08-22): with --public this seat
+    // AUTO-JOINS the LEAD roster as the fourth lab. Membership is conditional by
+    // nature — Google's terms train on this path and allow human review, so it
+    // can never see a trading position or client name — but for public-repo
+    // reviews and generic research it is a full frontier vote at $0.
+    publicTier: 'LEAD',
     role: 'FRONTIER-GOOGLE - the Google lead seat, on a real Pro model',
     lab: 'google',
     model: 'gemini-3.1-pro-high (via agy)',
@@ -355,6 +361,10 @@ const SEATS = [
     // toggle is off, then flipping dataTerms here. It is off-by-default in the wrong
     // direction: no preference recorded on this machine == data IS being used.
     tiers: ['BENCH'],
+    // PUBLIC-TIER MEMBER (Woody's ruling, 2026-08-22): with --public this seat
+    // AUTO-JOINS the worker roster. 3.7 Flash (High) is a stronger model than
+    // either default worker; it just cannot touch sensitive prompts.
+    publicTier: 'WORKER',
     // PROMOTED to WORKER 2026-08-20 to backfill cerebras (HTTP 402). Free on the
     // Google OAuth wallet and 6.6s - slower than cerebras's 0.4s, so this is a
     // ROLE CHANGE from 'fastest' to 'free', not a like-for-like swap.
@@ -432,6 +442,22 @@ const SYNTH_PREFERENCE = ['deepseek', 'xai', 'cerebras', 'groq'];
 const SYNTH_CHAIN = SYNTH_PREFERENCE.filter(id => !byTier('BENCH').includes(id));
 
 /**
+ * PUBLIC tier (2026-08-22, Woody's ruling: "these should be members of the
+ * council"). Seats that JOIN the active rosters automatically when a convene is
+ * marked --public — i.e. the prompt could be posted publicly as-is. They stay
+ * BENCH for unmarked (presumed-sensitive) work, and the dispatch-level
+ * data-terms gate backstops the tiering: even a direct --to without --public is
+ * refused pre-network. Two layers, one rule.
+ *
+ * agyopus is deliberately NOT here: a second Anthropic seat in LEAD breaks
+ * one-seat-per-lab (its agreement with `claude` would read as corroboration
+ * while being the same lab twice) — the 2026-08-20 council rejected exactly
+ * that promotion 3/3. It stays summonable by hand for free Opus-class labour.
+ */
+const PUBLIC_LEAD_SEATS = SEATS.filter(s => s.publicTier === 'LEAD').map(s => s.id);
+const PUBLIC_WORKER_SEATS = SEATS.filter(s => s.publicTier === 'WORKER').map(s => s.id);
+
+/**
  * Provider model-catalogue endpoints, for rot detection. A seat whose model id
  * has vanished from its provider is the exact failure this file exists to stop.
  *
@@ -463,4 +489,4 @@ const KNOWN_ALIASES = {
   deepseek: ['deepseek-chat'],
 };
 
-module.exports = { SEATS, SEAT_BY_ID, LEAD_SEATS, WORKER_SEATS, BENCHED_SEATS, AGENT_SEATS, API_SEATS, SYNTH_PREFERENCE, SYNTH_CHAIN, CATALOGUES, KNOWN_ALIASES };
+module.exports = { SEATS, SEAT_BY_ID, LEAD_SEATS, WORKER_SEATS, BENCHED_SEATS, PUBLIC_LEAD_SEATS, PUBLIC_WORKER_SEATS, AGENT_SEATS, API_SEATS, SYNTH_PREFERENCE, SYNTH_CHAIN, CATALOGUES, KNOWN_ALIASES };
