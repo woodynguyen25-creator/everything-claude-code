@@ -117,3 +117,40 @@ dashboard/.omx/
 dashboard/data/council-ledger.jsonl
 dashboard/data/council-transcripts/
 dashboard/data/vision-critic-ledger.jsonl
+
+# Visual-QA capture artifacts at the repo ROOT (audit 2026-08-20).
+# Design/anti-slop review sessions drop screenshots straight into the working
+# directory — 112 files / ~40MB had accumulated untracked. Leading slash is
+# deliberate: only the root is ignored, so real assets under skills/,
+# dashboard/public/, assets/ etc. stay tracked.
+/*.png
+/*.jpg
+/*.jpeg
+/*.gif
+/*.webp
+/*.mp4
+/*.webm
+
+# Obsidian scratch files that land in the repo when the vault overlaps it
+/Untitled*.canvas
+/Untitled*.base
+/undefined
+
+# Third-party / client material — NEVER commit (audit 2026-08-20).
+# This repo has a PUBLIC upstream remote (affaan-m/everything-claude-code), so
+# anything committed here is one `git push` from disclosure. Same reasoning as
+# the council-transcripts rule above.
+#   - whop-extraction/*.txt = verbatim transcripts of a PAID third-party course
+#   - the client dossiers below contain a prospect's financials, a family
+#     company's internals, and unsent pitch material
+# The extractor script and our own index/analysis ARE committed — the method is
+# ours, the content is not.
+contexts/whop-extraction/*.txt
+contexts/stillstone-*.md
+contexts/prm-*.md
+contexts/aeglos-*.md
+contexts/booksy-teardown-*.md
+contexts/whop-impact-team-sales-*.md
+contexts/ai-agency-course-*.md
+contexts/aios-leveling-*.md
+contexts/motionsites-case-study-*.md
