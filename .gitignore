@@ -194,3 +194,8 @@ skills/total-recall/
 skills/ui-ux-pro-max/
 skills/verification-before-completion/
 skills/website-design-agent/
+
+# The whole dir, not just the transcript: personal-use extraction tooling and
+# notes for PAID third-party course content. Purged from the publishable branch
+# 2026-08-21; must never re-enter (public upstream, public fork).
+contexts/whop-extraction/
