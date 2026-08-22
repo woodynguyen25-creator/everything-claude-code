@@ -164,6 +164,8 @@ async function main() {
     assert.equal(isRetryable({ ok: false, provider: 'codex', error: 'timeout after 1ms' }), false);
     assert.equal(isRetryable({ ok: false, provider: 'groq', error: 'GROQ_API_KEY missing' }), false);
     assert.equal(isRetryable({ ok: true, provider: 'xai' }), false);
+    assert.equal(isRetryable({ ok: false, provider: 'geminipro', error: 'data-terms: geminipro TRAINS ON INPUT' }), false, 'privacy refusal is deterministic');
+    assert.equal(isRetryable({ ok: false, provider: 'xai', error: 'budget: monthly cap reached' }), false, 'budget refusal is deterministic');
   });
 
   await test('unknown seat throws (a typo must not silently dispatch nothing)', async () => {
@@ -203,6 +205,36 @@ async function main() {
     const r = await dispatch('pong', 'q', {}, {}, { ledgerPath: L }, seats);
     assert.equal(r.ok, true);
     fs.unlinkSync(L);
+  });
+
+  await test('DATA-TERMS GATE: a TRAINS-ON-INPUT seat is refused by default — before any network call', async () => {
+    // The Antigravity/free-Gemini finding (2026-08-21): those paths train on
+    // input and allow human review, the opt-out toggle is unconfirmed by Google
+    // and may not cover the CLI at all. The bench kept them out of ROSTERS, but
+    // --to could still route a sensitive prompt straight into them. The gate
+    // moves the rule onto the boundary: default-deny, because an unmarked prompt
+    // must be presumed sensitive (fail closed on privacy exactly like budget
+    // fails closed on spend). Uses the REAL seats map — the refusal fires before
+    // the runner, so no network call and no bill.
+    const L = tmpLedger();
+    const r = await dispatch('gemini', 'my AMZU position is...', {}, { timeoutMs: 5 }, { ledgerPath: L });
+    assert.equal(r.ok, false);
+    assert.match(r.error, /trains on input|data-terms/i);
+    assert.equal(readRecent(5, L).length, 0, 'no physical attempt happened, so no ledger row');
+    assert.equal(fs.existsSync(L), false, 'the ledger file was never even created');
+  });
+
+  await test('DATA-TERMS GATE: meta.publicContent unlocks the seat class (pure check)', () => {
+    // Public-content work (this repo is public-adjacent, generic research) has
+    // nothing to protect from training, so the free agy/gemini capacity becomes
+    // usable there — that is the whole point of the gate over a blanket bench.
+    const { dataTermsRefusal } = require('../../scripts/council/dispatch');
+    assert.ok(dataTermsRefusal('gemini', {}), 'default: refused');
+    assert.ok(dataTermsRefusal('geminipro', {}), 'agy seats refused by default');
+    assert.equal(dataTermsRefusal('gemini', { publicContent: true }), null, '--public unlocks');
+    assert.equal(dataTermsRefusal('claude', {}), null, 'verified-private seats never gated');
+    assert.equal(dataTermsRefusal('deepseek', {}), null, 'UNVERIFIED seats stay allowed (roster would break; health warns instead)');
+    assert.equal(dataTermsRefusal('not-a-seat', {}), null, 'unknown seats are not this gate\'s problem');
   });
 
   console.log('\n=== Test Results ===');

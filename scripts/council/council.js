@@ -123,6 +123,12 @@ function parseArgs(argv) {
     // named blocker, not a third bucket. Kept as an OPT-IN flag rather than the
     // default so the two modes can be compared on the ledger before deciding.
     else if (a === '--binary') { args.decide = true; args.binary = true; }
+    // --public: this prompt could be posted publicly as-is, so TRAINS-ON-INPUT
+    // seats (free-tier gemini, the agy trio) may serve it. Default is SENSITIVE:
+    // the dispatch boundary refuses those seats for unmarked prompts. This is
+    // what makes the free Gemini 3.1 Pro / Opus 4.6 capacity usable at zero
+    // marginal cost WITHOUT trusting Google's unconfirmed opt-out toggle.
+    else if (a === '--public') args.publicContent = true;
     else rest.push(a);
   }
   args.question = rest.join(' ').trim();
@@ -153,7 +159,7 @@ function printResult(result, label = '') {
 }
 
 /** Synthesis with a provider fallback chain instead of a hardcoded single seat. */
-async function synthesize(question, results, env, tag = '', forceBudget = false) {
+async function synthesize(question, results, env, tag = '', forceBudget = false, publicContent = false) {
   const blocks = results
     .filter(r => r.ok)
     .map(r => `--- ${r.provider.toUpperCase()} (${r.model}) ---\n${truncate(r.text, SYNTH_BLOCK_MAX_CHARS)}`)
@@ -163,7 +169,7 @@ async function synthesize(question, results, env, tag = '', forceBudget = false)
   for (const seat of SYNTH_FALLBACK_CHAIN) {
     // Through the dispatch boundary: a FAILED fallback attempt billed too, and
     // used to vanish - only the final result ever reached the ledger.
-    last = await dispatch(seat, prompt, env, { timeoutMs: 120_000 }, { tag: `${tag}#synth`, kind: 'synth', forceBudget });
+    last = await dispatch(seat, prompt, env, { timeoutMs: 120_000 }, { tag: `${tag}#synth`, kind: 'synth', forceBudget, publicContent });
     if (last.ok) return last;
     process.stderr.write(`[council] synth via ${seat} failed (${last.error}) - falling back…` + '\n');
   }
@@ -171,7 +177,7 @@ async function synthesize(question, results, env, tag = '', forceBudget = false)
 }
 
 /** Debate round: each seat sees the others' round-1 answers, critiques, and revises. */
-async function debateRound(question, seats, round1, env, seatOpts, tag, decideSuffix, forceBudget, binary) {
+async function debateRound(question, seats, round1, env, seatOpts, tag, decideSuffix, forceBudget, binary, publicContent) {
   const okResults = round1.filter(r => r.ok);
   if (okResults.length < 2) {
     process.stderr.write('[council] fewer than 2 seats answered — skipping debate round\n');
@@ -199,7 +205,7 @@ async function debateRound(question, seats, round1, env, seatOpts, tag, decideSu
     // at exactly 240000ms. The debate round was structurally rigged to kill its
     // slowest seat. Found in the 2026-08-21 full-system review.
     return dispatchWithRetry(seat, prompt, env, seatOpts(seat),
-      { tag: `${tag}#r2`, round: 2, kind: 'debate', verdicts: true, strictVerdict: Boolean(decideSuffix), binaryVerdict: binary, decisionMode: decideSuffix ? (binary ? 'binary' : 'ternary') : undefined, forceBudget }).then(r => {
+      { tag: `${tag}#r2`, round: 2, kind: 'debate', verdicts: true, strictVerdict: Boolean(decideSuffix), binaryVerdict: binary, decisionMode: decideSuffix ? (binary ? 'binary' : 'ternary') : undefined, forceBudget, publicContent }).then(r => {
       printResult(r, 'R2');
       return r;
     });
@@ -216,7 +222,7 @@ async function main() {
 
   const args = parseArgs(argv);
   if (!args.question) {
-    console.error(`Usage: council.js "Question..." [--to seat,seat] [--workers] [--tag purpose] [--synth] [--rounds 2] [--no-lenses] [--trading] [--timeout 240] [--sol-effort medium|high|xhigh] [--force] [--force-budget] [--decide] [--binary]`);
+    console.error(`Usage: council.js "Question..." [--to seat,seat] [--workers] [--tag purpose] [--synth] [--rounds 2] [--no-lenses] [--trading] [--timeout 240] [--sol-effort medium|high|xhigh] [--force] [--force-budget] [--decide] [--binary] [--public]`);
     console.error(`  LEAD (default): ${LEAD_SEATS.join(', ')}`);
     console.error(`  WORKER (--workers): ${WORKER_SEATS.join(', ')}`);
     console.error(`  BENCHED (callable via --to, excluded from rosters): ${BENCHED_SEATS.join(', ')}`);
@@ -272,7 +278,7 @@ async function main() {
     const pings = await Promise.all(apiSeats.map(seat =>
       // Through the dispatch boundary: preflight PONGs are metered spend and
       // were previously invisible to both the ledger and the cap.
-      dispatch(seat, 'Reply with exactly one word: PONG', env, { timeoutMs: 15_000 }, { tag: 'preflight', kind: 'preflight' })
+      dispatch(seat, 'Reply with exactly one word: PONG', env, { timeoutMs: 15_000 }, { tag: 'preflight', kind: 'preflight', publicContent: args.publicContent })
         .then(r => ({ seat, ok: Boolean(r.ok), error: r.error }))
         .catch(e => ({ seat, ok: false, error: e.message })),
     ));
@@ -374,7 +380,7 @@ async function main() {
       : '';
     const lens = useLenses ? `${roleLine}${toolLine}\n[LENS — apply to your answer] ${lensTable[i % lensTable.length]}` : toolLine;
     return dispatchWithRetry(seat, args.question + lens + decideSuffix, env, seatOpts(seat),
-      { tag: args.tag, round: 1, kind: 'convene', verdicts: true, strictVerdict: args.decide, binaryVerdict: args.binary, decisionMode: args.binary ? 'binary' : (args.decide ? 'ternary' : undefined), forceBudget: args.forceBudget }).then(r => {
+      { tag: args.tag, round: 1, kind: 'convene', verdicts: true, strictVerdict: args.decide, binaryVerdict: args.binary, decisionMode: args.binary ? 'binary' : (args.decide ? 'ternary' : undefined), forceBudget: args.forceBudget, publicContent: args.publicContent }).then(r => {
       printResult(r);
       return r;
     });
@@ -382,12 +388,12 @@ async function main() {
 
   let finalResults = round1;
   if (args.rounds >= 2) {
-    finalResults = await debateRound(args.question, args.to, round1, env, seatOpts, args.tag, decideSuffix, args.forceBudget, args.binary);
+    finalResults = await debateRound(args.question, args.to, round1, env, seatOpts, args.tag, decideSuffix, args.forceBudget, args.binary, args.publicContent);
   }
 
   const transcriptResults = [...finalResults];
   if (args.synth) {
-    const synth = await synthesize(args.question, finalResults, env, args.tag, args.forceBudget);
+    const synth = await synthesize(args.question, finalResults, env, args.tag, args.forceBudget, args.publicContent);
     transcriptResults.push({ ...synth, provider: `${synth.provider} (SYNTHESIS)` });
     console.log(`\n===== SYNTHESIS (${synth.provider}/${synth.model}) =====`);
     console.log(synth.ok ? synth.text : `[FAILED: ${synth.error}]`);

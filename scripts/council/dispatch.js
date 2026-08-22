@@ -29,6 +29,49 @@
 const { SEATS } = require('./providers');
 const { buildEntry, appendEntry, DEFAULT_LEDGER } = require('./ledger');
 const budget = require('./budget');
+const { SEAT_BY_ID } = require('./roster');
+
+/**
+ * DATA-TERMS GATE — the privacy analogue of the budget gate, and on the same
+ * boundary for the same reason: a rule enforced by seat-tier placement is one
+ * `--to` flag away from false.
+ *
+ * WHY (2026-08-21): the free-tier Gemini API and every Antigravity/agy path
+ * carry `dataTerms: 'TRAINS-ON-INPUT'` — Google's terms say Interactions train
+ * their models AND "employees and contractors may access, view, review and use"
+ * them. The advertised opt-out was investigated the same day and is WEAK: the
+ * only discoverable toggle is the IDE's Settings→Account→"Enable Telemetry"
+ * switch, Google has left forum threads asking "does it stop training?"
+ * unanswered for months, and the `agy` CLI — the path the council actually
+ * uses — exposes no privacy flag at all. Under verify-per-PATH, an unconfirmed
+ * toggle in a DIFFERENT client is not evidence about this one.
+ *
+ * So the rule became routing, not trust: an unmarked prompt is presumed
+ * SENSITIVE (fail closed, like budget), and TRAINS-ON-INPUT seats refuse it
+ * before any network call. `--public` (meta.publicContent) unlocks them for
+ * work with nothing to protect — public-repo code, generic research — which is
+ * how the free Gemini 3.1 Pro / Opus 4.6 / Flash capacity stays usable at $0
+ * without ever seeing a trading position or client name.
+ *
+ * UNVERIFIED seats (deepseek/groq/cerebras) deliberately pass: refusing them
+ * would gut the default worker tier on suspicion, and health.js already prints
+ * the warning every run. 'UNVERIFIED is not safe' is a reason to go verify,
+ * not to break the roster silently.
+ *
+ * @returns {object|null} a refusal result, or null when the dispatch may proceed
+ */
+function dataTermsRefusal(seat, meta = {}) {
+  const def = SEAT_BY_ID[seat];
+  if (!def || def.dataTerms !== 'TRAINS-ON-INPUT' || meta.publicContent) return null;
+  return {
+    provider: seat,
+    model: 'blocked',
+    ok: false,
+    text: '',
+    ms: 0,
+    error: `data-terms: ${seat} TRAINS ON INPUT (and allows human review) — prompt presumed sensitive. Pass --public only if this content could be posted publicly as-is.`,
+  };
+}
 
 /**
  * Pull a machine-readable verdict off an answer.
@@ -111,7 +154,10 @@ function looksDegenerate(text = '') {
 function isRetryable(result) {
   if (result.ok) return false;
   if (result.provider === 'codex') return false;
-  return !/missing/i.test(String(result.error || '')); // a missing API key will not fix itself
+  // Deterministic refusals (privacy gate, budget cap, missing key) return the
+  // same answer every time — a retry is pure noise. Observed live: a data-terms
+  // refusal was "retried once" the day the gate shipped.
+  return !/missing|^data-terms:|^budget:/i.test(String(result.error || ''));
 }
 
 /**
@@ -127,6 +173,13 @@ function isRetryable(result) {
 async function dispatch(seat, prompt, env, opts = {}, meta = {}, seatsMap = SEATS) {
   const runner = seatsMap[seat];
   if (!runner) throw new Error(`dispatch: unknown seat "${seat}"`);
+  // Privacy gate FIRST — before budget, before the network. No ledger row: no
+  // physical attempt happened. Only on the real seats map (fake test seats have
+  // no roster entry anyway, but keep the symmetry with the budget gate).
+  if (seatsMap === SEATS) {
+    const refusal = dataTermsRefusal(seat, meta);
+    if (refusal) return refusal;
+  }
   // THE CEILING LIVES ON THE BOUNDARY (claude-seat review, 2026-08-21). It used
   // to be a single call site in council.js before round 1 — which left round 2,
   // the synthesis fallback chain, and every future caller dispatching metered
@@ -187,4 +240,4 @@ async function dispatchWithRetry(seat, prompt, env, opts = {}, meta = {}, seatsM
   return dispatch(seat, prompt, env, opts, { ...meta, retried: true }, seatsMap);
 }
 
-module.exports = { dispatch, dispatchWithRetry, extractVerdict, isRetryable, looksDegenerate };
+module.exports = { dispatch, dispatchWithRetry, extractVerdict, isRetryable, looksDegenerate, dataTermsRefusal };
