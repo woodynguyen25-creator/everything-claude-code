@@ -294,9 +294,10 @@ const SEATS = [
   },
   {
     id: 'geminipro',
-    // AGENT seat: spawns a real CLI session, so it CAN read the repo, run commands
-    // and verify claims. Ask it to check things.
-    toolAccess: 'agent',
+    // API seat — PROMPT-BOUND. See the `gemini` seat for the canary evidence:
+    // agy gates tool use behind an interactive approval a council dispatch can
+    // never answer, so an implied file read kills the dispatch outright.
+    toolAccess: 'api',
     // Data-use terms for THIS path. Machine-readable so a future gate can refuse
     // to route sensitive prompts to a seat that may train on them, rather than
     // relying on a comment nobody reads. 'UNVERIFIED' is NOT 'safe'.
@@ -346,9 +347,10 @@ const SEATS = [
   },
   {
     id: 'agyopus',
-    // AGENT seat: spawns a real CLI session, so it CAN read the repo, run commands
-    // and verify claims. Ask it to check things.
-    toolAccess: 'agent',
+    // API seat — PROMPT-BOUND. See the `gemini` seat for the canary evidence.
+    // Note what this costs: Opus-class reasoning on Google's wallet sounded like
+    // free agent labour, but it cannot read a file, so it is free REASONING only.
+    toolAccess: 'api',
     // Data-use terms for THIS path. Machine-readable so a future gate can refuse
     // to route sensitive prompts to a seat that may train on them, rather than
     // relying on a comment nobody reads. 'UNVERIFIED' is NOT 'safe'.
@@ -365,9 +367,12 @@ const SEATS = [
   },
   {
     id: 'agyflash',
-    // AGENT seat: spawns a real CLI session, so it CAN read the repo, run commands
-    // and verify claims. Ask it to check things.
-    toolAccess: 'agent',
+    // API seat — PROMPT-BOUND. This seat supplied the SECOND canary that proved
+    // the gate is the PATH and not the model: on 2026-08-22 it ran the same
+    // "read roster.js" probe on a DIFFERENT model (3.6-flash-high) and failed
+    // with the identical agy permission refusal. One failure could have been the
+    // model; two across two models is the agy CLI.
+    toolAccess: 'api',
     // Data-use terms for THIS path. Machine-readable so a future gate can refuse
     // to route sensitive prompts to a seat that may train on them, rather than
     // relying on a comment nobody reads. 'UNVERIFIED' is NOT 'safe'.
@@ -407,7 +412,7 @@ const SEATS = [
     lab: 'google',
     model: 'gemini-3.6-flash-high (via agy)',
     mandate:
-      'Wallet redundancy. The `gemini` API seat went dark for 5 days when its AI-Studio project was SUSPENDED (403 on every model, not quota). This path bills the OAuth wallet, so it survives that entire class of outage - a different failure domain, not just a different key.',
+      'Free Google execution capacity under --public. ⚠ ITS ORIGINAL MANDATE IS DEAD, recorded here rather than quietly deleted: this seat existed for WALLET REDUNDANCY against the `gemini` API seat, which went dark for 5 days when its AI-Studio project was suspended. On 2026-08-22 `gemini` itself moved onto agy, so both seats now share one binary, one OAuth account, one eligibility check and one failure domain. Different weights are not infrastructure redundancy — if agy goes down, BOTH Google seats go down together. Caught by the codex seat reviewing the consolidation. Real redundancy returns only when a second Google PATH exists (a billed AI-Studio key).',
     swapWhen:
       'Deliberately NOT wired as automatic failover: silent failover would mask a dead key, which is exactly the silent-degradation failure this roster already warns about. If the API seat dies we want the ALARM, then a manual `--to agyflash`. Promote to WORKER only if the API seat proves chronically unreliable.',
     verified: '2026-08-20',

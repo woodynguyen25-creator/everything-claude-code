@@ -236,7 +236,7 @@ async function main() {
   }
   // PUBLIC-TIER AUTO-SEATING (Woody's ruling 2026-08-22: "these should be
   // members of the council"). A --public convene on a DEFAULT roster gains the
-  // gated free-frontier seats automatically: geminipro joins LEAD as the fourth
+  // gated free-frontier seats automatically: gemini joins LEAD as the fourth
   // lab, agyflash joins the workers. Reference-equality check so an explicit
   // --to list is never silently expanded — the operator's hand-picked roster is
   // exact. Without --public these seats never enter a roster at all, and the

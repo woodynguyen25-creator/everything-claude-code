@@ -63,7 +63,11 @@ test('distribution counts verdicts per seat and ignores rows without one', () =>
     row('xai', 'NO-GO'),
     { ts: '2026-08-01T00:00:00.000Z', provider: 'claude', ok: true }, // no verdict
   ]);
-  const d = bias.distribution(f);
+  // `{}` = no roster, so no era-filtering: this test is about PARSING (which
+  // rows count as verdicts), and model-era filtering has its own test below.
+  // Passing the live roster here would drop these fixture rows for having no
+  // `model`, which is correct behaviour but a different question.
+  const d = bias.distribution(f, {});
   assert.equal(d.claude.n, 3);
   assert.equal(d.claude.MODIFY, 2);
   assert.equal(d.claude.GO, 1);
@@ -206,6 +210,42 @@ test('a split verdict is not unanimous regardless of bias', () => {
     { provider: 'xai', verdict: 'NO-GO' },
   ], d);
   assert.equal(u.unanimous, false);
+});
+
+test('a seat repointed to a new model does NOT inherit the old model\'s record', () => {
+  // The live contamination, 2026-08-22. The `gemini` id was repointed from a
+  // free-tier API flash model onto gemini-3.7-flash-high via agy, and the next
+  // convene annotated it "MODIFY is this seat's DEFAULT answer (10/11 = 91%)"
+  // when exactly ONE of those verdicts came from the model that had answered.
+  // A seat with no track record was being sold as a seat with a strong one.
+  const fs = require('node:fs');
+  const os = require('node:os');
+  const path = require('node:path');
+  const L = path.join(fs.mkdtempSync(path.join(os.tmpdir(), 'vb-')), 'ledger.jsonl');
+  fs.writeFileSync(L, [
+    // ten verdicts from the RETIRED model
+    ...Array.from({ length: 10 }, () => JSON.stringify({ provider: 'gemini', model: 'gemini-3.6-flash', verdict: 'MODIFY' })),
+    // one from the model actually seated today
+    JSON.stringify({ provider: 'gemini', model: 'gemini-3.7-flash-high', verdict: 'MODIFY' }),
+  ].join('\n'));
+
+  const seats = { gemini: { model: 'gemini-3.7-flash-high (via agy)' } };
+  const clean = bias.distribution(L, seats);
+  assert.equal(clean.gemini.n, 1, 'only the current model counts toward the record');
+
+  // and the consequence that matters: it must read as UNKNOWN, not as vetted.
+  const a = bias.assess('gemini', 'MODIFY', clean);
+  assert.equal(a.thin, true, 'one verdict is not a track record');
+  assert.equal(a.dominant, false, 'must NOT claim this is the seat\'s default answer');
+  assert.match(a.note, /too few to judge/);
+
+  // Guard the normaliser too: the roster tags "(via agy)", the ledger does not.
+  assert.equal(bias.normaliseModel('gemini-3.7-flash-high (via agy)'), 'gemini-3.7-flash-high');
+  assert.equal(bias.normaliseModel('grok-4.6'), 'grok-4.6');
+
+  // A provider with NO seat record (retired id) keeps its own history.
+  const orphan = bias.distribution(L, {});
+  assert.equal(orphan.gemini.n, 11, 'unknown ids are left alone, not silently zeroed');
 });
 
 console.log('\n=== Test Results ===');

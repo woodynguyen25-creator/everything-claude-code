@@ -69,8 +69,56 @@ const MIN_HISTORY = 8;
 const DOMINANT_RATE = 0.60;
 const RARE_RATE = 0.20;
 
-/** @returns {Record<string, {GO:number, MODIFY:number, 'NO-GO':number, n:number}>} */
-function distribution(ledgerPath) {
+/**
+ * The ledger records a seat's model per row; the roster says which model that
+ * seat runs TODAY. Rows from an earlier model are a DIFFERENT respondent and are
+ * not evidence about the current one.
+ *
+ * Found 2026-08-22 by the codex seat, and it was live, not hypothetical: the
+ * `gemini` seat id was repointed from a free-tier API flash model to
+ * gemini-3.7-flash-high on agy — new model, new transport, new wallet, new role
+ * — and the very next convene annotated it
+ *   "gemini=MODIFY: MODIFY is this seat's DEFAULT answer (10/11 = 91%)"
+ * on a record where exactly ONE verdict belonged to the model that had just
+ * answered. A seat with no track record was being described as a seat with a
+ * strong one, which is the same class of error this module was rewritten to fix:
+ * unknown rendering as vetted.
+ *
+ * Keying by model makes a freshly-swapped seat fall through to the `thin` branch
+ * ("too few to judge") instead of inheriting a predecessor's reputation. That is
+ * the safe direction: it under-claims rather than over-claims.
+ *
+ * ⚠ KNOWN LIMIT, stated rather than hidden: model is necessary but not
+ * sufficient. codex asked for a `seatEpoch` because transport and role changed
+ * here too, and two eras could in principle share a model id. Model-keying
+ * removes the contamination actually observed; a full epoch is the better fix if
+ * a seat ever changes path WITHOUT changing model.
+ */
+const AGY_SUFFIX = ' (via agy)';
+
+/** Roster models carry a "(via agy)" tag the ledger does not record. */
+function normaliseModel(model) {
+  if (typeof model !== 'string') return null;
+  return model.endsWith(AGY_SUFFIX) ? model.slice(0, -AGY_SUFFIX.length) : model;
+}
+
+/**
+ * @param {string} ledgerPath
+ * @param {Record<string, {model?: string}>} [seatsById] roster lookup; defaults to
+ *   the live roster. Injectable so tests can pin an era without touching disk.
+ * @returns {Record<string, {GO:number, MODIFY:number, 'NO-GO':number, n:number}>}
+ */
+function distribution(ledgerPath, seatsById) {
+  // Required lazily: this module is advisory and must never fail the convene, so
+  // a broken roster import degrades to "no filtering" rather than throwing.
+  let seats = seatsById;
+  if (!seats) {
+    try {
+      seats = require('./roster').SEAT_BY_ID;
+    } catch {
+      seats = null;
+    }
+  }
   const out = {};
   let raw;
   try {
@@ -89,6 +137,14 @@ function distribution(ledgerPath) {
       continue; // a corrupt row costs one data point, not the whole annotation
     }
     if (!row.verdict || !VERDICTS.includes(row.verdict) || !row.provider) continue;
+    // Drop rows cast by a model this seat no longer runs. An id we have no seat
+    // record for is left alone: a retired seat's own history is still its own.
+    // A row with NO model is also dropped (it cannot be attributed to an era) —
+    // measured before shipping: 0 of the 121 real verdict rows lack one, so this
+    // discards nothing today and fails in the under-claiming direction if it
+    // ever does.
+    const seat = seats && seats[row.provider];
+    if (seat && seat.model && normaliseModel(seat.model) !== row.model) continue;
     if (!out[row.provider]) out[row.provider] = { GO: 0, MODIFY: 0, 'NO-GO': 0, n: 0 };
     out[row.provider][row.verdict] += 1;
     out[row.provider].n += 1;
@@ -194,4 +250,4 @@ function lines(unanimityResult) {
   return out;
 }
 
-module.exports = { VERDICTS, OPPOSITE, MIN_HISTORY, DOMINANT_RATE, RARE_RATE, distribution, assess, assessUnanimity, lines };
+module.exports = { VERDICTS, OPPOSITE, MIN_HISTORY, DOMINANT_RATE, RARE_RATE, normaliseModel, distribution, assess, assessUnanimity, lines };
