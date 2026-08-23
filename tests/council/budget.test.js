@@ -64,7 +64,11 @@ function runTests() {
   })) passed++; else failed++;
 
   if (test('returns null for subscription-metered seats (not $0-because-unknown)', () => {
-    for (const seat of ['claude', 'codex', 'geminipro', 'agyflash', 'agyopus']) {
+    // `gemini` joined this list 2026-08-22 when it moved from the free-tier API
+    // key onto the agy subscription path. It is the regression guard for a real
+    // hazard: a $0 RATE and a subscription both cost nothing today, but only the
+    // subscription must be exempt from the spend cap.
+    for (const seat of ['claude', 'codex', 'gemini', 'geminipro', 'agyflash', 'agyopus']) {
       assert.strictEqual(budget.costOf(seat, { usage: { prompt_tokens: 9e6, completion_tokens: 9e6 } }), null, seat);
       assert.strictEqual(budget.isMetered(seat), false, seat);
     }

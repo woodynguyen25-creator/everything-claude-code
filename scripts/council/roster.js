@@ -115,51 +115,77 @@ const SEATS = [
   },
   {
     id: 'gemini',
-    // API seat: a raw HTTPS call. NO filesystem, NO commands, NO verification.
-    // Asking it to 'check the tree' produces a confident stub — measured 2026-08-21,
-    // when a brief told xai it had filesystem access and it burned a dispatch
-    // narrating tool use it could not perform.
+    // API seat — PROMPT-BOUND. It cannot check anything; do not ask it to.
+    //
+    // ⚠ This is NOT the obvious call and it was wrong for one hour on 2026-08-22.
+    // agy DOES spawn a real CLI, so 'agent' looks right and every agy seat in this
+    // file was marked that way. A live canary — "read roster.js and report the
+    // `verified` value on the groq seat" — proved otherwise:
+    //   exit 1 [agy-refusal]: permission check failed for command
+    //   "Get-ChildItem -Path . -Recurse -Filter roster.js ..."
+    //   user denied permission to run command
+    // agy gates tool use behind an INTERACTIVE approval prompt. A council dispatch
+    // is non-interactive, so the approval can never arrive: the seat does not
+    // merely decline to use tools, it BURNS THE WHOLE DISPATCH (0/1 answered,
+    // degraded quorum). Marked 'api' because the only question this field exists
+    // to answer is "can this seat verify a claim", and the answer is no.
+    // Consequence beyond bookkeeping: council.js appends a `[NO TOOLS]` line to
+    // api seats, which stops the model reaching for a command it cannot run — so
+    // the honest label is also the fix. This is the xai lesson recurring exactly:
+    // a capability that lives in the runner and not in the roster is a capability
+    // nothing can check. Caught by the codex seat reviewing this very change.
+    // ⚠ geminipro, agyopus and agyflash carry the same false 'agent' claim and the
+    // same canary should be run against them before either is trusted to verify.
     toolAccess: 'api',
-    // Data-use terms for THIS path. Machine-readable so a future gate can refuse
-    // to route sensitive prompts to a seat that may train on them, rather than
-    // relying on a comment nobody reads. 'UNVERIFIED' is NOT 'safe'.
-    dataTerms: 'TRAINS-ON-INPUT', // CONFIRMED BAD: ai.google.dev pricing states free tier = 'Used to improve our products: Yes'. This is why the seat is benched.
+    // Data-use terms for THIS path. Machine-readable so the dispatch gate can
+    // refuse to route sensitive prompts to a seat that may train on them, rather
+    // than relying on a comment nobody reads. 'UNVERIFIED' is NOT 'safe'.
+    dataTerms: 'TRAINS-ON-INPUT', // antigravity.google/terms: Interactions train Google ML AND "employees and contractors may access, view, review and use Interactions". Not tier-differentiated — AI Pro/Ultra/student get free-tier treatment.
     tiers: ['BENCH'],
-    // BENCHED 2026-08-21 on a PRIVACY finding, not a capability one.
-    // ai.google.dev/gemini-api/docs/pricing states per model, under
-    // "Used to improve our products": FREE tier = Yes, PAID tier = No.
-    // This seat runs on a FREE-tier AI Studio key - re-confirmed 2026-08-20 when
-    // every Pro id returned 429, which is the free-tier signature. Council prompts
-    // carry trading positions, client details and personal context; that is the
-    // stated reason dashboard/data/council-transcripts/ is gitignored. So every
-    // convene including this seat was shipping exactly that content to Google on
-    // the tier where it is used for product improvement.
-    // Restore to WORKER by attaching BILLING to the AI-Studio project (which flips
-    // the flag to "No"), NOT by swapping the model id - the tier is the issue.
-    // agyflash covers the freed worker slot. Do NOT assume agyflash is safer on
-    // privacy: it rides the CONSUMER AI Pro sub, whose data terms are unverified
-    // and typically less protective than paid API. Verify before trusting it with
-    // sensitive prompts.
-    role: 'BREADTH - cheap bulk grinding at ~1.2s per call',
+    // ── THE GOOGLE SEAT (Woody's ruling, 2026-08-22): "have Gemini as his own
+    // seat, on the best model, just how we have Opus 5 and GPT-5.6 Sol."
+    //
+    // PATH CHANGE, not just a model swap. This id previously ran the FREE-TIER
+    // AI Studio API key (gemini-3.6-flash, raw HTTPS, toolAccess 'api'). It now
+    // runs Gemini 3.7 Flash (High) through the `agy` CLI on the AI Pro student
+    // plan: agent tool access, a different wallet, and a different failure
+    // domain. The old API code is in git at 6f050fef (providers.js runGemini) if
+    // an API seat is ever wanted again — see swapWhen for when that becomes the
+    // right move.
+    // ⚠ LEDGER DISCONTINUITY: rows before 2026-08-22 under provider="gemini" are
+    // the ~1.2s free-tier API path; rows after are the ~11s agy path. Slice by
+    // `model`, never compute cross-era latency stats on the seat id alone.
+    //
+    // MODEL CHOSEN BY MEASUREMENT, 2026-08-22 — a 2x2 bake-off against the other
+    // agy frontier id (gemini-3.1-pro-high) on a known-answer JS semantics task,
+    // run in BOTH directions so a pass meant something:
+    //   equivalent refactor (right answer YES) · non-equivalent one (right NO)
+    //   3.7-flash-high  YES ✓ 12.7s · NO ✓  9.9s   <- picked
+    //   3.1-pro-high    YES ✓ 97.4s · NO ✓ 16.0s
+    // Identical accuracy 4/4 each; 3.7 Flash is a LATER generation than 3.1 Pro
+    // and answered 1.7-7.7x faster. The 97.4s Pro outlier is the deciding fact:
+    // this file's own doctrine is that for a quorum member the TAIL is the
+    // product, not the median — a 97s seat is one timeout from being dropped,
+    // which is the same argument that put 3.6-flash over 3.5-flash on 2026-08-05.
+    // Thin evidence, stated honestly: n=2 per model on ONE task type. It is
+    // enough to reject "Pro is obviously stronger"; it is NOT a claim that Flash
+    // wins on long multi-file architecture reasoning, which is untested.
+    //
+    // WHY IT IS BENCH-BY-DEFAULT AND CANNOT HAVE FULL PARITY WITH claude/codex:
+    // those two are `verified-private`, so they see everything including trading
+    // positions and client work. EVERY Google path available on this plan trains
+    // on input and permits human review, so this seat is default-DENIED and joins
+    // the LEAD roster only under --public (see publicTier). That is a privacy
+    // constraint, not a capability judgement, and no roster placement can fix it.
+    publicTier: 'LEAD',
+    role: 'FRONTIER-GOOGLE - the Google lead seat, fourth lab in the LEAD roster',
     lab: 'google',
-    model: 'gemini-3.6-flash',
+    model: 'gemini-3.7-flash-high (via agy)',
     mandate:
-      'Fast, free and low-variance: the cheapest way to grind a fixed spec. DEMOTED from LEAD 2026-08-20 - this seat was only ever in the lead tier because it was the sole Google path, and a flash model sitting next to Opus 5 and Sol was a documented mismatch. `geminipro` now holds the Google LEAD slot on an actual frontier model, so the lab keeps ONE lead seat and this one does what it is genuinely good at.',
+      'The one Google seat. Under --public it is a full frontier vote at $0 on the AI Pro student plan, giving the LEAD roster a fourth independent lab alongside Anthropic, OpenAI and xAI. Consolidates what were three overlapping Google-ish seats (gemini/geminipro/agyflash) into one named seat with one job.',
     swapWhen:
-      'Retire if the API project is suspended again (it was, for 5 days in Jul/Aug) and `agyflash` proves it can carry worker load on the OAuth wallet instead. Do NOT promote it back to LEAD by pointing it at a pro id - every pro id is 429/404 on this key, measured again 2026-08-20.',
-    // Chose on measured LATENCY VARIANCE, not median. n=5 each, 2026-08-05:
-    //   3.6-flash  5/5  med 1242ms  range 1125-1293   <- picked
-    //   3.5-flash  5/5  med 2026ms  range 1142-24539  <- 20x spread
-    //   flash-latest      1/5  RESOURCE_EXHAUSTED x4 (shared free-tier quota pool)
-    //   3-flash-preview   5/5  med 1752ms  range 878-8008
-    // 3.5-flash never FAILED, it stalled: live health probes hit 5.3s / 16.1s /
-    // 45.0s(timeout) on the same key minutes apart. A seat that answers in 45s is
-    // dropped from quorum by the council's own timeout, so a fat tail degrades the
-    // council exactly like a dead seat but without tripping the DOWN alarm.
-    // Median is the wrong statistic for a quorum member; the tail is the product.
-    // The 2026-08-02 note that 3.6 "flaps 403 2/3" was an artifact of the SUSPENDED
-    // project on the old key, not the model - 5/5 clean on the rotated key.
-    verified: '2026-08-05',
+      'A newer agy id ships (`node scripts/council/health.js --discover` reports arrivals) — as of 2026-08-22 nothing on the plan beats 3.7-flash-high. THE REAL UPGRADE IS NOT A MODEL: attaching BILLING to an AI-Studio project flips ai.google.dev\'s "Used to improve our products" from Yes to No, which would give a VERIFIED-PRIVATE Google seat that works on trading and client prompts like claude and codex do. That is the only path to true parity; it costs cents and needs Woody\'s card. Falls back to `geminipro` if Google changes the Antigravity allocation.',
+    verified: '2026-08-22',
   },
   {
     id: 'haiku',
@@ -293,13 +319,16 @@ const SEATS = [
     // toggle is off, then flipping dataTerms here. It is off-by-default in the wrong
     // direction: no preference recorded on this machine == data IS being used.
     tiers: ['BENCH'],
-    // PUBLIC-TIER MEMBER (Woody's ruling, 2026-08-22): with --public this seat
-    // AUTO-JOINS the LEAD roster as the fourth lab. Membership is conditional by
-    // nature — Google's terms train on this path and allow human review, so it
-    // can never see a trading position or client name — but for public-repo
-    // reviews and generic research it is a full frontier vote at $0.
-    publicTier: 'LEAD',
-    role: 'FRONTIER-GOOGLE - the Google lead seat, on a real Pro model',
+    // HAND-SUMMON ONLY as of 2026-08-22. Held the public-LEAD Google slot for one
+    // day and LOST it to `gemini` (3.7 Flash High) in a measured 2x2 bake-off:
+    // identical accuracy 4/4, but 97.4s on one of two calls versus Flash's
+    // 9.9-12.7s. One-seat-per-lab means Google gets exactly one LEAD seat, and a
+    // fat latency tail loses that slot — the seat that stalls is the seat quorum
+    // drops. Still the deeper-tier model on paper, so it stays summonable by hand
+    // (`--to geminipro --public`) for a genuinely hard one-off where 90s is fine.
+    // REVISIT-IF: a 3.7-era PRO id appears in `agy models` (today the plan tops
+    // out at 3.1 for Pro), or Flash regresses on a task Pro handles.
+    role: 'DEEP-GOOGLE - hand-summoned Pro-tier reasoning, not a standing vote',
     lab: 'google',
     model: 'gemini-3.1-pro-high (via agy)',
     mandate:
@@ -362,15 +391,21 @@ const SEATS = [
     // direction: no preference recorded on this machine == data IS being used.
     tiers: ['BENCH'],
     // PUBLIC-TIER MEMBER (Woody's ruling, 2026-08-22): with --public this seat
-    // AUTO-JOINS the worker roster. 3.7 Flash (High) is a stronger model than
-    // either default worker; it just cannot touch sensitive prompts.
+    // AUTO-JOINS the worker roster — free Google execution capacity at $0.
     publicTier: 'WORKER',
+    // MOVED 3.7-flash-high -> 3.6-flash-high on 2026-08-22, deliberately DOWN a
+    // generation. 3.7 Flash (High) won the frontier bake-off and now fills the
+    // `gemini` LEAD seat; running the identical model here too would put the same
+    // weights in two rosters at once. Harmless for voting (workers execute a fixed
+    // spec, they never vote) but it wastes the diversity and makes a --public
+    // convene look like it consulted two Google seats when it consulted one model
+    // twice. A worker's job is faithful execution, where 3.6 Flash is ample.
     // PROMOTED to WORKER 2026-08-20 to backfill cerebras (HTTP 402). Free on the
     // Google OAuth wallet and 6.6s - slower than cerebras's 0.4s, so this is a
     // ROLE CHANGE from 'fastest' to 'free', not a like-for-like swap.
-    role: 'SPARE-WALLET - Google flash on OAuth instead of the API key',
+    role: 'SPARE-WALLET - free Google execution capacity on the OAuth plan',
     lab: 'google',
-    model: 'gemini-3.7-flash-high (via agy)',
+    model: 'gemini-3.6-flash-high (via agy)',
     mandate:
       'Wallet redundancy. The `gemini` API seat went dark for 5 days when its AI-Studio project was SUSPENDED (403 on every model, not quota). This path bills the OAuth wallet, so it survives that entire class of outage - a different failure domain, not just a different key.',
     swapWhen:

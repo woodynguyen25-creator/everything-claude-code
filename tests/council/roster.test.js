@@ -151,8 +151,11 @@ test('PUBLIC tier: gated free-frontier seats auto-join rosters only under --publ
   // public tier makes them members for every convene that can legally use them,
   // while the default rosters stay privacy-safe and the dispatch gate backstops.
   const { PUBLIC_LEAD_SEATS, PUBLIC_WORKER_SEATS } = require('../../scripts/council/roster');
-  assert.deepEqual(PUBLIC_LEAD_SEATS, ['geminipro'], 'the fourth lab joins LEAD in public mode');
-  assert.deepEqual(PUBLIC_WORKER_SEATS, ['agyflash'], '3.7 Flash High joins the workers in public mode');
+  // `gemini` took the public-LEAD slot from `geminipro` on 2026-08-22 after a
+  // measured bake-off (same accuracy, no 97s latency tail). Woody's framing:
+  // one Google seat, on the best model, like Opus 5 and Sol.
+  assert.deepEqual(PUBLIC_LEAD_SEATS, ['gemini'], 'the fourth lab joins LEAD in public mode');
+  assert.deepEqual(PUBLIC_WORKER_SEATS, ['agyflash'], 'a free Google worker joins in public mode');
   for (const id of [...PUBLIC_LEAD_SEATS, ...PUBLIC_WORKER_SEATS]) {
     const seat = SEAT_BY_ID[id];
     assert.ok(seat, `${id} must exist`);
@@ -170,6 +173,30 @@ test('PUBLIC LEAD preserves one-seat-per-lab (agyopus stays out)', () => {
   const labs = [...LEAD_SEATS, ...PUBLIC_LEAD_SEATS].map(id => SEAT_BY_ID[id].lab);
   const dupes = labs.filter((l, i) => labs.indexOf(l) !== i);
   assert.equal(dupes.length, 0, `public-extended LEAD doubles a lab: ${dupes.join(', ')}`);
+});
+
+test('no two seats a --public convene can dispatch run the IDENTICAL model', () => {
+  // Added 2026-08-22 with the Google-seat consolidation. When 3.7-flash-high won
+  // the LEAD bake-off it was ALREADY the agyflash worker model, so a --public
+  // convene would have dispatched the same weights twice under two seat names.
+  // Harmless for voting (workers execute a spec, they never vote) but it fakes
+  // breadth: the transcript reads as two Google seats consulted when one model
+  // answered twice, and that is the same false-consensus failure the whole
+  // decorrelation doctrine exists to prevent. agyflash dropped to 3.6-flash-high.
+  // Nothing checked this — the seat universe was checked for orphan IDS, never
+  // for duplicate MODELS.
+  const { PUBLIC_LEAD_SEATS, PUBLIC_WORKER_SEATS } = require('../../scripts/council/roster');
+  const dispatchable = [...new Set([
+    ...LEAD_SEATS, ...WORKER_SEATS, ...PUBLIC_LEAD_SEATS, ...PUBLIC_WORKER_SEATS,
+  ])];
+  const seen = new Map();
+  for (const id of dispatchable) {
+    const model = SEAT_BY_ID[id].model;
+    if (seen.has(model)) {
+      assert.fail(`seats "${seen.get(model)}" and "${id}" both run ${model} — one model, two seat names, fake breadth`);
+    }
+    seen.set(model, id);
+  }
 });
 
 test('providers, roster, and pricing agree on the seat universe (no orphan aliases)', () => {

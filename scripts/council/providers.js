@@ -96,48 +96,22 @@ function runCodex(prompt, { timeoutMs = 900_000, effort = 'high' } = {}) {
 }
 
 /**
- * Gemini REST. Gemini 3.x replaced thinkingBudget with thinkingLevel — 'minimal'
- * keeps the old thinking-token-truncation fix (2026-05-29).
+ * ── runGemini (Gemini REST on an AI-Studio API key) — REMOVED 2026-08-22 ──────
  *
- * 2026-08-02 — key rotated to a fresh AI-Studio project (the prior project was
- * SUSPENDED: 403 "your project has been denied access", which is what drove the
- * seat's 44% lifetime failure rate alongside 429s). Default is gemini-3.6-flash,
- * chosen on measured latency VARIANCE (roster.js has the n=5 table) — an earlier
- * draft of this comment claimed 3.5-flash was the default, contradicting the
- * signature below it. The code was right; the comment was drift.
- * NOTE 2026-08-21: this seat is BENCHED on a privacy finding (free tier trains
- * on input) — see roster.js. The runner stays for the day billing is attached.
+ * The `gemini` seat moved off the free-tier API key onto the agy CLI, so this
+ * runner had no caller. Deleted rather than left as dead code that lint has to
+ * be told to ignore; it is intact in git at rev 6f050fef if it is ever needed.
  *
- * Free tier reaches FLASH ONLY. Every pro id (3.1-pro, 3-pro, 2.5-pro) returns
- * 429 RESOURCE_EXHAUSTED — the AI-Pro consumer sub grants no API quota; that is
- * a separate wallet. REVISIT-IF: Cloud billing is linked to this project — then
- * gemini-3.1-pro-preview becomes viable and the seat can move to the lead tier.
+ * WHEN IT WOULD BE NEEDED — this matters, so it is recorded here rather than
+ * only in the commit log. Every Google path on the consumer AI Pro plan (API
+ * free tier AND agy) trains on input, which is why the Google seat is default-
+ * denied and only votes under --public. Attaching BILLING to an AI-Studio
+ * project flips ai.google.dev's "Used to improve our products" from Yes to No
+ * for that project, and a paid key also lifts the 429 that blocks every pro id.
+ * That combination — a verified-private Google seat that can see trading and
+ * client prompts like claude and codex do — is the ONLY route to real parity,
+ * and restoring this runner is the first step of it.
  */
-async function runGemini(prompt, env, { timeoutMs = 120_000, model = 'gemini-3.6-flash' } = {}) {
-  const started = Date.now();
-  const key = env.GEMINI_API_KEY;
-  if (!key) return { provider: 'gemini', model, ok: false, text: '', ms: 0, error: 'GEMINI_API_KEY missing' };
-  try {
-    const res = await fetch(
-      `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${key}`,
-      {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        signal: AbortSignal.timeout(timeoutMs),
-        body: JSON.stringify({
-          contents: [{ parts: [{ text: prompt }] }],
-          generationConfig: { maxOutputTokens: 4096, thinkingConfig: { thinkingLevel: 'minimal' } },
-        }),
-      },
-    );
-    if (!res.ok) return { provider: 'gemini', model, ok: false, text: '', ms: Date.now() - started, error: `HTTP ${res.status}` };
-    const data = await res.json();
-    const text = data?.candidates?.[0]?.content?.parts?.[0]?.text ?? '';
-    return { provider: 'gemini', model, ok: Boolean(text), text, ms: Date.now() - started, error: text ? undefined : 'empty response' };
-  } catch (e) {
-    return { provider: 'gemini', model, ok: false, text: '', ms: Date.now() - started, error: e.message };
-  }
-}
 
 /**
  * Gemini 3.1 Pro via the Antigravity CLI (`agy`) — OAuth on Woody's Google sub,
@@ -167,9 +141,10 @@ async function runGemini(prompt, env, { timeoutMs = 120_000, model = 'gemini-3.6
 // `agy models`: gemini-3.7|3.6|3.5-flash-{high,medium,low},
 // gemini-3.1-pro-{high,low}, claude-sonnet-4-6, claude-opus-4-6-thinking,
 // gpt-oss-120b-medium.
-const AGY_PRO   = 'gemini-3.1-pro-high';        // geminipro  — LEAD Google seat
+const AGY_PRO   = 'gemini-3.1-pro-high';        // geminipro  — hand-summon deep seat
 const AGY_COLD  = 'claude-opus-4-6-thinking';   // agyopus    — free Opus-class labour
-const AGY_FLASH = 'gemini-3.7-flash-high';      // agyflash   — free worker seat
+const AGY_FLASH = 'gemini-3.7-flash-high';      // gemini     — THE Google LEAD seat
+const AGY_FLASH_PREV = 'gemini-3.6-flash-high'; // agyflash   — free worker seat
 
 const AGY_BIN = path.join(
   process.env.LOCALAPPDATA || path.join(process.env.USERPROFILE || '', 'AppData', 'Local'),
@@ -362,8 +337,13 @@ const SEATS = {
   // don't vote), and one-seat-per-lab is a LEAD-tier invariant.
   haiku: (prompt, env, opts) => runClaude(prompt, { ...opts, model: 'claude-haiku-4-5-20251001', seat: 'haiku' }),
   codex: (prompt, env, opts) => runCodex(prompt, opts),
-  gemini: (prompt, env, opts) => runGemini(prompt, env, opts),
   // ── agy-backed seats (Google student AI Pro plan, $0 marginal) ──────────
+  // gemini — THE Google seat (Woody, 2026-08-22: "Gemini as his own seat, on the
+  // best model, just how we have Opus 5 and GPT-5.6 Sol"). MOVED off the free-tier
+  // AI Studio API key onto agy/3.7-flash-high, which won a measured 2x2 bake-off
+  // against 3.1-pro-high (same 4/4 accuracy, 1.7-7.7x faster, no 97s tail). Full
+  // evidence and the ledger-discontinuity warning live in roster.js.
+  gemini: (prompt, env, opts) => runAgy(prompt, { seat: 'gemini', model: AGY_FLASH, ...opts }),
   // geminipro — Gemini 3.1 Pro via agy OAuth. REVIVED 2026-08-20 by the student
   // AI Pro plan, then BENCHED 2026-08-21: antigravity.google/terms says
   // Interactions train Google's ML AND "employees and contractors may access,
@@ -394,14 +374,12 @@ const SEATS = {
   // agreement with `claude` would read as corroboration while being the same
   // lab twice.
   agyopus: (prompt, env, opts) => runAgy(prompt, { seat: 'agyopus', model: AGY_COLD, ...opts }),
-  // agyflash — free Gemini 3.7 Flash on the OAuth wallet. Exists for WALLET
-  // REDUNDANCY: the `gemini` API seat died for 5 days in Jul/Aug when its
-  // AI-Studio project was suspended (403 on every model). This path survives
-  // that class of outage because it bills a different wallet entirely.
-  // ⚠️ NOT wired as automatic failover — silent failover would mask a dead key,
-  // which is the exact silent-degradation failure the roster already warns
-  // about. If the API seat dies we want the alarm, then a manual `--to agyflash`.
-  agyflash: (prompt, env, opts) => runAgy(prompt, { seat: 'agyflash', model: AGY_FLASH, ...opts }),
+  // agyflash — free Gemini Flash worker on the OAuth wallet. Held 3.7-flash-high
+  // until 2026-08-22, when that model won the frontier bake-off and moved to the
+  // `gemini` LEAD seat; this seat dropped to 3.6-flash-high so the same weights
+  // do not sit in two rosters at once. Workers execute a fixed spec and never
+  // vote, so a generation back costs nothing here.
+  agyflash: (prompt, env, opts) => runAgy(prompt, { seat: 'agyflash', model: AGY_FLASH_PREV, ...opts }),
   deepseek: (prompt, env, opts) =>
     runOpenAiCompat('deepseek', 'https://api.deepseek.com', 'DEEPSEEK_API_KEY', 'deepseek-chat', prompt, env, opts),
   cerebras: (prompt, env, opts) =>

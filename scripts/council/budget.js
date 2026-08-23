@@ -42,13 +42,18 @@ const PRICING = {
   deepseek: { in: 0.27, out: 1.1 },
   groq: { in: 0.59, out: 0.79 },
   cerebras: { in: 0.1, out: 0.1 },
-  // Free tier: $0 in money, but NOT free in privacy — Google states free-tier data
-  // IS used to improve their products, which is why this seat is benched.
-  gemini: { in: 0, out: 0 },
 
   claude: null,
   haiku: null, // same Anthropic sub as claude — the subagent worker seat
   codex: null,
+  // gemini moved from the free-tier API key ({in:0,out:0}) to the agy CLI on the
+  // AI Pro plan 2026-08-22, so it is subscription-metered like the other agy
+  // seats. Both are $0, but the SEMANTICS differ and only one is right: a rate of
+  // 0 means "priced, and the price is zero", while null means "subscription — not
+  // metered, never blocked by the cap". Leaving it as a rate would have let a cap
+  // check treat a sub seat as spendable. Still NOT free in privacy: agy trains on
+  // input and permits human review, which is what the data-terms gate is for.
+  gemini: null,
   geminipro: null,
   agyflash: null,
   agyopus: null,
