@@ -360,6 +360,22 @@ async function main() {
     : '';
   console.log(`[council] dispatching to ${args.to.join(', ')}${lensLabel} — results stream as seats finish …`);
 
+  // Say what is being LEFT OUT, and why. Without --public the gated free-frontier
+  // seats are simply never seated, so the operator is never told that a fourth
+  // decorrelated lab was available at $0 for this question. Silence reads as "no
+  // such option exists" — the same silent-omission failure the data-terms gate,
+  // the quorum alarm and the budget ceiling each exist to prevent, left un-fixed
+  // in the one place the operator actually looks. Raised by Woody 2026-08-23
+  // ("why is Gemini still benched?") after the tier label told him the same lie.
+  // Advisory only: it prints a sentence, it never seats anything. The gate still
+  // decides, and --public is still an explicit human claim about the CONTENT.
+  if (!args.publicContent) {
+    const withheld = [...PUBLIC_LEAD_SEATS, ...PUBLIC_WORKER_SEATS].filter(id => !args.to.includes(id));
+    if (withheld.length) {
+      console.log(`[council] held back (trains on input): ${withheld.join(', ')} — add --public if this question could be posted publicly as-is, for ${withheld.length} more seat(s) at $0`);
+    }
+  }
+
   // Decision mode: every seat must END with a verdict it can be held to.
   // "It depends" is the yes-man's exit hatch — close it. Extraction is STRICT in
   // this mode (dispatch.js): the VERDICT line must sit in the last 3 non-empty

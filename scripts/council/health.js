@@ -32,7 +32,7 @@ const fs = require('fs');
 const { execFileSync } = require('child_process');
 const { loadEnv, SEATS } = require('./providers');
 const { dispatch } = require('./dispatch');
-const { LEAD_SEATS, WORKER_SEATS, BENCHED_SEATS, SEATS: ROSTER, CATALOGUES, KNOWN_ALIASES, AGENT_SEATS } = require('./roster');
+const { LEAD_SEATS, WORKER_SEATS, BENCHED_SEATS, PUBLIC_LEAD_SEATS, PUBLIC_WORKER_SEATS, SEATS: ROSTER, CATALOGUES, KNOWN_ALIASES, AGENT_SEATS } = require('./roster');
 
 const PROMPT = 'Reply with exactly one word: PONG';
 
@@ -93,10 +93,34 @@ async function probe(seat, env, { allowRetry = true } = {}) {
   }
 }
 
+/**
+ * Human-readable tier label.
+ *
+ * ⚠ THIS PRINTED A FALSEHOOD until 2026-08-23, and Woody caught it by reading the
+ * output: "why is Gemini still benched?" It said `bench` for the `gemini` seat,
+ * which is a full LEAD member of every --public convene — the fourth lab.
+ *
+ * The cause is a data model that outgrew its vocabulary. roster.js defines BENCH
+ * as "defined but deliberately out of every roster", and a seat's membership used
+ * to be exactly its `tiers` array. The PUBLIC tier then introduced CONDITIONAL
+ * membership (`publicTier`) that this function knew nothing about, so it fell
+ * through to the else-branch and reported the strongest claim available — absence.
+ * A conditional seat read as a retired one.
+ *
+ * That mattered beyond cosmetics: `bench` is exactly the word this repo uses for
+ * cerebras, which is dead on HTTP 402. Printing the same word for a working,
+ * $0, frontier-class seat hides capability the plan is already paid for — the
+ * silent-omission failure the rest of this system exists to prevent, committed by
+ * the monitor itself.
+ */
 function tierOf(seat) {
   const tiers = [];
   if (LEAD_SEATS.includes(seat)) tiers.push('LEAD');
   if (WORKER_SEATS.includes(seat)) tiers.push('WORK');
+  // Conditional membership is still membership. Name the flag that unlocks it, so
+  // the label doubles as the instruction for using the seat.
+  if (PUBLIC_LEAD_SEATS.includes(seat)) tiers.push('LEAD·--public');
+  if (PUBLIC_WORKER_SEATS.includes(seat)) tiers.push('WORK·--public');
   if (tiers.length === 0) tiers.push('bench');
   return tiers.join('+');
 }
