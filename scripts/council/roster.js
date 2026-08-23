@@ -141,7 +141,6 @@ const SEATS = [
     // refuse to route sensitive prompts to a seat that may train on them, rather
     // than relying on a comment nobody reads. 'UNVERIFIED' is NOT 'safe'.
     dataTerms: 'TRAINS-ON-INPUT', // antigravity.google/terms: Interactions train Google ML AND "employees and contractors may access, view, review and use Interactions". Not tier-differentiated — AI Pro/Ultra/student get free-tier treatment.
-    tiers: ['BENCH'],
     // ── THE GOOGLE SEAT (Woody's ruling, 2026-08-22): "have Gemini as his own
     // seat, on the best model, just how we have Opus 5 and GPT-5.6 Sol."
     //
@@ -171,18 +170,29 @@ const SEATS = [
     // enough to reject "Pro is obviously stronger"; it is NOT a claim that Flash
     // wins on long multi-file architecture reasoning, which is untested.
     //
-    // WHY IT IS BENCH-BY-DEFAULT AND CANNOT HAVE FULL PARITY WITH claude/codex:
-    // those two are `verified-private`, so they see everything including trading
-    // positions and client work. EVERY Google path available on this plan trains
-    // on input and permits human review, so this seat is default-DENIED and joins
-    // the LEAD roster only under --public (see publicTier). That is a privacy
-    // constraint, not a capability judgement, and no roster placement can fix it.
-    publicTier: 'LEAD',
+    // STANDING LEAD SEAT since 2026-08-23, on Woody's explicit ruling: "I don't
+    // consider any of the work I do here truly private. I want to fully utilise
+    // the strongest model we get from Gemini in the Council."
+    //
+    // It was BENCH-by-default until then, joining LEAD only under --public. That
+    // default was correct while the owner had not ruled and wrong the moment he
+    // did: it cost a fourth decorrelated frontier lab, at $0, on a plan already
+    // paid for. Measured before the flip — 13 agy dispatches in a month, exactly
+    // one of which fed a real decision. A gate nobody opens is a disabled seat.
+    //
+    // ⚠ WHAT THIS SEAT STILL CANNOT SEE, and it is not a capability limit:
+    // Google's terms for this path say Interactions train their models AND that
+    // employees and contractors may review them. Woody may donate his own data;
+    // he cannot donate a CLIENT's. So `--private` excludes this seat, `--trading`
+    // implies `--private` (positions are not ours to give away), and any convene
+    // that seats it says so out loud. Full parity with claude/codex still needs
+    // a BILLED AI-Studio key — see swapWhen.
+    tiers: ['LEAD'],
     role: 'FRONTIER-GOOGLE - the Google lead seat, fourth lab in the LEAD roster',
     lab: 'google',
     model: 'gemini-3.7-flash-high (via agy)',
     mandate:
-      'The one Google seat. Under --public it is a full frontier vote at $0 on the AI Pro student plan, giving the LEAD roster a fourth independent lab alongside Anthropic, OpenAI and xAI. Consolidates what were three overlapping Google-ish seats (gemini/geminipro/agyflash) into one named seat with one job.',
+      'The one Google seat, and the fourth independent lab in the LEAD roster alongside Anthropic, OpenAI and xAI — at $0 on the AI Pro student plan. Consolidates what were three overlapping Google-ish seats (gemini/geminipro/agyflash) into one named seat with one job. Its value is DECORRELATION, not cost: the whole metered roster runs about $1.42/month, so this seat does not meaningfully save money — it adds a viewpoint that Anthropic, OpenAI and xAI cannot supply.',
     swapWhen:
       'A newer agy id ships (`node scripts/council/health.js --discover` reports arrivals) — as of 2026-08-22 nothing on the plan beats 3.7-flash-high. THE REAL UPGRADE IS NOT A MODEL: attaching BILLING to an AI-Studio project flips ai.google.dev\'s "Used to improve our products" from Yes to No, which would give a VERIFIED-PRIVATE Google seat that works on trading and client prompts like claude and codex do. That is the only path to true parity; it costs cents and needs Woody\'s card. Falls back to `geminipro` if Google changes the Antigravity allocation.',
     verified: '2026-08-22',
@@ -355,12 +365,18 @@ const SEATS = [
     // to route sensitive prompts to a seat that may train on them, rather than
     // relying on a comment nobody reads. 'UNVERIFIED' is NOT 'safe'.
     dataTerms: 'TRAINS-ON-INPUT', // CONFIRMED BAD 2026-08-21 from the PRIMARY source, antigravity.google/terms: "We use Interactions to evaluate, develop, and improve Google and Alphabet research, products, services and machine learning technologies" and "Google employees and contractors may access, view, review and use Interactions." Opt-out exists but is OFF BY DEFAULT and is not set on this machine.
-    tiers: ['BENCH'],
-    role: 'FREE LABOUR - Opus-class reasoning on Google’s wallet, not a vote',
+    // PROMOTED BENCH -> WORKER 2026-08-23 under Woody's "use everything the plan
+    // gives us" ruling. This is the single biggest capability the flip unlocked:
+    // Opus-class reasoning, billed to Google rather than to the Anthropic sub, in
+    // the tier that grinds. Lab correlation with `claude` is irrelevant HERE —
+    // workers execute a fixed spec and never vote, which is the same reason
+    // `haiku` (also Anthropic) sits in this tier. The LEAD ban below still stands.
+    tiers: ['WORKER'],
+    role: 'FREE HEAVY LABOUR - Opus-class reasoning on Google’s wallet, never a vote',
     lab: 'anthropic',
     model: 'claude-opus-4-6-thinking (via agy)',
     mandate:
-      'Anthropic Opus 4.6 served through the Google student plan at $0 marginal cost, 7-10s. Useful for one-off deep reasoning and subagent labour where the Anthropic sub would otherwise be the constraint. NOT a council vote.',
+      'Anthropic Opus 4.6 served through the Google student plan at $0 marginal cost, 7-10s. The heavyweight of the worker tier: route specs here when the job needs real reasoning rather than fast bulk, and keep `haiku` for volume. Spends Google\'s wallet instead of the Anthropic sub, which matters when the Max plan is the binding constraint. NOT a council vote.',
     swapWhen:
       'BENCHED BY DESIGN. Proposed 2026-08-20 as a context CONTROL for the `claude` seat and rejected 3/3 by council the same day: it varies model version AND context simultaneously, so a split cannot be attributed to either - a real ablation holds the model fixed. The honest version was then measured and is not free (`claude -p --bare` and CLAUDE_CONFIG_DIR both force API-key auth, i.e. metered spend). Do NOT promote it to LEAD: a second Anthropic seat breaks one-seat-per-lab, and its agreement with `claude` would read as corroboration while being the same lab twice. REVISIT-IF: the back-test shows a context-free seat would have flipped a non-zero number of the last 30 days of verdicts.',
     verified: '2026-08-20',
@@ -394,10 +410,10 @@ const SEATS = [
     // settings to change your preference on how such data is used"), CONFIRMING the
     // toggle is off, then flipping dataTerms here. It is off-by-default in the wrong
     // direction: no preference recorded on this machine == data IS being used.
-    tiers: ['BENCH'],
-    // PUBLIC-TIER MEMBER (Woody's ruling, 2026-08-22): with --public this seat
-    // AUTO-JOINS the worker roster — free Google execution capacity at $0.
-    publicTier: 'WORKER',
+    // STANDING WORKER since 2026-08-23 (Woody's ruling — see the `gemini` seat).
+    // Was --public-only; now free Google execution capacity in every convene that
+    // is not marked --private.
+    tiers: ['WORKER'],
     // MOVED 3.7-flash-high -> 3.6-flash-high on 2026-08-22, deliberately DOWN a
     // generation. 3.7 Flash (High) won the frontier bake-off and now fills the
     // `gemini` LEAD seat; running the identical model here too would put the same
@@ -482,20 +498,18 @@ const SYNTH_PREFERENCE = ['deepseek', 'xai', 'cerebras', 'groq'];
 const SYNTH_CHAIN = SYNTH_PREFERENCE.filter(id => !byTier('BENCH').includes(id));
 
 /**
- * PUBLIC tier (2026-08-22, Woody's ruling: "these should be members of the
- * council"). Seats that JOIN the active rosters automatically when a convene is
- * marked --public — i.e. the prompt could be posted publicly as-is. They stay
- * BENCH for unmarked (presumed-sensitive) work, and the dispatch-level
- * data-terms gate backstops the tiering: even a direct --to without --public is
- * refused pre-network. Two layers, one rule.
+ * Seats a `--private` convene must DROP.
  *
- * agyopus is deliberately NOT here: a second Anthropic seat in LEAD breaks
- * one-seat-per-lab (its agreement with `claude` would read as corroboration
- * while being the same lab twice) — the 2026-08-20 council rejected exactly
- * that promotion 3/3. It stays summonable by hand for free Opus-class labour.
+ * This replaced the PUBLIC tier on 2026-08-23. The old model made Google's free
+ * capacity opt-IN (`--public`); Woody's ruling made it standing, so the list that
+ * matters is now the inverse — who leaves when a prompt is somebody else's to
+ * protect. Derived from `dataTerms`, so a seat can never be excluded from privacy
+ * routing by forgetting to add it to a hand-maintained list: declaring the terms
+ * IS the enrolment. The dispatch gate refuses these seats independently, so a
+ * direct `--to gemini --private` is still refused pre-network. Two layers, one
+ * rule — the rule just points the other way now.
  */
-const PUBLIC_LEAD_SEATS = SEATS.filter(s => s.publicTier === 'LEAD').map(s => s.id);
-const PUBLIC_WORKER_SEATS = SEATS.filter(s => s.publicTier === 'WORKER').map(s => s.id);
+const TRAINS_ON_INPUT_SEATS = SEATS.filter(s => s.dataTerms === 'TRAINS-ON-INPUT').map(s => s.id);
 
 /**
  * Provider model-catalogue endpoints, for rot detection. A seat whose model id
@@ -529,4 +543,4 @@ const KNOWN_ALIASES = {
   deepseek: ['deepseek-chat'],
 };
 
-module.exports = { SEATS, SEAT_BY_ID, LEAD_SEATS, WORKER_SEATS, BENCHED_SEATS, PUBLIC_LEAD_SEATS, PUBLIC_WORKER_SEATS, AGENT_SEATS, API_SEATS, SYNTH_PREFERENCE, SYNTH_CHAIN, CATALOGUES, KNOWN_ALIASES };
+module.exports = { SEATS, SEAT_BY_ID, LEAD_SEATS, WORKER_SEATS, BENCHED_SEATS, TRAINS_ON_INPUT_SEATS, AGENT_SEATS, API_SEATS, SYNTH_PREFERENCE, SYNTH_CHAIN, CATALOGUES, KNOWN_ALIASES };

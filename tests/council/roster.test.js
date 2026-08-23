@@ -100,14 +100,30 @@ test('every seat carries machine-readable dataTerms', () => {
   }
 });
 
-test('no seat that TRAINS-ON-INPUT is in an active tier', () => {
-  // The 8/21 privacy finding: council prompts carry trading positions and client
-  // detail, and the free-tier gemini seat shipped them to a tier Google states is
-  // used for product improvement. Benching it was the fix; this keeps it benched.
+test('every TRAINS-ON-INPUT seat is enrolled in the --private drop list', () => {
+  // POLICY CHANGED 2026-08-23 (Woody: "I don't consider any of the work I do here
+  // truly private"). This test used to assert the opposite — that no such seat
+  // could hold an active tier at all — which is why it is REWRITTEN rather than
+  // deleted: the guarantee moved, it did not disappear.
+  //
+  // Old guarantee: these seats are never dispatched without an explicit --public.
+  // New guarantee: these seats are always dispatched EXCEPT under --private, and
+  // --private must catch every one of them. The failure mode that would hurt is a
+  // seat that trains on input but is invisible to the privacy filter, so a client
+  // convene marked --private would still ship to it. Deriving the list from
+  // dataTerms makes that structurally impossible; this test proves the derivation
+  // is actually wired, not just declared.
+  const { TRAINS_ON_INPUT_SEATS } = require('../../scripts/council/roster');
   for (const s of SEATS) {
     if (s.dataTerms !== 'TRAINS-ON-INPUT') continue;
-    assert.ok(!LEAD_SEATS.includes(s.id), `${s.id} trains on input but holds a LEAD seat`);
-    assert.ok(!WORKER_SEATS.includes(s.id), `${s.id} trains on input but holds a WORKER seat`);
+    assert.ok(
+      TRAINS_ON_INPUT_SEATS.includes(s.id),
+      `${s.id} trains on input but --private would not drop it — a client convene would leak`,
+    );
+  }
+  // And nothing else may be in there: over-dropping silently shrinks the roster.
+  for (const id of TRAINS_ON_INPUT_SEATS) {
+    assert.equal(SEAT_BY_ID[id].dataTerms, 'TRAINS-ON-INPUT', `${id} is dropped by --private for no stated reason`);
   }
 });
 
@@ -146,33 +162,29 @@ test('at least one ACTIVE seat can actually verify a claim', () => {
   assert.ok(canVerify.length > 0, 'no active seat can check anything — every answer would be premise-bound');
 });
 
-test('PUBLIC tier: gated free-frontier seats auto-join rosters only under --public', () => {
-  // Woody's ruling 2026-08-22: "these should be members of the council." The
-  // public tier makes them members for every convene that can legally use them,
-  // while the default rosters stay privacy-safe and the dispatch gate backstops.
-  const { PUBLIC_LEAD_SEATS, PUBLIC_WORKER_SEATS } = require('../../scripts/council/roster');
-  // `gemini` took the public-LEAD slot from `geminipro` on 2026-08-22 after a
-  // measured bake-off (same accuracy, no 97s latency tail). Woody's framing:
-  // one Google seat, on the best model, like Opus 5 and Sol.
-  assert.deepEqual(PUBLIC_LEAD_SEATS, ['gemini'], 'the fourth lab joins LEAD in public mode');
-  assert.deepEqual(PUBLIC_WORKER_SEATS, ['agyflash'], 'a free Google worker joins in public mode');
-  for (const id of [...PUBLIC_LEAD_SEATS, ...PUBLIC_WORKER_SEATS]) {
-    const seat = SEAT_BY_ID[id];
-    assert.ok(seat, `${id} must exist`);
-    assert.ok(seat.tiers.includes('BENCH'), `${id} must stay BENCH for default (presumed-sensitive) rosters`);
-    assert.ok(!LEAD_SEATS.includes(id) && !WORKER_SEATS.includes(id), `${id} must not leak into default rosters`);
-  }
+test('the Google seat is a STANDING lead member, and the fourth lab', () => {
+  // Woody's ruling 2026-08-23: "I don't consider any of the work I do here truly
+  // private. I want to fully utilise the strongest model we get from Gemini in
+  // the Council." Standing membership is the whole point — the previous opt-in
+  // produced 13 agy dispatches in a month, one of which fed a real decision.
+  assert.ok(LEAD_SEATS.includes('gemini'), 'gemini must be a standing LEAD seat, not opt-in');
+  assert.equal(SEAT_BY_ID.gemini.lab, 'google');
+  assert.equal(LEAD_SEATS.length, 4, 'four labs decide: anthropic, openai, xai, google');
+  // The decorrelation invariant must survive the promotion — this is the reason
+  // a SECOND Google seat can never join LEAD, however free it is.
+  const labs = LEAD_SEATS.map(id => SEAT_BY_ID[id].lab);
+  assert.equal(new Set(labs).size, labs.length, `LEAD doubles a lab: ${labs.join(', ')}`);
 });
 
-test('PUBLIC LEAD preserves one-seat-per-lab (agyopus stays out)', () => {
-  // The 2026-08-20 council rejected a second Anthropic LEAD seat 3/3: its
-  // agreement with `claude` would read as corroboration while being the same
-  // lab twice. The public tier must not resurrect that by the back door.
-  const { PUBLIC_LEAD_SEATS } = require('../../scripts/council/roster');
-  assert.ok(!PUBLIC_LEAD_SEATS.includes('agyopus'), 'agyopus is hand-summon only');
-  const labs = [...LEAD_SEATS, ...PUBLIC_LEAD_SEATS].map(id => SEAT_BY_ID[id].lab);
-  const dupes = labs.filter((l, i) => labs.indexOf(l) !== i);
-  assert.equal(dupes.length, 0, `public-extended LEAD doubles a lab: ${dupes.join(', ')}`);
+test('agyopus is free Opus-class LABOUR, never a LEAD vote', () => {
+  // Promoted BENCH -> WORKER 2026-08-23: Opus 4.6 on Google's wallet is the
+  // biggest capability the ruling unlocked. But the 2026-08-20 council rejected
+  // it as a LEAD seat 3/3 and that still binds — its agreement with `claude`
+  // would read as corroboration while being the same lab twice. Workers execute
+  // a fixed spec and never vote, which is why the same lab is fine THERE.
+  assert.ok(WORKER_SEATS.includes('agyopus'), 'free Opus-class labour should be usable');
+  assert.ok(!LEAD_SEATS.includes('agyopus'), 'a second Anthropic seat in LEAD fakes corroboration');
+  assert.equal(SEAT_BY_ID.agyopus.lab, SEAT_BY_ID.claude.lab, 'the whole hazard is that these share a lab');
 });
 
 test('no two seats a --public convene can dispatch run the IDENTICAL model', () => {
@@ -185,10 +197,7 @@ test('no two seats a --public convene can dispatch run the IDENTICAL model', () 
   // decorrelation doctrine exists to prevent. agyflash dropped to 3.6-flash-high.
   // Nothing checked this — the seat universe was checked for orphan IDS, never
   // for duplicate MODELS.
-  const { PUBLIC_LEAD_SEATS, PUBLIC_WORKER_SEATS } = require('../../scripts/council/roster');
-  const dispatchable = [...new Set([
-    ...LEAD_SEATS, ...WORKER_SEATS, ...PUBLIC_LEAD_SEATS, ...PUBLIC_WORKER_SEATS,
-  ])];
+  const dispatchable = [...new Set([...LEAD_SEATS, ...WORKER_SEATS])];
   const seen = new Map();
   for (const id of dispatchable) {
     const model = SEAT_BY_ID[id].model;
@@ -197,6 +206,34 @@ test('no two seats a --public convene can dispatch run the IDENTICAL model', () 
     }
     seen.set(model, id);
   }
+});
+
+test('--trading implies --private, and --private drops every training seat', () => {
+  // REGRESSION, and it was live for about ten minutes on 2026-08-23. The parser
+  // wrote `args.lensSet = 'trading'` while the privacy rule read `args.trading`,
+  // so `--trading` implied NOTHING: a live convene seated the Google seat on a
+  // trading question, which is the one category explicitly carved out because a
+  // broker position is not Woody's alone to donate. Nothing could have caught it
+  // — council.js exported nothing, so testing it meant billing real dispatches.
+  // The fix was a dedicated flag plus making the policy an exported function.
+  const { applyPrivacyPolicy } = require('../../scripts/council/council');
+  const quiet = () => {};
+  const all = [...LEAD_SEATS, ...WORKER_SEATS];
+
+  const trading = applyPrivacyPolicy({ to: [...all], trading: true }, quiet);
+  assert.equal(trading.privateContent, true, '--trading must imply --private');
+  assert.equal(trading.to.some(id => SEAT_BY_ID[id].dataTerms === 'TRAINS-ON-INPUT'), false,
+    'a trading convene must not seat any training path');
+  assert.ok(trading.to.includes('claude'), 'verified-private seats stay');
+
+  // An explicit --to is SHRUNK, not honoured verbatim — the safe direction.
+  const explicit = applyPrivacyPolicy({ to: ['gemini', 'haiku'], privateContent: true }, quiet);
+  assert.deepEqual(explicit.to, ['haiku'], '--private overrides a hand-picked roster');
+
+  // And the default path must NOT strip anything, or the flip did nothing.
+  const ordinary = applyPrivacyPolicy({ to: [...all] }, quiet);
+  assert.ok(ordinary.to.includes('gemini'), 'ordinary work keeps the Google seat');
+  assert.equal(ordinary.to.length, all.length, 'nothing dropped without --private');
 });
 
 test('providers, roster, and pricing agree on the seat universe (no orphan aliases)', () => {

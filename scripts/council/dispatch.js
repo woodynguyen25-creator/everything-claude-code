@@ -46,12 +46,34 @@ const { SEAT_BY_ID } = require('./roster');
  * uses — exposes no privacy flag at all. Under verify-per-PATH, an unconfirmed
  * toggle in a DIFFERENT client is not evidence about this one.
  *
- * So the rule became routing, not trust: an unmarked prompt is presumed
- * SENSITIVE (fail closed, like budget), and TRAINS-ON-INPUT seats refuse it
- * before any network call. `--public` (meta.publicContent) unlocks them for
- * work with nothing to protect — public-repo code, generic research — which is
- * how the free Gemini 3.1 Pro / Opus 4.6 / Flash capacity stays usable at $0
- * without ever seeing a trading position or client name.
+ * ── DEFAULT INVERTED 2026-08-23, ON WOODY'S EXPLICIT RULING ────────────────
+ * "I don't consider any of the work I do here truly private. I want to fully
+ * utilise the strongest model we get from Gemini in the Council."
+ *
+ * The original rule presumed every unmarked prompt SENSITIVE and made `--public`
+ * an opt-in. That is the right default for a system whose owner has not ruled;
+ * it is the WRONG default once he has. It was costing him a fourth decorrelated
+ * frontier lab, at $0, on a subscription he already pays for — measured: 13 agy
+ * calls in a month, of which exactly one fed a real decision. A gate nobody
+ * opens is not a safety feature, it is a disabled seat.
+ *
+ * So the polarity flipped: TRAINS-ON-INPUT seats now dispatch BY DEFAULT, and
+ * `--private` (meta.privateContent) is the opt-OUT that excludes them.
+ *
+ * WHAT DID NOT CHANGE, and why this is not simply "the gate was removed":
+ * the owner may donate HIS OWN data; he cannot donate a third party's. Client
+ * work (AJR, Precious Realty, Stillstone, Sleek Auto, Ivory Nails) carries other
+ * people's pricing and contracts, and trading convenes carry live positions.
+ * council.js therefore makes `--trading` imply `--private` automatically, and a
+ * convene that seats one of these paths now PRINTS that it is doing so, so the
+ * choice is visible per-run rather than buried in a roster file.
+ *
+ * The honest summary of the trade: this is no longer "fail closed on privacy".
+ * It is "fail closed on OTHER PEOPLE's privacy, fail open on Woody's own", which
+ * is what he actually asked for and is a defensible line — but it is a WEAKER
+ * guarantee than what stood here yesterday, and a mistagged client convene now
+ * leaks where it previously refused. That risk is the price of the capability,
+ * and it is stated here rather than smoothed over.
  *
  * UNVERIFIED seats (deepseek/groq/cerebras) deliberately pass: refusing them
  * would gut the default worker tier on suspicion, and health.js already prints
@@ -62,14 +84,14 @@ const { SEAT_BY_ID } = require('./roster');
  */
 function dataTermsRefusal(seat, meta = {}) {
   const def = SEAT_BY_ID[seat];
-  if (!def || def.dataTerms !== 'TRAINS-ON-INPUT' || meta.publicContent) return null;
+  if (!def || def.dataTerms !== 'TRAINS-ON-INPUT' || !meta.privateContent) return null;
   return {
     provider: seat,
     model: 'blocked',
     ok: false,
     text: '',
     ms: 0,
-    error: `data-terms: ${seat} TRAINS ON INPUT (and allows human review) — prompt presumed sensitive. Pass --public only if this content could be posted publicly as-is.`,
+    error: `data-terms: ${seat} TRAINS ON INPUT (and allows human review) — refused because this convene is marked --private (client data, trading positions, or personal detail).`,
   };
 }
 

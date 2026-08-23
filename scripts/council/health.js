@@ -32,7 +32,7 @@ const fs = require('fs');
 const { execFileSync } = require('child_process');
 const { loadEnv, SEATS } = require('./providers');
 const { dispatch } = require('./dispatch');
-const { LEAD_SEATS, WORKER_SEATS, BENCHED_SEATS, PUBLIC_LEAD_SEATS, PUBLIC_WORKER_SEATS, SEATS: ROSTER, CATALOGUES, KNOWN_ALIASES, AGENT_SEATS } = require('./roster');
+const { LEAD_SEATS, WORKER_SEATS, BENCHED_SEATS, TRAINS_ON_INPUT_SEATS, SEATS: ROSTER, CATALOGUES, KNOWN_ALIASES, AGENT_SEATS } = require('./roster');
 
 const PROMPT = 'Reply with exactly one word: PONG';
 
@@ -117,11 +117,12 @@ function tierOf(seat) {
   const tiers = [];
   if (LEAD_SEATS.includes(seat)) tiers.push('LEAD');
   if (WORKER_SEATS.includes(seat)) tiers.push('WORK');
-  // Conditional membership is still membership. Name the flag that unlocks it, so
-  // the label doubles as the instruction for using the seat.
-  if (PUBLIC_LEAD_SEATS.includes(seat)) tiers.push('LEAD·--public');
-  if (PUBLIC_WORKER_SEATS.includes(seat)) tiers.push('WORK·--public');
   if (tiers.length === 0) tiers.push('bench');
+  // Standing seats that a --private convene drops. Marking them keeps the earlier
+  // lesson intact from the other direction: the label must never imply a seat is
+  // unconditional when it isn't, just as it must never imply one is retired when
+  // it isn't. The dagger says "in every convene except --private".
+  if (TRAINS_ON_INPUT_SEATS.includes(seat) && tiers[0] !== 'bench') tiers[0] += '†';
   return tiers.join('+');
 }
 

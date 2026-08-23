@@ -212,34 +212,34 @@ async function main() {
     fs.unlinkSync(L);
   });
 
-  await test('DATA-TERMS GATE: a TRAINS-ON-INPUT seat is refused by default — before any network call', async () => {
-    // The Antigravity/free-Gemini finding (2026-08-21): those paths train on
-    // input and allow human review, the opt-out toggle is unconfirmed by Google
-    // and may not cover the CLI at all. The bench kept them out of ROSTERS, but
-    // --to could still route a sensitive prompt straight into them. The gate
-    // moves the rule onto the boundary: default-deny, because an unmarked prompt
-    // must be presumed sensitive (fail closed on privacy exactly like budget
-    // fails closed on spend). Uses the REAL seats map — the refusal fires before
-    // the runner, so no network call and no bill.
+  await test('DATA-TERMS GATE: a --private prompt is refused before any network call', async () => {
+    // POLARITY FLIPPED 2026-08-23 (Woody's ruling). This test previously asserted
+    // that an UNMARKED prompt was refused; now an unmarked prompt is served and a
+    // MARKED one is refused. The mechanism it guards is unchanged and is the part
+    // that matters: the refusal happens on the boundary, before the runner, so a
+    // --private convene cannot leak even via a hand-picked `--to gemini`.
+    // The prompt is a live trading position on purpose — that is the exact
+    // content class this gate now exists for.
     const L = tmpLedger();
-    const r = await dispatch('gemini', 'my AMZU position is...', {}, { timeoutMs: 5 }, { ledgerPath: L });
+    const r = await dispatch('gemini', 'my AMZU position is...', {}, { timeoutMs: 5 }, { ledgerPath: L, privateContent: true });
     assert.equal(r.ok, false);
     assert.match(r.error, /trains on input|data-terms/i);
     assert.equal(readRecent(5, L).length, 0, 'no physical attempt happened, so no ledger row');
     assert.equal(fs.existsSync(L), false, 'the ledger file was never even created');
   });
 
-  await test('DATA-TERMS GATE: meta.publicContent unlocks the seat class (pure check)', () => {
-    // Public-content work (this repo is public-adjacent, generic research) has
-    // nothing to protect from training, so the free agy/gemini capacity becomes
-    // usable there — that is the whole point of the gate over a blanket bench.
+  await test('DATA-TERMS GATE: default is ALLOW, --private is the opt-out (pure check)', () => {
+    // The flip in one place. Woody owns his own data and ruled it non-private;
+    // the gate now protects the categories that are NOT his to donate — client
+    // work and live positions — which callers signal with privateContent.
     const { dataTermsRefusal } = require('../../scripts/council/dispatch');
-    assert.ok(dataTermsRefusal('gemini', {}), 'default: refused');
-    assert.ok(dataTermsRefusal('geminipro', {}), 'agy seats refused by default');
-    assert.equal(dataTermsRefusal('gemini', { publicContent: true }), null, '--public unlocks');
-    assert.equal(dataTermsRefusal('claude', {}), null, 'verified-private seats never gated');
+    assert.equal(dataTermsRefusal('gemini', {}), null, 'default: the Google seat serves ordinary work');
+    assert.equal(dataTermsRefusal('geminipro', {}), null, 'agy seats allowed by default');
+    assert.ok(dataTermsRefusal('gemini', { privateContent: true }), '--private refuses');
+    assert.ok(dataTermsRefusal('agyopus', { privateContent: true }), '--private refuses every agy path, not just Gemini');
+    assert.equal(dataTermsRefusal('claude', { privateContent: true }), null, 'verified-private seats serve --private work');
     assert.equal(dataTermsRefusal('deepseek', {}), null, 'UNVERIFIED seats stay allowed (roster would break; health warns instead)');
-    assert.equal(dataTermsRefusal('not-a-seat', {}), null, 'unknown seats are not this gate\'s problem');
+    assert.equal(dataTermsRefusal('not-a-seat', { privateContent: true }), null, 'unknown seats are not this gate\'s problem');
   });
 
   await test('agy classifier: the REAL EOF error string classifies as transient', () => {

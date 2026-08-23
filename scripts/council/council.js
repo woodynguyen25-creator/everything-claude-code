@@ -37,7 +37,7 @@ const { dispatch, dispatchWithRetry } = require('./dispatch');
 
 // Tiered roster (2026-08-02, Woody's call) — see roster.js for the tier
 // rationale and the ledger evidence behind each seat's placement.
-const { LEAD_SEATS, WORKER_SEATS, BENCHED_SEATS, PUBLIC_LEAD_SEATS, PUBLIC_WORKER_SEATS, SYNTH_CHAIN, AGENT_SEATS, SEAT_BY_ID } = require('./roster');
+const { LEAD_SEATS, WORKER_SEATS, BENCHED_SEATS, TRAINS_ON_INPUT_SEATS, SYNTH_CHAIN, AGENT_SEATS, SEAT_BY_ID } = require('./roster');
 
 const DEFAULT_SEATS = LEAD_SEATS;
 
@@ -100,7 +100,16 @@ function parseArgs(argv) {
     else if (a === '--no-lenses') args.lenses = false;
     // --trading swaps the product/build lens table for adversarial BULL/BEAR/QUANT/RISK/
     // HISTORIAN seats. Use it for ANY position or market question.
-    else if (a === '--trading') args.lensSet = 'trading';
+    //
+    // It ALSO sets a dedicated `trading` flag, deliberately separate from
+    // `lensSet`. The privacy implication below (trading => --private) hung off
+    // `lensSet === 'trading'` for about ten minutes on 2026-08-23 and silently did
+    // nothing, because the parser only ever wrote `lensSet` — a live test seated
+    // the Google seat on a trading convene. Two reasons it now has its own field:
+    // the original bug, and the fact that `--lens-set default` or a future flag
+    // could reset lensSet and quietly take the privacy rule with it. A routing
+    // decision about somebody's money must not ride on a presentation setting.
+    else if (a === '--trading') { args.lensSet = 'trading'; args.trading = true; }
     else if (a === '--lens-set') args.lensSet = String(argv[++i] || 'default');
     else if (a === '--timeout') args.timeoutS = Number(argv[++i]) || 240;
     else if (a === '--sol-effort') args.solEffort = ['medium', 'high', 'xhigh'].includes(String(argv[++i])) ? argv[i] : '';
@@ -122,15 +131,63 @@ function parseArgs(argv) {
     // named blocker, not a third bucket. Kept as an OPT-IN flag rather than the
     // default so the two modes can be compared on the ledger before deciding.
     else if (a === '--binary') { args.decide = true; args.binary = true; }
-    // --public: this prompt could be posted publicly as-is, so TRAINS-ON-INPUT
-    // seats (free-tier gemini, the agy trio) may serve it. Default is SENSITIVE:
-    // the dispatch boundary refuses those seats for unmarked prompts. This is
-    // what makes the free Gemini 3.1 Pro / Opus 4.6 capacity usable at zero
-    // marginal cost WITHOUT trusting Google's unconfirmed opt-out toggle.
-    else if (a === '--public') args.publicContent = true;
+    // --private: this prompt carries data that is NOT ours to give away, so the
+    // TRAINS-ON-INPUT seats (the Google/agy paths) are dropped from the roster and
+    // refused at the dispatch boundary.
+    //
+    // POLARITY FLIPPED 2026-08-23 on Woody's ruling: "I don't consider any of the
+    // work I do here truly private." Until then this was `--public`, an opt-IN,
+    // and the free Google frontier sat idle behind it — 13 dispatches in a month,
+    // one of which fed a real decision. Standing membership is now the default.
+    //
+    // Use --private for: CLIENT work (AJR, Precious Realty, Stillstone, Sleek
+    // Auto, Ivory Nails — their pricing and contracts are theirs, not ours to
+    // donate), live trading positions, and personal/school records. `--trading`
+    // sets this automatically; see below.
+    else if (a === '--private') args.privateContent = true;
+    // Kept as a no-op alias for one release so older scripts and muscle memory do
+    // not silently get the OPPOSITE of what they asked for. `--public` used to be
+    // the flag that ADDED the Google seats; they are now standing, so the honest
+    // translation of "--public" is "do nothing", not "--private".
+    else if (a === '--public') { /* deprecated: Google seats are standing since 2026-08-23 */ }
     else rest.push(a);
   }
   args.question = rest.join(' ').trim();
+  return args;
+}
+
+/**
+ * Decide which seats a convene may use, given its privacy markings. Mutates and
+ * returns `args` so the caller reads one obvious line.
+ *
+ * EXTRACTED 2026-08-23 so it can be tested without billing a dispatch. It was
+ * inline in main(), which is exactly how `--trading` came to imply nothing at
+ * all: the parser wrote `args.lensSet` and this rule read `args.trading`, the
+ * mismatch was invisible, and a live trading convene seated the Google seat.
+ *
+ * TWO RULES, in order:
+ *   1. --trading IMPLIES --private. A trading convene carries live positions,
+ *      size and account context. Woody ruled his OWN work non-private, which is
+ *      his to rule; a broker position is the category where "I don't mind" is
+ *      most likely to be a decision made in the moment and regretted in the
+ *      ledger. Override by dropping --trading, never by a quiet flag.
+ *   2. --private DROPS every TRAINS-ON-INPUT seat, including from a hand-picked
+ *      --to list. Shrinking someone's explicit list is the safe direction:
+ *      it removes seats they may not have realised were disqualified. (The old
+ *      public-tier code EXPANDED rosters, which is why it deliberately refused
+ *      to touch an explicit --to; removal carries no such hazard.)
+ *
+ * The dispatch boundary refuses these seats independently, so this is the
+ * ergonomic layer and dataTermsRefusal() is the guarantee.
+ */
+function applyPrivacyPolicy(args, log = console.log) {
+  if (args.trading) args.privateContent = true;
+  if (!args.privateContent) return args;
+  const dropped = args.to.filter(id => TRAINS_ON_INPUT_SEATS.includes(id));
+  if (dropped.length) {
+    args.to = args.to.filter(id => !TRAINS_ON_INPUT_SEATS.includes(id));
+    log(`[council] --private: dropped ${dropped.join(', ')} (trains on input, allows human review)`);
+  }
   return args;
 }
 
@@ -158,7 +215,7 @@ function printResult(result, label = '') {
 }
 
 /** Synthesis with a provider fallback chain instead of a hardcoded single seat. */
-async function synthesize(question, results, env, tag = '', forceBudget = false, publicContent = false) {
+async function synthesize(question, results, env, tag = '', forceBudget = false, privateContent = false) {
   const blocks = results
     .filter(r => r.ok)
     .map(r => `--- ${r.provider.toUpperCase()} (${r.model}) ---\n${truncate(r.text, SYNTH_BLOCK_MAX_CHARS)}`)
@@ -168,7 +225,7 @@ async function synthesize(question, results, env, tag = '', forceBudget = false,
   for (const seat of SYNTH_FALLBACK_CHAIN) {
     // Through the dispatch boundary: a FAILED fallback attempt billed too, and
     // used to vanish - only the final result ever reached the ledger.
-    last = await dispatch(seat, prompt, env, { timeoutMs: 120_000 }, { tag: `${tag}#synth`, kind: 'synth', forceBudget, publicContent });
+    last = await dispatch(seat, prompt, env, { timeoutMs: 120_000 }, { tag: `${tag}#synth`, kind: 'synth', forceBudget, privateContent });
     if (last.ok) return last;
     process.stderr.write(`[council] synth via ${seat} failed (${last.error}) - falling back…` + '\n');
   }
@@ -176,7 +233,7 @@ async function synthesize(question, results, env, tag = '', forceBudget = false,
 }
 
 /** Debate round: each seat sees the others' round-1 answers, critiques, and revises. */
-async function debateRound(question, seats, round1, env, seatOpts, tag, decideSuffix, forceBudget, binary, publicContent) {
+async function debateRound(question, seats, round1, env, seatOpts, tag, decideSuffix, forceBudget, binary, privateContent) {
   const okResults = round1.filter(r => r.ok);
   if (okResults.length < 2) {
     process.stderr.write('[council] fewer than 2 seats answered — skipping debate round\n');
@@ -204,7 +261,7 @@ async function debateRound(question, seats, round1, env, seatOpts, tag, decideSu
     // at exactly 240000ms. The debate round was structurally rigged to kill its
     // slowest seat. Found in the 2026-08-21 full-system review.
     return dispatchWithRetry(seat, prompt, env, seatOpts(seat),
-      { tag: `${tag}#r2`, round: 2, kind: 'debate', verdicts: true, strictVerdict: Boolean(decideSuffix), binaryVerdict: binary, decisionMode: decideSuffix ? (binary ? 'binary' : 'ternary') : undefined, forceBudget, publicContent }).then(r => {
+      { tag: `${tag}#r2`, round: 2, kind: 'debate', verdicts: true, strictVerdict: Boolean(decideSuffix), binaryVerdict: binary, decisionMode: decideSuffix ? (binary ? 'binary' : 'ternary') : undefined, forceBudget, privateContent }).then(r => {
       printResult(r, 'R2');
       return r;
     });
@@ -234,17 +291,7 @@ async function main() {
     process.exitCode = 1;
     return;
   }
-  // PUBLIC-TIER AUTO-SEATING (Woody's ruling 2026-08-22: "these should be
-  // members of the council"). A --public convene on a DEFAULT roster gains the
-  // gated free-frontier seats automatically: gemini joins LEAD as the fourth
-  // lab, agyflash joins the workers. Reference-equality check so an explicit
-  // --to list is never silently expanded — the operator's hand-picked roster is
-  // exact. Without --public these seats never enter a roster at all, and the
-  // dispatch-level data-terms gate backstops even a direct --to. Two layers.
-  if (args.publicContent) {
-    if (args.to === DEFAULT_SEATS) args.to = [...DEFAULT_SEATS, ...PUBLIC_LEAD_SEATS];
-    else if (args.to === WORKER_SEATS) args.to = [...WORKER_SEATS, ...PUBLIC_WORKER_SEATS];
-  }
+  applyPrivacyPolicy(args);
 
   const env = loadEnv();
 
@@ -289,7 +336,7 @@ async function main() {
     const pings = await Promise.all(apiSeats.map(seat =>
       // Through the dispatch boundary: preflight PONGs are metered spend and
       // were previously invisible to both the ledger and the cap.
-      dispatch(seat, 'Reply with exactly one word: PONG', env, { timeoutMs: 15_000 }, { tag: 'preflight', kind: 'preflight', publicContent: args.publicContent })
+      dispatch(seat, 'Reply with exactly one word: PONG', env, { timeoutMs: 15_000 }, { tag: 'preflight', kind: 'preflight', privateContent: args.privateContent })
         .then(r => ({ seat, ok: Boolean(r.ok), error: r.error }))
         .catch(e => ({ seat, ok: false, error: e.message })),
     ));
@@ -360,20 +407,16 @@ async function main() {
     : '';
   console.log(`[council] dispatching to ${args.to.join(', ')}${lensLabel} — results stream as seats finish …`);
 
-  // Say what is being LEFT OUT, and why. Without --public the gated free-frontier
-  // seats are simply never seated, so the operator is never told that a fourth
-  // decorrelated lab was available at $0 for this question. Silence reads as "no
-  // such option exists" — the same silent-omission failure the data-terms gate,
-  // the quorum alarm and the budget ceiling each exist to prevent, left un-fixed
-  // in the one place the operator actually looks. Raised by Woody 2026-08-23
-  // ("why is Gemini still benched?") after the tier label told him the same lie.
-  // Advisory only: it prints a sentence, it never seats anything. The gate still
-  // decides, and --public is still an explicit human claim about the CONTENT.
-  if (!args.publicContent) {
-    const withheld = [...PUBLIC_LEAD_SEATS, ...PUBLIC_WORKER_SEATS].filter(id => !args.to.includes(id));
-    if (withheld.length) {
-      console.log(`[council] held back (trains on input): ${withheld.join(', ')} — add --public if this question could be posted publicly as-is, for ${withheld.length} more seat(s) at $0`);
-    }
+  // DISCLOSURE. This line used to say what was held BACK; now that the Google
+  // seats are standing it says what is being SENT, which is the disclosure that
+  // actually matters. The seats are free because Google keeps the transcript:
+  // its terms let it train on Interactions and let employees and contractors
+  // review them. Woody accepted that for his own work — an informed choice he
+  // can only keep making if each run says so rather than burying it in a roster
+  // file he reads once. One line, every convene, naming the escape hatch.
+  const exposed = args.to.filter(id => TRAINS_ON_INPUT_SEATS.includes(id));
+  if (exposed.length) {
+    console.log(`[council] sending this prompt to ${exposed.join(', ')} — Google may train on it and staff may review it. Use --private for client data, positions, or personal records.`);
   }
 
   // Decision mode: every seat must END with a verdict it can be held to.
@@ -407,7 +450,7 @@ async function main() {
       : '';
     const lens = useLenses ? `${roleLine}${toolLine}\n[LENS — apply to your answer] ${lensTable[i % lensTable.length]}` : toolLine;
     return dispatchWithRetry(seat, args.question + lens + decideSuffix, env, seatOpts(seat),
-      { tag: args.tag, round: 1, kind: 'convene', verdicts: true, strictVerdict: args.decide, binaryVerdict: args.binary, decisionMode: args.binary ? 'binary' : (args.decide ? 'ternary' : undefined), forceBudget: args.forceBudget, publicContent: args.publicContent }).then(r => {
+      { tag: args.tag, round: 1, kind: 'convene', verdicts: true, strictVerdict: args.decide, binaryVerdict: args.binary, decisionMode: args.binary ? 'binary' : (args.decide ? 'ternary' : undefined), forceBudget: args.forceBudget, privateContent: args.privateContent }).then(r => {
       printResult(r);
       return r;
     });
@@ -415,12 +458,12 @@ async function main() {
 
   let finalResults = round1;
   if (args.rounds >= 2) {
-    finalResults = await debateRound(args.question, args.to, round1, env, seatOpts, args.tag, decideSuffix, args.forceBudget, args.binary, args.publicContent);
+    finalResults = await debateRound(args.question, args.to, round1, env, seatOpts, args.tag, decideSuffix, args.forceBudget, args.binary, args.privateContent);
   }
 
   const transcriptResults = [...finalResults];
   if (args.synth) {
-    const synth = await synthesize(args.question, finalResults, env, args.tag, args.forceBudget, args.publicContent);
+    const synth = await synthesize(args.question, finalResults, env, args.tag, args.forceBudget, args.privateContent);
     transcriptResults.push({ ...synth, provider: `${synth.provider} (SYNTHESIS)` });
     console.log(`\n===== SYNTHESIS (${synth.provider}/${synth.model}) =====`);
     console.log(synth.ok ? synth.text : `[FAILED: ${synth.error}]`);
@@ -507,7 +550,17 @@ async function main() {
   }
 }
 
-main().catch(err => {
-  console.error(`[council] fatal: ${err.message}`);
-  process.exitCode = 1;
-});
+// Run only when invoked as a CLI, so the argument parser can be unit-tested.
+// Added 2026-08-23 after `--trading` silently failed to imply `--private`: the
+// parser wrote `lensSet` while the privacy rule read `args.trading`, and NOTHING
+// could have caught it, because this file exported nothing and every test of it
+// would have had to make real, billed dispatches. An untestable parser is where
+// a security rule goes to die quietly.
+if (require.main === module) {
+  main().catch(err => {
+    console.error(`[council] fatal: ${err.message}`);
+    process.exitCode = 1;
+  });
+}
+
+module.exports = { parseArgs, applyPrivacyPolicy };
