@@ -93,8 +93,8 @@ function costOf(seatId, { usage, promptChars = 0, outputChars = 0 } = {}) {
 
   const reported =
     usage &&
-    (usage.prompt_tokens != null || usage.input_tokens != null) &&
-    (usage.completion_tokens != null || usage.output_tokens != null);
+    (usage.prompt_tokens !== null && usage.prompt_tokens !== undefined || usage.input_tokens !== null && usage.input_tokens !== undefined) &&
+    (usage.completion_tokens !== null && usage.completion_tokens !== undefined || usage.output_tokens !== null && usage.output_tokens !== undefined);
 
   const inTok = reported
     ? Number(usage.prompt_tokens ?? usage.input_tokens)
@@ -103,7 +103,7 @@ function costOf(seatId, { usage, promptChars = 0, outputChars = 0 } = {}) {
     ? Number(usage.completion_tokens ?? usage.output_tokens)
     : Math.ceil(outputChars / 4);
 
-  const big = price.bigPromptTokens != null && inTok >= price.bigPromptTokens;
+  const big = price.bigPromptTokens !== null && price.bigPromptTokens !== undefined && inTok >= price.bigPromptTokens;
   const rateIn = big ? price.bigIn : price.in;
   const rateOut = big ? price.bigOut : price.out;
 
