@@ -236,6 +236,31 @@ test('--trading implies --private, and --private drops every training seat', () 
   assert.equal(ordinary.to.length, all.length, 'nothing dropped without --private');
 });
 
+test('the research lens follows CAPABILITY, never seat order', () => {
+  // The EVIDENCE lens tells a seat it can search the live web. Handing that to a
+  // prompt-bound seat is the 2026-08-21 xai bug again — a brief asserting a
+  // capability the seat does not have, which yields confident fiction instead of
+  // an error. So the searcher is found from the roster, and every other seat is
+  // told explicitly that it cannot search and must not cite.
+  const { assignLenses } = require('../../scripts/council/council');
+  const { SEARCH_SEATS } = require('../../scripts/council/roster');
+  assert.deepEqual(SEARCH_SEATS, ['xai'], 'xai is currently the only seat that can retrieve');
+
+  // xai deliberately LAST, so a positional table would give EVIDENCE to claude.
+  const seats = ['claude', 'gemini', 'xai'];
+  const { lens, names, searchers } = assignLenses(seats, 'research');
+  assert.deepEqual(searchers, ['xai']);
+  assert.equal(names[2], 'EVIDENCE', 'the searcher gets EVIDENCE wherever it sits in the list');
+  assert.notEqual(names[0], 'EVIDENCE', 'a prompt-bound seat must never be told it can search');
+  assert.match(lens[2], /ONLY seat with live web/);
+  for (const i of [0, 1]) assert.match(lens[i], /NO search access/, `${seats[i]} must be told it cannot search`);
+
+  // Positional sets keep their ordering — BULL on seat 0 was itself a bug fix.
+  const t = assignLenses(['xai', 'claude', 'codex'], 'trading');
+  assert.equal(t.names[0], 'BULL', 'trading stays positional');
+  assert.deepEqual(t.searchers, [], 'non-research sets never enable search');
+});
+
 test('providers, roster, and pricing agree on the seat universe (no orphan aliases)', () => {
   // Found 2026-08-21 by exactly this audit: a `grok` alias lived in providers.js
   // SEATS with no roster entry and no PRICING entry. Consequences of an id

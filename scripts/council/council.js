@@ -37,7 +37,7 @@ const { dispatch, dispatchWithRetry } = require('./dispatch');
 
 // Tiered roster (2026-08-02, Woody's call) — see roster.js for the tier
 // rationale and the ledger evidence behind each seat's placement.
-const { LEAD_SEATS, WORKER_SEATS, BENCHED_SEATS, TRAINS_ON_INPUT_SEATS, SYNTH_CHAIN, AGENT_SEATS, SEAT_BY_ID } = require('./roster');
+const { LEAD_SEATS, WORKER_SEATS, BENCHED_SEATS, TRAINS_ON_INPUT_SEATS, SEARCH_SEATS, SYNTH_CHAIN, AGENT_SEATS, SEAT_BY_ID } = require('./roster');
 
 const DEFAULT_SEATS = LEAD_SEATS;
 
@@ -60,6 +60,23 @@ const LENS_SETS = {
     'Answer through a USER/CUSTOMER lens: how does this land for the end user or buyer — what do they actually need and feel?',
     'Answer through a CHEAPEST-VIABLE lens: what is the simplest, cheapest path to 80% of the value?',
     'Answer through a SECOND-ORDER lens: knock-on effects, incentives created, and what this makes harder or easier later.',
+  ],
+  // RESEARCH set (2026-08-23). Unlike `default` and `trading`, this one is NOT
+  // assigned by seat position — see assignLenses(). One seat can see today's web
+  // and X; the rest can only reason from what they were trained on. Handing them
+  // the same lens would waste the only real asymmetry in the roster, and worse,
+  // would invite the prompt-bound seats to invent citations. So the lens a seat
+  // gets is decided by what it can actually reach.
+  //
+  // The pairing is deliberate: the searcher fetches, the others supply the priors
+  // and the scepticism to judge what was fetched. That is a division of labour by
+  // ACCESS, which adds decorrelation — a seat quoting today's web fails in
+  // different ways from a seat reasoning off training data.
+  research: [
+    'You are the EVIDENCE seat and the ONLY seat with live web and X search. Go and find out. Prioritise primary sources and material published recently over anything you already believe. Report what you FOUND, with citations, and state the date of the most recent source you relied on. Where the record is thin, contested, or contradicts itself, say so explicitly rather than smoothing it — a confident summary of weak evidence is the specific failure this seat exists to prevent. Do NOT defer to the other seats; they cannot see what you can see.',
+    'You are the PRIORS seat. You have NO search access and must not pretend otherwise: never cite a URL, a headline, or a statistic you cannot derive from your own training. Your job is the base rate — what is USUALLY true of situations like this, what the well-established mechanism is, and what a careful analyst would have expected BEFORE looking anything up. If the evidence seat reports something that contradicts a strong prior, the disagreement is the useful output, so state your prior plainly and quantify your confidence.',
+    'You are the SCEPTIC seat. You have NO search access. Assume the retrieved evidence is real but possibly MISLEADING, and attack the inference rather than the facts: selection effects, survivorship, a source with an interest, a correlation doing the work of a cause, a number whose denominator is wrong, or a recency illusion from one loud week. Name the single check that would most change your mind. Do not fabricate counter-evidence — argue from structure.',
+    'You are the SO-WHAT seat. You have NO search access. Assume the research is correct and ask what it actually changes for the operator: which decision flips, what becomes cheaper or riskier, and what would have to be true for this to be worth acting on at all. If the honest answer is that nothing changes, say that — an interesting finding that alters no decision is a cost, not a result.',
   ],
   trading: [
     'You are the BULL seat. Your job is to build the STRONGEST honest case FOR the position — for holding, adding, or extending the target. Argue it like a portfolio manager who wants to own this. Name the specific catalysts, the flows, the technical structure and the fundamental case that justify more upside, and say what price you think it reaches and by when. You are NOT permitted to conclude "sell" — if you genuinely believe the bull case is unsalvageable, say exactly which single fact kills it and stop. Do not hedge. Someone else is assigned to argue the other side.',
@@ -110,6 +127,11 @@ function parseArgs(argv) {
     // could reset lensSet and quietly take the privacy rule with it. A routing
     // decision about somebody's money must not ride on a presentation setting.
     else if (a === '--trading') { args.lensSet = 'trading'; args.trading = true; }
+    // --research: give the search-capable seat live web + X, and switch the lens
+    // table to EVIDENCE / PRIORS / SCEPTIC / SO-WHAT. Opt-in because Live Search
+    // is billed on TOP of tokens (budget.js SEARCH_CALL_USD) — a research mode
+    // that ran by default would quietly add a second meter to every convene.
+    else if (a === '--research') { args.lensSet = 'research'; args.research = true; }
     else if (a === '--lens-set') args.lensSet = String(argv[++i] || 'default');
     else if (a === '--timeout') args.timeoutS = Number(argv[++i]) || 240;
     else if (a === '--sol-effort') args.solEffort = ['medium', 'high', 'xhigh'].includes(String(argv[++i])) ? argv[i] : '';
@@ -180,6 +202,40 @@ function parseArgs(argv) {
  * The dispatch boundary refuses these seats independently, so this is the
  * ergonomic layer and dataTermsRefusal() is the guarantee.
  */
+/**
+ * Map seats to lenses.
+ *
+ * Positional for `default` and `trading` — those tables are ordered on purpose
+ * (BULL sits on seat 0 so the bull case gets the strongest advocate, which was a
+ * fix for one-sided trade councils).
+ *
+ * CAPABILITY-BASED for `research`, because position is the wrong key there. The
+ * EVIDENCE lens tells a seat it can search; giving it to a prompt-bound seat is
+ * the xai-narrating-a-repo-inspection bug all over again — a brief that asserts a
+ * capability the seat does not have, which produces confident fiction rather than
+ * an error. So the searcher is found from the roster (`SEARCH_SEATS`), not from
+ * the order the operator typed, and every other seat is explicitly told it cannot
+ * search and must not cite.
+ *
+ * @returns {{lens: string[], names: string[]|null, searchers: string[]}}
+ */
+function assignLenses(seats, lensSet) {
+  const table = LENS_SETS[lensSet] || LENS_SETS.default;
+  if (lensSet !== 'research') {
+    return {
+      lens: seats.map((_, i) => table[i % table.length]),
+      names: lensSet === 'trading' ? ['BULL', 'BEAR', 'QUANT', 'RISK', 'HISTORIAN'] : null,
+      searchers: [],
+    };
+  }
+  const [EVIDENCE, ...support] = table;
+  const searchers = seats.filter(id => SEARCH_SEATS.includes(id));
+  let s = 0;
+  const lens = seats.map(id => (SEARCH_SEATS.includes(id) ? EVIDENCE : support[s++ % support.length]));
+  const names = seats.map(id => (SEARCH_SEATS.includes(id) ? 'EVIDENCE' : ['PRIORS', 'SCEPTIC', 'SO-WHAT'][(seats.filter(x => !SEARCH_SEATS.includes(x)).indexOf(id)) % 3]));
+  return { lens, names, searchers };
+}
+
 function applyPrivacyPolicy(args, log = console.log) {
   if (args.trading) args.privateContent = true;
   if (!args.privateContent) return args;
@@ -395,16 +451,28 @@ async function main() {
   const seatOpts = seat => ({
     timeoutMs: Math.max(args.timeoutS, CLI_MIN_TIMEOUT_S[seat] || 0) * 1000,
     ...(seat === 'codex' && args.solEffort ? { effort: args.solEffort } : {}),
+    // Live Search reaches ONLY seats the roster says can search, and only under
+    // --research. Both halves matter: without the roster check a flag would ask a
+    // prompt-bound seat to search (silently ignored, but the lens would have
+    // promised evidence), and without the flag check every xai call would carry a
+    // second meter the operator never asked for.
+    ...(args.research && SEARCH_SEATS.includes(seat) ? { liveSearch: true } : {}),
   });
   const useLenses = args.lenses && args.to.length >= 3; // 1-2 seats = targeted ask, lenses off
-  const lensTable = LENS_SETS[args.lensSet] || LENS_SETS.default;
-  const lensNames = args.lensSet === 'trading'
-    ? ['BULL', 'BEAR', 'QUANT', 'RISK', 'HISTORIAN'] : null;
+  const assigned = assignLenses(args.to, args.lensSet);
+  const lensNames = assigned.names;
   const lensLabel = useLenses
     ? (lensNames
-        ? ` — ${args.to.map((s, i) => `${s}=${lensNames[i % lensNames.length]}`).join(' ')}`
+        ? ` — ${args.to.map((s, i) => `${s}=${lensNames[i]}`).join(' ')}`
         : ' (role lenses on)')
     : '';
+
+  // A research convene with nothing that can search is a research convene in name
+  // only: four seats reasoning from priors, one of them told to go and look. Say
+  // so rather than letting the label imply evidence that was never fetched.
+  if (args.research && assigned.searchers.length === 0) {
+    console.log('[council] ⚠ --research but NO seat in this roster has live search — every answer will come from training data, not from today. Add xai, or drop --research.');
+  }
   console.log(`[council] dispatching to ${args.to.join(', ')}${lensLabel} — results stream as seats finish …`);
 
   // DISCLOSURE. This line used to say what was held BACK; now that the Google
@@ -448,7 +516,7 @@ async function main() {
     const toolLine = SEAT_BY_ID[seat] && SEAT_BY_ID[seat].toolAccess === 'api'
       ? '\n[NO TOOLS] You have NO filesystem, command, or browsing access. Do not attempt or narrate file/tool operations — reason only from what is in this prompt, and state when a claim would need verification you cannot perform.'
       : '';
-    const lens = useLenses ? `${roleLine}${toolLine}\n[LENS — apply to your answer] ${lensTable[i % lensTable.length]}` : toolLine;
+    const lens = useLenses ? `${roleLine}${toolLine}\n[LENS — apply to your answer] ${assigned.lens[i]}` : toolLine;
     return dispatchWithRetry(seat, args.question + lens + decideSuffix, env, seatOpts(seat),
       { tag: args.tag, round: 1, kind: 'convene', verdicts: true, strictVerdict: args.decide, binaryVerdict: args.binary, decisionMode: args.binary ? 'binary' : (args.decide ? 'ternary' : undefined), forceBudget: args.forceBudget, privateContent: args.privateContent }).then(r => {
       printResult(r);
@@ -563,4 +631,4 @@ if (require.main === module) {
   });
 }
 
-module.exports = { parseArgs, applyPrivacyPolicy };
+module.exports = { parseArgs, applyPrivacyPolicy, assignLenses };

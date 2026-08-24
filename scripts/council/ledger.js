@@ -31,7 +31,7 @@ function buildEntry(result, { tag = '', promptChars = 0, round = undefined, kind
   // Recorded per row so month-to-date spend is a SUM of measurements rather than a
   // reconstruction: a ~$15 xAI charge could only be explained to ~$1.50 on 8/21
   // precisely because no row carried a cost. null = subscription-metered seat.
-  const cost = costOf(result.provider, { usage: result.usage, promptChars, outputChars });
+  const cost = costOf(result.provider, { usage: result.usage, promptChars, outputChars, providerUsd: result.providerUsd });
   return {
     ts: new Date().toISOString(),
     provider: result.provider,
@@ -49,6 +49,12 @@ function buildEntry(result, { tag = '', promptChars = 0, round = undefined, kind
     // True when priced off chars/4 rather than provider usage. Never mix the two
     // silently: one is a measurement, the other is a guess that reads LOW.
     usdEstimated: cost && cost.estimated ? true : undefined,
+    // Live search was used, so `usd` is xAI's OWN reported charge rather than a
+    // local calculation. Recorded because a search dispatch costs ~30x a plain one
+    // and that ratio must be visible when reading the ledger back.
+    searched: result.searched ? true : undefined,
+    searchCalls: result.searchCalls || undefined,
+    providerUsd: typeof result.providerUsd === 'number' ? result.providerUsd : undefined,
     round,
     kind,
     // 'binary' | 'ternary' | undefined(organic). Without this column, binary-mode

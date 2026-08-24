@@ -89,12 +89,32 @@ function isMetered(seatId) {
  * estimate ONLY so an un-instrumented provider still contributes something to the
  * running total — never so it can look free.
  *
- * @returns {{usd:number, inTok:number, outTok:number, estimated:boolean}|null}
+ * @returns {{usd:number, inTok:number, outTok:number, searchUsd:number, estimated:boolean}|null}
  *   null for subscription-metered seats (genuinely no per-call charge).
  */
-function costOf(seatId, { usage, promptChars = 0, outputChars = 0 } = {}) {
+
+function costOf(seatId, { usage, promptChars = 0, outputChars = 0, providerUsd = undefined } = {}) {
   const price = PRICING[seatId];
   if (!price) return null;
+
+  // PROVIDER-REPORTED DOLLARS BEAT ANY LOCAL ARITHMETIC.
+  //
+  // xAI's Agent Tools endpoint returns `usage.cost_in_usd_ticks` — what it
+  // actually charged, including server-side tool invocations this module has no
+  // rate card for. Added 2026-08-23 after a research call was first priced at a
+  // guessed $0.005 and measured at **$0.14**: the tool count varies per question
+  // (9 invocations on the test question) and the real driver is the ~67k input
+  // tokens search injects back into context. Two independent ways to be wrong,
+  // both removed by asking the provider instead of modelling it.
+  //
+  // This is the same principle that replaced chars/4 with reported token usage,
+  // one level up: prefer the measurement, fall back to the estimate, and never
+  // let the estimate masquerade as the measurement.
+  if (typeof providerUsd === 'number' && Number.isFinite(providerUsd)) {
+    const inTokR = Number((usage && (usage.input_tokens ?? usage.prompt_tokens)) || 0);
+    const outTokR = Number((usage && (usage.output_tokens ?? usage.completion_tokens)) || 0);
+    return { usd: providerUsd, inTok: inTokR, outTok: outTokR, searchUsd: 0, estimated: false, providerPriced: true };
+  }
 
   const reported =
     usage &&
@@ -172,6 +192,7 @@ function monthToDate(ledgerPath, now = new Date()) {
       usage: row.usage,
       promptChars: row.promptChars || 0,
       outputChars: row.outputChars || 0,
+      providerUsd: row.providerUsd,
     });
     if (c) {
       out.usd += c.usd;

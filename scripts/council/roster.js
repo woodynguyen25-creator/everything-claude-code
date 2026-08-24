@@ -95,8 +95,22 @@ const SEATS = [
     // to route sensitive prompts to a seat that may train on them, rather than
     // relying on a comment nobody reads. 'UNVERIFIED' is NOT 'safe'.
     dataTerms: 'verified-private', // xAI exposes a Zero Data Retention setting for eligible API teams.
+    // LIVE SEARCH — the only seat that can see anything that happened today.
+    //
+    // Declared HERE and not only in providers.js, for the reason the toolAccess
+    // field exists at all: a capability that lives in the runner is a capability
+    // nothing can check, and this roster has been burned by that twice (xai
+    // narrating a repo inspection it could not perform, every agy seat claiming
+    // tools it cannot use). If a second seat ever gains search — the likeliest
+    // being a BILLED Gemini key with Google Search grounding — it declares it
+    // here and the research lens picks it up with no other change.
+    //
+    // OFF unless --research asks for it, because it is METERED SEPARATELY from
+    // tokens: xAI bills Web/X Search per use, and budget.js models that as a
+    // per-call surcharge. Woody approved enabling it 2026-08-23.
+    liveSearch: true,
     tiers: ['LEAD'],
-    role: 'CONTRARIAN - red-team, premise attack, uncomfortable truths',
+    role: 'CONTRARIAN - red-team, premise attack, uncomfortable truths; the only seat with LIVE web + X search',
     lab: 'xai',
     model: 'grok-4.6',
     // UPGRADED 4.5 -> 4.6 on 2026-08-20. Measured n=3 on an identical reasoning
@@ -512,6 +526,25 @@ const SYNTH_CHAIN = SYNTH_PREFERENCE.filter(id => !byTier('BENCH').includes(id))
 const TRAINS_ON_INPUT_SEATS = SEATS.filter(s => s.dataTerms === 'TRAINS-ON-INPUT').map(s => s.id);
 
 /**
+ * Seats that can retrieve information that did not exist at training time.
+ *
+ * Added 2026-08-23 from Woody's framing: "utilise each model for its best
+ * strengths." The honest axis for that is NOT which model is smarter — that is
+ * unmeasured here, contested everywhere, and stale every release. It is what a
+ * model can REACH, which is verifiable today:
+ *   claude · codex · haiku  filesystem + shell (can check a claim against disk)
+ *   xai                     live web + X search
+ *   everything else         prompt-bound
+ *
+ * And specialising this way ADDS decorrelation rather than spending it: a seat
+ * quoting today's web fails differently from a seat reasoning off priors, which
+ * is the same orthogonal-error effect that made a weak model improve a frontier
+ * panel in arXiv 2603.20324. Routing by assumed intelligence would collapse the
+ * council toward one opinion; routing by access widens it.
+ */
+const SEARCH_SEATS = SEATS.filter(s => s.liveSearch).map(s => s.id);
+
+/**
  * Provider model-catalogue endpoints, for rot detection. A seat whose model id
  * has vanished from its provider is the exact failure this file exists to stop.
  *
@@ -543,4 +576,4 @@ const KNOWN_ALIASES = {
   deepseek: ['deepseek-chat'],
 };
 
-module.exports = { SEATS, SEAT_BY_ID, LEAD_SEATS, WORKER_SEATS, BENCHED_SEATS, TRAINS_ON_INPUT_SEATS, AGENT_SEATS, API_SEATS, SYNTH_PREFERENCE, SYNTH_CHAIN, CATALOGUES, KNOWN_ALIASES };
+module.exports = { SEATS, SEAT_BY_ID, LEAD_SEATS, WORKER_SEATS, BENCHED_SEATS, TRAINS_ON_INPUT_SEATS, SEARCH_SEATS, AGENT_SEATS, API_SEATS, SYNTH_PREFERENCE, SYNTH_CHAIN, CATALOGUES, KNOWN_ALIASES };

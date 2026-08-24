@@ -289,17 +289,94 @@ function runClaude(prompt, { timeoutMs = 300_000, model = 'claude-opus-5', seat 
   });
 }
 
-/** Shared OpenAI-compatible chat runner (DeepSeek, Cerebras, Groq). */
+/**
+ * xAI Agent Tools API — the ONLY path to live web + X search, as of 2026-08-23.
+ *
+ * NOT a variant of the chat runner: different endpoint (`/v1/responses`), different
+ * request key (`input`, not `messages`) and a different response shape (an `output`
+ * array of reasoning/tool-call/message items rather than `choices`).
+ *
+ * HOW THIS SHAPE WAS FOUND, because the first three guesses were wrong and the
+ * errors are worth keeping: `search_parameters` (the documented Live Search field)
+ * returns **HTTP 410 — "Live search is deprecated. Please switch to the Agent Tools
+ * API"**. `tools:[{type:'web_search'}]` on chat/completions returns 422 naming
+ * `live_search` as the accepted variant — and `live_search` ALSO returns 410. The
+ * feature is simply gone from chat/completions. Only /v1/responses serves it.
+ *
+ * ⚠ COST. Measured on the first real call: **$0.14 for one question** — 28x the
+ * $5/1k-calls rate this was originally priced at, and a tenth of the council's
+ * entire monthly spend. Two reasons the per-call model was wrong: the tool count
+ * varies (9 invocations on that one question, not 1), and the dominant cost is not
+ * the tools at all — it is the ~67k INPUT tokens the search results inject back
+ * into context. So this runner does not estimate: xAI returns
+ * `usage.cost_in_usd_ticks`, and that authoritative figure is passed straight
+ * through to the ledger. Ticks are 1e10 per USD (verified 2026-08-18 in the news
+ * layer, where reading them as 1e9 made an audit read 10x high).
+ */
+async function runXaiResponses(prompt, env, { timeoutMs = 300_000, model = 'grok-4.6' } = {}) {
+  const started = Date.now();
+  const key = env.XAI_API_KEY;
+  if (!key) return { provider: 'xai', model, ok: false, text: '', ms: 0, error: 'XAI_API_KEY missing' };
+  try {
+    const res = await fetch('https://api.x.ai/v1/responses', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${key}` },
+      signal: AbortSignal.timeout(timeoutMs),
+      body: JSON.stringify({
+        model,
+        input: [{ role: 'user', content: prompt }],
+        tools: [{ type: 'web_search' }, { type: 'x_search' }],
+      }),
+    });
+    const raw = await res.text();
+    if (!res.ok) {
+      // Include the body. `HTTP 410` alone cost a live convene and three probe
+      // rounds to diagnose; the body said exactly what to do in one line.
+      return { provider: 'xai', model, ok: false, text: '', ms: Date.now() - started, error: `HTTP ${res.status}: ${raw.slice(0, 200)}` };
+    }
+    const data = JSON.parse(raw);
+    const text = (data.output || [])
+      .filter(o => o.type === 'message')
+      .flatMap(o => (o.content || []).map(c => c.text || ''))
+      .join('')
+      .trim();
+    const u = data.usage || {};
+    const tools = u.server_side_tool_usage_details || {};
+    return {
+      provider: 'xai',
+      model,
+      ok: Boolean(text),
+      text,
+      ms: Date.now() - started,
+      usage: u,
+      searched: true,
+      // Provider-reported dollars. Never recomputed locally — see the cost note.
+      providerUsd: typeof u.cost_in_usd_ticks === 'number' ? u.cost_in_usd_ticks / 1e10 : undefined,
+      searchCalls: (tools.web_search_calls || 0) + (tools.x_search_calls || 0),
+      error: text ? undefined : 'empty response',
+    };
+  } catch (e) {
+    return { provider: 'xai', model, ok: false, text: '', ms: Date.now() - started, error: e.message };
+  }
+}
+
+/**
+ * Shared OpenAI-compatible chat runner (DeepSeek, Cerebras, Groq, xAI).
+ *
+ * Search does NOT live here — it is gone from chat/completions (HTTP 410) and
+ * moved to the Agent Tools API. See runXaiResponses above.
+ */
 async function runOpenAiCompat(provider, baseUrl, keyName, model, prompt, env, { timeoutMs = 120_000 } = {}) {
   const started = Date.now();
   const key = env[keyName];
   if (!key) return { provider, model, ok: false, text: '', ms: 0, error: `${keyName} missing` };
   try {
+    const payload = { model, messages: [{ role: 'user', content: prompt }], max_tokens: 4096 };
     const res = await fetch(`${baseUrl}/chat/completions`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${key}` },
       signal: AbortSignal.timeout(timeoutMs),
-      body: JSON.stringify({ model, messages: [{ role: 'user', content: prompt }], max_tokens: 4096 }),
+      body: JSON.stringify(payload),
     });
     if (!res.ok) return { provider, model, ok: false, text: '', ms: Date.now() - started, error: `HTTP ${res.status}` };
     const data = await res.json();
@@ -394,7 +471,12 @@ const SEATS = {
   // ONLY while xAI's data-sharing free credits are active). Seat id is 'xai',
   // not 'grok', to keep it one typo away from 'groq' (a different vendor).
   xai: (prompt, env, opts) =>
-    runOpenAiCompat('xai', 'https://api.x.ai/v1', 'XAI_API_KEY', 'grok-4.6', prompt, env, opts),
+    // --research routes this seat to the Agent Tools endpoint (live web + X) and
+    // everything else to plain chat. Opt-in because one search call measured
+    // **$0.14** against a whole-roster spend of ~$1.42/month.
+    (opts && opts.liveSearch)
+      ? runXaiResponses(prompt, env, opts)
+      : runOpenAiCompat('xai', 'https://api.x.ai/v1', 'XAI_API_KEY', 'grok-4.6', prompt, env, opts),
   // The `grok` ALIAS was deleted 2026-08-21, found by a cross-file consistency
   // audit. It undid this seat's own naming rule twice over: the id is 'xai'
   // precisely so a typo cannot confuse it with 'groq' — and the alias put
