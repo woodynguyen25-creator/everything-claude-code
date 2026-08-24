@@ -48,6 +48,7 @@
 const SEATS = [
   {
     id: 'claude',
+    vision: 'read-tool', // MEASURED 2026-08-23: claude -p, path in prompt -> Read tool, 3/3 on the probe.
     // AGENT seat: spawns a real CLI session, so it CAN read the repo, run commands
     // and verify claims. Ask it to check things.
     toolAccess: 'agent',
@@ -67,6 +68,7 @@ const SEATS = [
   },
   {
     id: 'codex',
+    vision: 'native',    // MEASURED 2026-08-23: `codex exec -i <file>` (native flag), 3/3 on the probe.
     // AGENT seat: spawns a real CLI session, so it CAN read the repo, run commands
     // and verify claims. Ask it to check things.
     toolAccess: 'agent',
@@ -86,6 +88,7 @@ const SEATS = [
   },
   {
     id: 'xai',
+    vision: 'native',    // MEASURED 2026-08-23: image_url on chat/completions AND input_image on /v1/responses, 3/3 both.
     // API seat: a raw HTTPS call. NO filesystem, NO commands, NO verification.
     // Asking it to 'check the tree' produces a confident stub — measured 2026-08-21,
     // when a brief told xai it had filesystem access and it burned a dispatch
@@ -129,6 +132,7 @@ const SEATS = [
   },
   {
     id: 'gemini',
+    vision: 'gemini-api',// MEASURED 2026-08-23: agy has NO image flag and its read_file is DENIED non-interactively, so this seat's vision runs over the Gemini API (inline_data), 3/3. Same lab, same dataTerms, different transport.
     // API seat — PROMPT-BOUND. It cannot check anything; do not ask it to.
     //
     // ⚠ This is NOT the obvious call and it was wrong for one hour on 2026-08-22.
@@ -213,6 +217,7 @@ const SEATS = [
   },
   {
     id: 'haiku',
+    vision: 'read-tool', // MEASURED 2026-08-23: same claude.exe path as the lead seat, 3/3 on the probe.
     // Same Anthropic CLI path as the claude seat — published retention controls,
     // consumer Max plan. Verified-private by the same evidence.
     dataTerms: 'verified-private',
@@ -244,6 +249,7 @@ const SEATS = [
   },
   {
     id: 'deepseek',
+    vision: false,       // MEASURED 2026-08-23: HTTP 400 "This model does not support image". An honest refusal — believe it.
     // API seat: a raw HTTPS call. NO filesystem, NO commands, NO verification.
     // Asking it to 'check the tree' produces a confident stub — measured 2026-08-21,
     // when a brief told xai it had filesystem access and it burned a dispatch
@@ -265,6 +271,7 @@ const SEATS = [
   },
   {
     id: 'cerebras',
+    vision: false,       // Dead seat (402 Payment Required); untested and irrelevant until funded.
     // API seat: a raw HTTPS call. NO filesystem, NO commands, NO verification.
     // Asking it to 'check the tree' produces a confident stub — measured 2026-08-21,
     // when a brief told xai it had filesystem access and it burned a dispatch
@@ -291,6 +298,7 @@ const SEATS = [
   },
   {
     id: 'groq',
+    vision: 'native',    // MEASURED 2026-08-23: qwen/qwen3.6-27b took image_url and scored 3/3. NOT assumed — this one was a surprise.
     // API seat: a raw HTTPS call. NO filesystem, NO commands, NO verification.
     // Asking it to 'check the tree' produces a confident stub — measured 2026-08-21,
     // when a brief told xai it had filesystem access and it burned a dispatch
@@ -318,6 +326,7 @@ const SEATS = [
   },
   {
     id: 'geminipro',
+    vision: false,       // agy transport: no image flag, read_file denied non-interactively. Hand-summon only.
     // API seat — PROMPT-BOUND. See the `gemini` seat for the canary evidence:
     // agy gates tool use behind an interactive approval a council dispatch can
     // never answer, so an implied file read kills the dispatch outright.
@@ -371,6 +380,7 @@ const SEATS = [
   },
   {
     id: 'agyopus',
+    vision: false,       // agy transport: no image flag, read_file denied non-interactively.
     // API seat — PROMPT-BOUND. See the `gemini` seat for the canary evidence.
     // Note what this costs: Opus-class reasoning on Google's wallet sounded like
     // free agent labour, but it cannot read a file, so it is free REASONING only.
@@ -397,6 +407,7 @@ const SEATS = [
   },
   {
     id: 'agyflash',
+    vision: false,       // agy transport: no image flag, read_file denied non-interactively.
     // API seat — PROMPT-BOUND. This seat supplied the SECOND canary that proved
     // the gate is the PATH and not the model: on 2026-08-22 it ran the same
     // "read roster.js" probe on a DIFFERENT model (3.6-flash-high) and failed
@@ -545,6 +556,37 @@ const TRAINS_ON_INPUT_SEATS = SEATS.filter(s => s.dataTerms === 'TRAINS-ON-INPUT
 const SEARCH_SEATS = SEATS.filter(s => s.liveSearch).map(s => s.id);
 
 /**
+ * Seats that can actually SEE an attached image, and by what mechanism.
+ *
+ * Added 2026-08-23 on Woody's instruction: "I want each council seat to be used
+ * to their maximum extent. If Gemini can read images, let Gemini do that." Until
+ * then every runner took a plain string and an attached image simply did not
+ * exist — the whole council was blind.
+ *
+ * Declared here for the same reason liveSearch and toolAccess are: a capability
+ * that lives in the runner is a capability nothing can check, and THIS roster has
+ * been burned by exactly that twice (xai narrating a repo inspection it could not
+ * perform; every agy seat claiming tools it cannot use). Every value below was
+ * measured on 2026-08-23 against one probe image carrying a codeword and exact
+ * shape counts — a seat had to report 'SALTMARSH-7, 3 red circles, 2 blue squares'
+ * to be marked capable. Nothing here is inferred from a vendor's marketing page.
+ *
+ *   'native'     the transport accepts the image itself (codex -i, image_url, input_image)
+ *   'read-tool'  a CLI agent opens the file from an absolute path in the prompt
+ *   'gemini-api' agy cannot carry an image, so this seat's vision uses the Gemini API
+ *   false        blind — measured, or structurally impossible on this transport
+ *
+ * THE RULE THAT MATTERS IS THE EXCLUSION, NOT THE LIST. A blind seat handed an
+ * image question does not say "I cannot see it" — it answers anyway, fluently and
+ * wrongly, which is the false-capability failure this file already carries two
+ * scars from. So council.js DROPS every blind seat from a convene that has images
+ * attached and prints why, rather than letting four confident paragraphs about a
+ * screenshot nobody looked at reach a verdict.
+ */
+const VISION_SEATS = SEATS.filter(s => s.vision).map(s => s.id);
+const VISION_MODE = Object.fromEntries(SEATS.filter(s => s.vision).map(s => [s.id, s.vision]));
+
+/**
  * Provider model-catalogue endpoints, for rot detection. A seat whose model id
  * has vanished from its provider is the exact failure this file exists to stop.
  *
@@ -576,4 +618,4 @@ const KNOWN_ALIASES = {
   deepseek: ['deepseek-chat'],
 };
 
-module.exports = { SEATS, SEAT_BY_ID, LEAD_SEATS, WORKER_SEATS, BENCHED_SEATS, TRAINS_ON_INPUT_SEATS, SEARCH_SEATS, AGENT_SEATS, API_SEATS, SYNTH_PREFERENCE, SYNTH_CHAIN, CATALOGUES, KNOWN_ALIASES };
+module.exports = { SEATS, SEAT_BY_ID, LEAD_SEATS, WORKER_SEATS, BENCHED_SEATS, TRAINS_ON_INPUT_SEATS, SEARCH_SEATS, VISION_SEATS, VISION_MODE, AGENT_SEATS, API_SEATS, SYNTH_PREFERENCE, SYNTH_CHAIN, CATALOGUES, KNOWN_ALIASES };

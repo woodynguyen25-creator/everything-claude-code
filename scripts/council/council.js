@@ -26,7 +26,7 @@
  */
 'use strict';
 
-const { loadEnv, SEATS } = require('./providers');
+const { loadEnv, SEATS, loadImages } = require('./providers');
 const { saveTranscript, readRecent, summarize, DEFAULT_LEDGER } = require('./ledger');
 const budget = require('./budget');
 const verdictBias = require('./verdict-bias');
@@ -37,7 +37,7 @@ const { dispatch, dispatchWithRetry } = require('./dispatch');
 
 // Tiered roster (2026-08-02, Woody's call) — see roster.js for the tier
 // rationale and the ledger evidence behind each seat's placement.
-const { LEAD_SEATS, WORKER_SEATS, BENCHED_SEATS, TRAINS_ON_INPUT_SEATS, SEARCH_SEATS, SYNTH_CHAIN, AGENT_SEATS, SEAT_BY_ID } = require('./roster');
+const { LEAD_SEATS, WORKER_SEATS, BENCHED_SEATS, TRAINS_ON_INPUT_SEATS, SEARCH_SEATS, VISION_SEATS, VISION_MODE, SYNTH_CHAIN, AGENT_SEATS, SEAT_BY_ID } = require('./roster');
 
 const DEFAULT_SEATS = LEAD_SEATS;
 
@@ -102,7 +102,7 @@ function truncate(text, max) {
 }
 
 function parseArgs(argv) {
-  const args = { question: '', to: DEFAULT_SEATS, tag: '', synth: false, timeoutS: 240, rounds: 1, lenses: true, lensSet: 'default', force: false, forceBudget: false, decide: false };
+  const args = { question: '', to: DEFAULT_SEATS, tag: '', synth: false, timeoutS: 240, rounds: 1, lenses: true, lensSet: 'default', force: false, forceBudget: false, decide: false, imagePaths: [] };
   const rest = [];
   for (let i = 0; i < argv.length; i += 1) {
     const a = argv[i];
@@ -133,6 +133,12 @@ function parseArgs(argv) {
     // that ran by default would quietly add a second meter to every convene.
     else if (a === '--research') { args.lensSet = 'research'; args.research = true; }
     else if (a === '--lens-set') args.lensSet = String(argv[++i] || 'default');
+    // --image <path>: attach a picture to the convene. Repeatable, and a single
+    // flag also accepts a comma-separated list. Seats that cannot see are DROPPED
+    // from the roster (applyVisionPolicy) rather than asked to guess.
+    else if (a === '--image' || a === '-i') {
+      args.imagePaths.push(...String(argv[++i] || '').split(',').map(x => x.trim()).filter(Boolean));
+    }
     else if (a === '--timeout') args.timeoutS = Number(argv[++i]) || 240;
     else if (a === '--sol-effort') args.solEffort = ['medium', 'high', 'xhigh'].includes(String(argv[++i])) ? argv[i] : '';
     // Skip the API-seat preflight and convene regardless (e.g. deliberately
@@ -247,6 +253,33 @@ function applyPrivacyPolicy(args, log = console.log) {
   return args;
 }
 
+/**
+ * Drop seats that cannot SEE from a convene that has images attached.
+ *
+ * This is the whole point of the vision work, and it is an EXCLUSION rather than
+ * a warning on purpose. --research only warns when no seat can search, because a
+ * prompt-bound seat asked a research question still answers usefully from priors
+ * — it is degraded, not lying. Vision is not like that. A blind seat handed
+ * "what is wrong with this mockup" does not answer "I cannot see it"; it writes
+ * four fluent paragraphs about a screenshot it never received, and those
+ * paragraphs then get tallied into a verdict. That is the same false-capability
+ * failure that already cost this project two incidents (xai narrating a repo
+ * inspection; agy seats claiming tools they cannot use), so it fails CLOSED.
+ */
+function applyVisionPolicy(args, images, log = console.log) {
+  if (!images.length) return args;
+  const blind = args.to.filter(id => !VISION_SEATS.includes(id));
+  if (blind.length) {
+    args.to = args.to.filter(id => VISION_SEATS.includes(id));
+    log(`[council] ${images.length} image(s) attached — dropped ${blind.join(', ')}: cannot receive images on their transport, and a blind seat answers anyway.`);
+  }
+  if (args.to.length) {
+    const how = args.to.map(id => `${id}=${VISION_MODE[id]}`).join(' ');
+    log(`[council] seeing seats: ${how}`);
+  }
+  return args;
+}
+
 function printLedger(n) {
   const recent = readRecent(n);
   if (recent.length === 0) {
@@ -334,7 +367,7 @@ async function main() {
 
   const args = parseArgs(argv);
   if (!args.question) {
-    console.error(`Usage: council.js "Question..." [--to seat,seat] [--workers] [--tag purpose] [--synth] [--rounds 2] [--no-lenses] [--trading] [--timeout 240] [--sol-effort medium|high|xhigh] [--force] [--force-budget] [--decide] [--binary] [--public]`);
+    console.error(`Usage: council.js "Question..." [--to seat,seat] [--workers] [--tag purpose] [--synth] [--rounds 2] [--no-lenses] [--trading] [--timeout 240] [--sol-effort medium|high|xhigh] [--force] [--force-budget] [--decide] [--binary] [--image path.png]`);
     console.error(`  LEAD (default): ${LEAD_SEATS.join(', ')}`);
     console.error(`  WORKER (--workers): ${WORKER_SEATS.join(', ')}`);
     console.error(`  BENCHED (callable via --to, excluded from rosters): ${BENCHED_SEATS.join(', ')}`);
@@ -348,6 +381,29 @@ async function main() {
     return;
   }
   applyPrivacyPolicy(args);
+
+  // Read and encode the attachments ONCE, before anything is dispatched. A bad
+  // path must fail here — not three seats into a convene that has already spent
+  // money and wall-clock on a question whose subject was never delivered.
+  let images = [];
+  try {
+    images = loadImages(args.imagePaths);
+  } catch (e) {
+    console.error(`[council] --image: ${e.message}`);
+    process.exitCode = 1;
+    return;
+  }
+  if (images.length) {
+    const mb = (images.reduce((n, i) => n + i.bytes, 0) / 1048576).toFixed(2);
+    console.log(`[council] attached ${images.length} image(s), ${mb}MB total`);
+  }
+  applyVisionPolicy(args, images);
+  if (!args.to.length) {
+    console.error('[council] every requested seat is blind and images were attached. Aborting rather than asking models to describe a picture they cannot see.');
+    console.error(`[council] seats that can see: ${VISION_SEATS.join(', ')}`);
+    process.exitCode = 2;
+    return;
+  }
 
   const env = loadEnv();
 
@@ -457,6 +513,11 @@ async function main() {
     // promised evidence), and without the flag check every xai call would carry a
     // second meter the operator never asked for.
     ...(args.research && SEARCH_SEATS.includes(seat) ? { liveSearch: true } : {}),
+    // Same two-part rule as liveSearch, for the same reason: the roster decides
+    // who is capable, the flag decides whether it happens. applyVisionPolicy has
+    // already dropped the blind seats, so this is belt-and-braces — but it is the
+    // braces that stop a future `--to deepseek --image` from silently degrading.
+    ...(images.length && VISION_SEATS.includes(seat) ? { images } : {}),
   });
   const useLenses = args.lenses && args.to.length >= 3; // 1-2 seats = targeted ask, lenses off
   const assigned = assignLenses(args.to, args.lensSet);
@@ -631,4 +692,4 @@ if (require.main === module) {
   });
 }
 
-module.exports = { parseArgs, applyPrivacyPolicy, assignLenses };
+module.exports = { parseArgs, applyPrivacyPolicy, applyVisionPolicy, assignLenses };

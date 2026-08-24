@@ -29,6 +29,69 @@ function loadEnv() {
   return env;
 }
 
+/**
+ * ── IMAGE ATTACHMENTS ───────────────────────────────────────────────────────
+ * Every runner below took a plain string until 2026-08-23, so an attached image
+ * did not exist: the council was blind. Each transport carries pictures its own
+ * way and there is no common shape, so the seat-capability map lives in roster.js
+ * (`vision`) and the MECHANICS live here.
+ *
+ * Two rules, both learned the hard way in this file:
+ *  1. NEVER silently drop an image. A transport that cannot carry one returns an
+ *     ERROR, so the operator sees a failed seat instead of a fluent answer about
+ *     a screenshot nobody looked at. Silent degradation is how the xai
+ *     false-capability bug shipped.
+ *  2. Read and encode ONCE per convene, not once per seat. Five seats sharing a
+ *     3MB screenshot should not mean five reads and five base64 passes.
+ */
+const IMAGE_MIME = {
+  '.png': 'image/png', '.jpg': 'image/jpeg', '.jpeg': 'image/jpeg',
+  '.gif': 'image/gif', '.webp': 'image/webp',
+};
+
+/** Hard ceiling per image. Above this, providers start returning opaque 400s. */
+const MAX_IMAGE_BYTES = 12 * 1024 * 1024;
+
+/**
+ * Validate + read + base64 a list of paths ONCE. Throws with an operator-readable
+ * message — callers validate at ARG-PARSE time so a bad path fails before any
+ * seat is dispatched, never halfway through a convene that already cost money.
+ */
+function loadImages(paths = []) {
+  return paths.map(raw => {
+    const file = path.resolve(String(raw));
+    if (!fs.existsSync(file)) throw new Error(`image not found: ${file}`);
+    const ext = path.extname(file).toLowerCase();
+    const mime = IMAGE_MIME[ext];
+    if (!mime) throw new Error(`unsupported image type "${ext || '(none)'}" for ${file} — use ${Object.keys(IMAGE_MIME).join(', ')}`);
+    const buf = fs.readFileSync(file);
+    if (buf.length > MAX_IMAGE_BYTES) {
+      throw new Error(`image too large: ${file} is ${(buf.length / 1048576).toFixed(1)}MB, limit ${MAX_IMAGE_BYTES / 1048576}MB`);
+    }
+    return { file, mime, b64: buf.toString('base64'), bytes: buf.length };
+  });
+}
+
+/** OpenAI-style content parts (chat/completions: DeepSeek-shape image_url). */
+function imagePartsOpenAi(images) {
+  return images.map(i => ({ type: 'image_url', image_url: { url: `data:${i.mime};base64,${i.b64}` } }));
+}
+
+/**
+ * Prompt suffix for CLI agents that read images off DISK rather than accepting
+ * them inline (the claude/haiku seats). The wording is deliberately imperative:
+ * a soft "you may look at" gets skipped often enough to matter, and a seat that
+ * skips the image still answers, which is the failure mode we are avoiding.
+ */
+function imagePromptSuffix(images) {
+  if (!images.length) return '';
+  const list = images.map(i => `  - ${i.file}`).join('\n');
+  return `\n\n[ATTACHED IMAGES — ${images.length}]\n`
+    + 'Read each of these files before answering. They are part of the question, not background:\n'
+    + list
+    + '\nIf you cannot open one, say so explicitly instead of describing it.';
+}
+
 function stripAnsi(text) {
   // eslint-disable-next-line no-control-regex
   return text.replace(/\[[0-9;]*m/g, '');
@@ -63,7 +126,7 @@ const CODEX_JS = path.join(
 );
 
 /** GPT-5.6 Sol via local codex CLI; prompt over stdin to avoid Windows quoting issues. */
-function runCodex(prompt, { timeoutMs = 900_000, effort = 'high' } = {}) {
+function runCodex(prompt, { timeoutMs = 900_000, effort = 'high', images = [] } = {}) {
   const started = Date.now();
   return new Promise(resolve => {
     const done = (ok, text, error) =>
@@ -72,7 +135,12 @@ function runCodex(prompt, { timeoutMs = 900_000, effort = 'high' } = {}) {
     // NOTE: 'gpt-5.5-codex' 400s on ChatGPT-account codex; plain 'gpt-5.6-sol' is the valid id.
     // Pin effort=high explicitly so the council seat stays fast + predictable regardless of
     // whatever ~/.codex/config.toml drifts to (it had crept to 'xhigh' = the timeout cause, 2026-07-26).
-    const codexArgs = ['exec', '--skip-git-repo-check', '--model', 'gpt-5.6-sol', '-c', `model_reasoning_effort=${effort}`, '-'];
+    // `-i/--image` is codex's NATIVE attachment flag (verified 2026-08-23:
+    // `codex exec -i probe.png -` returned the probe codeword and both shape
+    // counts). The prompt still goes over stdin — passing it as an argv arg with
+    // stdin piped makes codex read stdin instead and report "No prompt provided".
+    const imageArgs = images.flatMap(i => ['-i', i.file]);
+    const codexArgs = ['exec', '--skip-git-repo-check', '--model', 'gpt-5.6-sol', '-c', `model_reasoning_effort=${effort}`, ...imageArgs, '-'];
     const child = fs.existsSync(CODEX_JS)
       ? spawn(process.execPath, [CODEX_JS, ...codexArgs], { shell: false, windowsHide: true })
       : spawn('codex', codexArgs, { shell: true, windowsHide: true }); // shim fallback; args are fixed strings
@@ -195,8 +263,19 @@ function isTransientAgyError(msg = '') {
  * Requires a ONE-TIME interactive `agy` login (creds in Windows Credential
  * Manager under LegacyGeneric:target=gemini:antigravity, NOT in ~/.gemini).
  */
-function runAgy(prompt, { seat = 'geminipro', timeoutMs = 300_000, model = AGY_PRO, effort = '' } = {}) {
+function runAgy(prompt, { seat = 'geminipro', timeoutMs = 300_000, model = AGY_PRO, effort = '', images = [] } = {}) {
   const started = Date.now();
+  // agy CANNOT carry an image: `agy --help` exposes no image flag, and asking it
+  // to open a path non-interactively dies with
+  //   permission check failed for read_file … user denied permission
+  // (measured 2026-08-23). The fix is NOT --dangerously-skip-permissions.
+  // Fail loudly rather than answering blind — see the roster's vision docblock.
+  if (images.length) {
+    return Promise.resolve({
+      provider: seat, model: model || AGY_PRO, ok: false, text: '', ms: 0,
+      error: `[vision] seat "${seat}" runs on the agy CLI, which cannot receive images. Route Gemini vision through the gemini seat (Gemini API) instead.`,
+    });
+  }
   const label = model || AGY_PRO;
   return new Promise(resolve => {
     const done = (ok, text, error) =>
@@ -263,7 +342,12 @@ function runAgy(prompt, { seat = 'geminipro', timeoutMs = 300_000, model = AGY_P
  */
 const CLAUDE_BIN = path.join(process.env.USERPROFILE || '', '.local', 'bin', 'claude.exe');
 
-function runClaude(prompt, { timeoutMs = 300_000, model = 'claude-opus-5', seat = 'claude' } = {}) {
+function runClaude(prompt, { timeoutMs = 300_000, model = 'claude-opus-5', seat = 'claude', images = [] } = {}) {
+  // claude.exe has no --image flag (checked 2026-08-23), but in -p mode it still
+  // has its Read tool, which renders images visually. So the attachment is an
+  // absolute path in the prompt. Verified 3/3 on the probe for BOTH claude-opus-5
+  // and claude-haiku-4-5 — the worker seat can see too.
+  prompt = images.length ? prompt + imagePromptSuffix(images) : prompt;
   const started = Date.now();
   return new Promise(resolve => {
     const done = (ok, text, error) =>
@@ -313,7 +397,7 @@ function runClaude(prompt, { timeoutMs = 300_000, model = 'claude-opus-5', seat 
  * through to the ledger. Ticks are 1e10 per USD (verified 2026-08-18 in the news
  * layer, where reading them as 1e9 made an audit read 10x high).
  */
-async function runXaiResponses(prompt, env, { timeoutMs = 300_000, model = 'grok-4.6' } = {}) {
+async function runXaiResponses(prompt, env, { timeoutMs = 300_000, model = 'grok-4.6', images = [] } = {}) {
   const started = Date.now();
   const key = env.XAI_API_KEY;
   if (!key) return { provider: 'xai', model, ok: false, text: '', ms: 0, error: 'XAI_API_KEY missing' };
@@ -324,7 +408,17 @@ async function runXaiResponses(prompt, env, { timeoutMs = 300_000, model = 'grok
       signal: AbortSignal.timeout(timeoutMs),
       body: JSON.stringify({
         model,
-        input: [{ role: 'user', content: prompt }],
+        // /v1/responses uses `input_image`, NOT the chat endpoint's `image_url`.
+        // Both were verified 3/3 on the probe (2026-08-23); this endpoint is the
+        // one that also carries the search tools, so a --research convene can
+        // look at a chart AND check today's web in the same call.
+        input: [{
+          role: 'user',
+          content: images.length
+            ? [{ type: 'input_text', text: prompt },
+               ...images.map(i => ({ type: 'input_image', image_url: `data:${i.mime};base64,${i.b64}` }))]
+            : prompt,
+        }],
         tools: [{ type: 'web_search' }, { type: 'x_search' }],
       }),
     });
@@ -361,17 +455,81 @@ async function runXaiResponses(prompt, env, { timeoutMs = 300_000, model = 'grok
 }
 
 /**
+ * Gemini VISION via the AI-Studio REST key — a deliberately NARROW restoration of
+ * the runGemini deleted on 2026-08-22.
+ *
+ * Why it had to come back: the `gemini` seat runs on the agy CLI, and agy simply
+ * cannot carry a picture. `agy --help` exposes no image flag, and asking it to
+ * open a path non-interactively dies with "permission check failed for read_file
+ * … user denied permission" (measured 2026-08-23). The only lever that would
+ * change that is --dangerously-skip-permissions, which is forbidden here and
+ * would be a wildly disproportionate blast radius for wanting to show a model a
+ * screenshot. So the Google seat keeps agy for text and borrows the API for
+ * images. Same lab, same seat, different wire.
+ *
+ * Scope discipline — this is NOT the general-purpose seat coming back:
+ *   - Used ONLY when images are attached; text convenes still go through agy,
+ *     which is where the sub-metered $0 economics and the bake-off winner live.
+ *   - The model is a FLASH id. Verified 2026-08-23 on this key: gemini-flash-latest
+ *     and gemini-3-flash-preview both scored 3/3 on the probe. The Pro ids remain
+ *     429/404 on the consumer plan — do not "upgrade" this to a Pro id, that is
+ *     the exact mistake the deleted docblock warns about.
+ *   - dataTerms are UNCHANGED (TRAINS-ON-INPUT): the free API tier trains on input
+ *     just as agy does, so this opens NO new privacy hole and --private still
+ *     drops the seat by the same derived rule.
+ */
+const GEMINI_VISION_MODEL = 'gemini-flash-latest';
+
+async function runGeminiVision(prompt, env, { timeoutMs = 300_000, images = [], seat = 'gemini', model = GEMINI_VISION_MODEL } = {}) {
+  const started = Date.now();
+  const key = env.GEMINI_API_KEY;
+  const label = `${model} (vision)`;
+  if (!key) return { provider: seat, model: label, ok: false, text: '', ms: 0, error: 'GEMINI_API_KEY missing (needed for the Gemini vision path; agy cannot carry images)' };
+  try {
+    const parts = [{ text: prompt }, ...images.map(i => ({ inline_data: { mime_type: i.mime, data: i.b64 } }))];
+    const res = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${key}`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      signal: AbortSignal.timeout(timeoutMs),
+      body: JSON.stringify({ contents: [{ parts }] }),
+    });
+    const raw = await res.text();
+    // Body included on purpose: a bare "HTTP 429" here reads as a dead key when it
+    // is usually the free-tier minute quota, and that ambiguity cost a debugging
+    // pass on the Pro ids in August.
+    if (!res.ok) return { provider: seat, model: label, ok: false, text: '', ms: Date.now() - started, error: `HTTP ${res.status}: ${raw.slice(0, 200)}` };
+    const data = JSON.parse(raw);
+    const text = (data.candidates?.[0]?.content?.parts || []).map(pt => pt.text || '').join('').trim();
+    return {
+      provider: seat, model: label, ok: Boolean(text), text, ms: Date.now() - started,
+      usage: data.usageMetadata, error: text ? undefined : 'empty response',
+    };
+  } catch (e) {
+    return { provider: seat, model: label, ok: false, text: '', ms: Date.now() - started, error: e.message };
+  }
+}
+
+/**
  * Shared OpenAI-compatible chat runner (DeepSeek, Cerebras, Groq, xAI).
  *
  * Search does NOT live here — it is gone from chat/completions (HTTP 410) and
  * moved to the Agent Tools API. See runXaiResponses above.
  */
-async function runOpenAiCompat(provider, baseUrl, keyName, model, prompt, env, { timeoutMs = 120_000 } = {}) {
+async function runOpenAiCompat(provider, baseUrl, keyName, model, prompt, env, { timeoutMs = 120_000, images = [] } = {}) {
   const started = Date.now();
   const key = env[keyName];
   if (!key) return { provider, model, ok: false, text: '', ms: 0, error: `${keyName} missing` };
   try {
-    const payload = { model, messages: [{ role: 'user', content: prompt }], max_tokens: 4096 };
+    // A string content field is text-only. Images require the ARRAY form, which
+    // only some models on this shared runner accept — deepseek-chat answers
+    // HTTP 400 "This model does not support image" (measured 2026-08-23), while
+    // groq's qwen3.6-27b and xai's grok-4.6 both scored 3/3 on the probe. The
+    // roster's `vision` flag is what decides who is handed one; this runner just
+    // carries it. Never send an image to a seat the roster marks blind.
+    const content = images.length
+      ? [{ type: 'text', text: prompt }, ...imagePartsOpenAi(images)]
+      : prompt;
+    const payload = { model, messages: [{ role: 'user', content }], max_tokens: 4096 };
     const res = await fetch(`${baseUrl}/chat/completions`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${key}` },
@@ -420,7 +578,11 @@ const SEATS = {
   // AI Studio API key onto agy/3.7-flash-high, which won a measured 2x2 bake-off
   // against 3.1-pro-high (same 4/4 accuracy, 1.7-7.7x faster, no 97s tail). Full
   // evidence and the ledger-discontinuity warning live in roster.js.
-  gemini: (prompt, env, opts) => runAgy(prompt, { seat: 'gemini', model: AGY_FLASH, ...opts }),
+  // Images bypass agy entirely — it cannot carry them (see runGeminiVision).
+  // Text keeps the agy path, which is the bake-off winner and costs $0.
+  gemini: (prompt, env, opts) => ((opts && opts.images && opts.images.length)
+    ? runGeminiVision(prompt, env, { seat: 'gemini', ...opts })
+    : runAgy(prompt, { seat: 'gemini', model: AGY_FLASH, ...opts })),
   // geminipro — Gemini 3.1 Pro via agy OAuth. REVIVED 2026-08-20 by the student
   // AI Pro plan, then BENCHED 2026-08-21: antigravity.google/terms says
   // Interactions train Google's ML AND "employees and contractors may access,
@@ -487,4 +649,4 @@ const SEATS = {
   // every gate keyed on seat records fails open for it.
 };
 
-module.exports = { loadEnv, parseCodexOutput, stripAnsi, isTransientAgyError, SEATS };
+module.exports = { loadEnv, parseCodexOutput, stripAnsi, isTransientAgyError, SEATS, loadImages, MAX_IMAGE_BYTES, IMAGE_MIME };
