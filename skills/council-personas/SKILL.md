@@ -1,10 +1,23 @@
 ---
-name: council
-description: Convene a four-voice council for ambiguous decisions, tradeoffs, and go/no-go calls. Use when multiple valid paths exist and you need structured disagreement before choosing.
+name: council-personas
+description: Convene a four-voice SUBAGENT council (in-context Claude + Skeptic + Pragmatist + Critic personas) for ambiguous decisions, tradeoffs, and go/no-go calls. Portable — needs nothing but Claude Code. NOTE: personas of one model are correlated and will not disagree as independently as separate vendors; if a real multi-model council CLI is installed, prefer it.
 origin: ECC
 ---
 
-# Council
+# Council (personas)
+
+> **Renamed from `council` on 2026-08-24 to end a name collision.** A separate,
+> privately-installed skill also called `council` drives a real multi-model CLI
+> (independent frontier models from different vendors). Two skills answering to
+> one name is ambiguous at best and an overwrite at worst — this one is now
+> `council-personas`, which is also the more accurate description of what it does.
+>
+> **Know the tradeoff before choosing this one.** These four voices are the SAME
+> model wearing four hats. That buys structured disagreement and costs nothing
+> extra, but personas of one model share its blind spots and correlate far more
+> than four vendors would. Use this when portability matters — it needs nothing but
+> Claude Code. Reach for a genuine multi-model panel when the decision is expensive
+> enough that correlated agreement would be dangerous.
 
 Convene four advisors for ambiguous decisions:
 - the in-context Claude voice
