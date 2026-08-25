@@ -33,7 +33,7 @@ const verdictBias = require('./verdict-bias');
 // THE dispatch boundary (2026-08-21): every physical provider attempt goes through
 // dispatch.js and gets a ledger row - retries, preflights and synthesis fallbacks
 // included. council.js never calls SEATS directly for anything that bills.
-const { dispatch, dispatchWithRetry } = require('./dispatch');
+const { dispatch, dispatchWithRetry, isSandboxBlocked } = require('./dispatch');
 
 // Tiered roster (2026-08-02, Woody's call) — see roster.js for the tier
 // rationale and the ledger evidence behind each seat's placement.
@@ -676,6 +676,19 @@ async function main() {
     console.log('[council] Diagnose with: node scripts/council/health.js');
     console.log(`${'!'.repeat(64)}`);
     process.exitCode = 1;
+
+    // Convened from inside the Codex app's sandbox (2026-08-24): every CLI seat
+    // dies on spawn EPERM while the API seats answer, and without this the run
+    // reads as an ordinary shortfall. It is not — the caller can fix it by
+    // re-running unsandboxed, and Sol's AGENTS.md tells it to do exactly that on
+    // seeing this banner / exit 3.
+    const blocked = dead.filter(isSandboxBlocked);
+    if (blocked.length > 0) {
+      console.log(`\n[council] SANDBOX-BLOCKED — ${blocked.length} seat(s) could not START because this process cannot spawn children: ${blocked.map(b => b.provider).join(', ')}`);
+      console.log('[council] This is the Codex sandbox (workspace-write denies grandchild spawn), not a seat outage.');
+      console.log('[council] FIX: re-run this exact command with escalated (unsandboxed) permissions. Do not treat the answering seats as a quorum.');
+      process.exitCode = 3;
+    }
   }
 }
 

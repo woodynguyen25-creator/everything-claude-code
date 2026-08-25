@@ -49,9 +49,34 @@ const END = '<!-- END GENERATED ROSTER -->';
  * Consequence, accepted knowingly: this file is the only copy and is not in git. If
  * it should be versioned, it belongs in a PRIVATE repo, not this one.
  */
+const HOME = process.env.USERPROFILE || process.env.HOME || '';
 const TARGETS = [
-  path.join(process.env.USERPROFILE || process.env.HOME || '', '.claude', 'skills', 'council', 'SKILL.md'),
+  path.join(HOME, '.claude', 'skills', 'council', 'SKILL.md'),
 ];
+
+/**
+ * Codex (Sol) loads its OWN copy of every skill from ~/.codex/skills — the ECC
+ * compat sync copies Claude skills across ONCE and never overwrites
+ * (codex-compat/manifest.json: overwriteExistingCodexSkills=false). Measured
+ * 2026-08-24: the Codex council doc was frozen at 2026-07-16 — no --image, no
+ * --research, the OLD privacy default — while the Claude doc had been regenerated
+ * three times. Same bug as the one this file exists for, one directory over.
+ *
+ * So the Codex copy is not a second target with its own markers: it is a byte
+ * MIRROR of the Claude doc, written by this script and checked by the test suite.
+ * Absent ~/.codex → nothing to mirror (CI, other machines) and that is not a failure.
+ */
+const MIRRORS = [
+  { from: TARGETS[0], to: path.join(HOME, '.codex', 'skills', 'council', 'SKILL.md') },
+];
+
+function mirrorStatus(from, to) {
+  if (!fs.existsSync(from)) return { from, to, status: 'absent' };
+  if (!fs.existsSync(path.dirname(path.dirname(to)))) return { from, to, status: 'absent' }; // no ~/.codex/skills
+  const src = fs.readFileSync(from, 'utf8');
+  if (fs.existsSync(to) && fs.readFileSync(to, 'utf8') === src) return { from, to, status: 'current' };
+  return { from, to, status: 'stale', next: src };
+}
 
 const seat = id => SEATS.find(s => s.id === id);
 
@@ -148,10 +173,28 @@ function main() {
       console.error(`[sync-skill-doc] ${file}: STALE — run \`node scripts/council/sync-skill-doc.js\``);
     }
   }
+  // Mirror step runs AFTER the marker rewrite so Codex receives the regenerated doc.
+  for (const m of MIRRORS) {
+    const res = mirrorStatus(m.from, m.to);
+    if (res.status === 'absent') continue;
+    if (res.status === 'current') {
+      if (!check) console.log(`[sync-skill-doc] ${m.to}: mirror already current`);
+      continue;
+    }
+    stale += 1;
+    if (!check) {
+      fs.mkdirSync(path.dirname(m.to), { recursive: true });
+      fs.writeFileSync(m.to, res.next);
+      written += 1;
+      console.log(`[sync-skill-doc] ${m.to}: MIRRORED from ${m.from}`);
+    } else {
+      console.error(`[sync-skill-doc] ${m.to}: STALE MIRROR — run \`node scripts/council/sync-skill-doc.js\``);
+    }
+  }
   if (check && stale) process.exit(1);
   if (!check) console.log(`[sync-skill-doc] done — ${written} file(s) written`);
 }
 
 if (require.main === module) main();
 
-module.exports = { buildBlock, apply, BEGIN, END, TARGETS };
+module.exports = { buildBlock, apply, mirrorStatus, BEGIN, END, TARGETS, MIRRORS };

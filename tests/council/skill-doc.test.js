@@ -29,7 +29,7 @@ const path = require('node:path');
 const {
   SEATS, LEAD_SEATS, WORKER_SEATS, BENCHED_SEATS, VISION_SEATS, SEARCH_SEATS,
 } = require('../../scripts/council/roster');
-const { buildBlock, apply, BEGIN, END, TARGETS } = require('../../scripts/council/sync-skill-doc');
+const { buildBlock, apply, mirrorStatus, BEGIN, END, TARGETS, MIRRORS } = require('../../scripts/council/sync-skill-doc');
 
 let passed = 0;
 let failed = 0;
@@ -160,6 +160,47 @@ test('an installed skill doc says in its frontmatter that the seats can see', ()
     const src = fs.readFileSync(f, 'utf8');
     const fm = src.slice(0, src.indexOf('---', 4));
     assert.match(fm, /image/i, `${f}: frontmatter description must mention image capability`);
+  }
+});
+
+console.log('\n=== Council skill doc: the Codex mirror ===\n');
+
+test('a mirror that matches its source reports "current"; a drifted one reports "stale" with the source as the fix', () => {
+  const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'council-mirror-'));
+  const from = path.join(dir, 'claude', 'council', 'SKILL.md');
+  const to = path.join(dir, 'codex', 'skills', 'council', 'SKILL.md');
+  fs.mkdirSync(path.dirname(from), { recursive: true });
+  fs.mkdirSync(path.dirname(to), { recursive: true });
+  fs.writeFileSync(from, `# doc\n${block}\n`);
+  fs.writeFileSync(to, '# the 2026-07-16 copy: no --image, no --research, old privacy default\n');
+  const res = mirrorStatus(from, to);
+  assert.equal(res.status, 'stale');
+  assert.equal(res.next, fs.readFileSync(from, 'utf8'), 'the fix must be the byte-exact source doc');
+  fs.writeFileSync(to, res.next);
+  assert.equal(mirrorStatus(from, to).status, 'current');
+  fs.rmSync(dir, { recursive: true, force: true });
+});
+
+test('a machine with no ~/.codex/skills is "absent", never a failure', () => {
+  const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'council-mirror-'));
+  const from = path.join(dir, 'SKILL.md');
+  fs.writeFileSync(from, '# doc\n');
+  assert.equal(mirrorStatus(from, path.join(dir, 'no-such-codex', 'skills', 'council', 'SKILL.md')).status, 'absent');
+  fs.rmSync(dir, { recursive: true, force: true });
+});
+
+test('the installed Codex council skill is a byte-exact mirror of the Claude one', () => {
+  // The Codex copy sat 5 weeks behind (2026-07-16 → 2026-08-24) because the compat
+  // sync never overwrites. Sol answered council questions from a roster that had no
+  // eyes, no search, and the inverted privacy default. This is the assertion that
+  // turns that into a test failure the same day.
+  const present = MIRRORS.map(m => mirrorStatus(m.from, m.to)).filter(r => r.status !== 'absent');
+  if (present.length === 0) {
+    console.log('    (no ~/.codex on this machine — nothing to mirror)');
+    return;
+  }
+  for (const r of present) {
+    assert.equal(r.status, 'current', `${r.to} is ${r.status} — run: node scripts/council/sync-skill-doc.js`);
   }
 });
 

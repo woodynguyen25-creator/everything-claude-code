@@ -173,9 +173,31 @@ function looksDegenerate(text = '') {
 }
 
 /** A failed call worth ONE more attempt. Never codex: its failures are timeouts, and a retry just burns the clock twice. */
+/**
+ * Codex's Windows sandbox (workspace-write, "unelevated") denies process creation
+ * to grandchildren: EVERY child_process.spawn from a node started inside it fails
+ * with EPERM — claude.exe, agy, even `node codex.js --version` (measured
+ * 2026-08-24, three of three). So when Sol convenes the council from the Codex
+ * app, the API seats answer and every CLI seat dies as a one-line "threw: spawn
+ * EPERM" inside a degraded-quorum footer that still exits like an ordinary
+ * shortfall. Name it, so the caller can re-run unsandboxed instead of reading a
+ * 1-of-4 council as a verdict.
+ */
+const SANDBOX_BLOCKED = 'SANDBOX-BLOCKED';
+function classifySeatError(message) {
+  const m = String(message || '');
+  if (m.startsWith(SANDBOX_BLOCKED)) return m; // idempotent: the throw path and the result path both classify
+  if (/spawn\s+\S*\s*EPERM|\bEPERM\b/.test(m)) {
+    return `${SANDBOX_BLOCKED}: ${m} — CLI seats cannot start inside the Codex sandbox; re-run this exact command with escalated (unsandboxed) permissions`;
+  }
+  return m;
+}
+const isSandboxBlocked = result => !result.ok && String(result.error || '').startsWith(SANDBOX_BLOCKED);
+
 function isRetryable(result) {
   if (result.ok) return false;
   if (result.provider === 'codex') return false;
+  if (isSandboxBlocked(result)) return false; // the sandbox does not change its mind on attempt two
   // Deterministic refusals (privacy gate, budget cap, missing key, an agy
   // entitlement refusal) return the same answer every time — a retry is pure
   // noise, and retrying a dead entitlement HIDES it. agy transient network
@@ -229,8 +251,9 @@ async function dispatch(seat, prompt, env, opts = {}, meta = {}, seatsMap = SEAT
   } catch (e) {
     // A thrown runner is itself a failed dispatch — it still gets a row, because
     // a throw AFTER the provider accepted the request may still have billed.
-    result = { provider: seat, model: '?', ok: false, text: '', ms: 0, error: `threw: ${e.message}` };
+    result = { provider: seat, model: '?', ok: false, text: '', ms: 0, error: classifySeatError(`threw: ${e.message}`) };
   }
+  if (!result.ok) result = { ...result, error: classifySeatError(result.error) };
   // A repetition loop is a FAILURE wearing an answer's clothes. Demote it before
   // anything downstream (quorum count, verdict tally, synthesis input) can treat
   // it as content. The text is kept on the result for forensics.
@@ -265,4 +288,7 @@ async function dispatchWithRetry(seat, prompt, env, opts = {}, meta = {}, seatsM
   return dispatch(seat, prompt, env, opts, { ...meta, retried: true }, seatsMap);
 }
 
-module.exports = { dispatch, dispatchWithRetry, extractVerdict, isRetryable, looksDegenerate, dataTermsRefusal };
+module.exports = {
+  dispatch, dispatchWithRetry, extractVerdict, isRetryable, looksDegenerate, dataTermsRefusal,
+  classifySeatError, isSandboxBlocked, SANDBOX_BLOCKED,
+};
