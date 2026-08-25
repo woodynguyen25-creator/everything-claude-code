@@ -55,8 +55,38 @@ test('the block keeps the evaluate-only trading rule and bans the level-correlat
   assert.match(block, /NEVER the MCP `price_correlation`/);
 });
 
-test('the block stays small enough to live in an always-loaded file', () => {
-  assert.ok(block.length < 4000, `block is ${block.length} bytes; AGENTS.md is loaded every turn — keep it under 4KB`);
+test('the block stays within its stated always-loaded budget', () => {
+  // Raised 4KB -> 16KB on 2026-08-25, deliberately, when the curated skill-routing
+  // table was added. The trade was measured, not assumed: Codex reported "All skill
+  // descriptions were removed and 982 additional skills were not included" at 1,940
+  // installed skills, so roughly half the catalogue reaches Sol as bare names. The
+  // table costs ~7KB and is the only channel that survives that budget.
+  //
+  // Total always-loaded cost after the change: ~11KB capability + ~9KB doctrine +
+  // ~27KB OMX body = ~46KB, about 12k tokens against a 1M window (~1.2%). Worth it
+  // for the operating contract; the ceiling stays so runaway growth still fails.
+  assert.ok(block.length < 16000, `block is ${block.length} bytes; AGENTS.md is loaded every turn — keep it under 16KB`);
+});
+
+test('the skill routing table carries USE WHEN guidance, not just names', () => {
+  // A bare name is what the skill budget already leaves Sol with; reproducing bare
+  // names here would add bytes and no information.
+  if (!block.includes('SKILL ROUTING')) {
+    console.log('    (no skills-active.tsv on this machine — routing table not generated)');
+    return;
+  }
+  assert.match(block, /\| invoke \| USE WHEN/);
+  const rows = block.split('\n').filter(l => /^\| `\$/.test(l));
+  assert.ok(rows.length >= 10, `expected the curated card set, saw ${rows.length} rows`);
+  // The curated cards use USE WHEN / USE AFTER / USE BEFORE / USE AT THE START —
+  // all routing directives. An earlier version of this test demanded the literal
+  // "USE WHEN" and failed 4 of 40 correct rows: the assertion was wrong, not the data.
+  const withGuidance = rows.filter(r => /\bUSE (WHEN|AFTER|BEFORE|AT)\b/i.test(r));
+  assert.equal(withGuidance.length, rows.length,
+    `every routed skill must say when to use it (${rows.length - withGuidance.length} row(s) lack a USE directive)`);
+  for (const r of rows) {
+    assert.ok(r.length < 260, `routing row too long, table must stay scannable: ${r.slice(0, 80)}…`);
+  }
 });
 
 console.log('\n=== Codex AGENTS.md block: apply ===\n');

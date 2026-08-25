@@ -19,7 +19,10 @@
 const assert = require('node:assert/strict');
 const fs = require('node:fs');
 
-const { buildInstructions, apply, translationBlock, BEGIN, END, CLAUDE_MD, CONFIG } = require('../../scripts/codex/sync-codex-doctrine');
+const {
+  buildInstructions, apply, translationBlock, BEGIN, END, CLAUDE_MD, CONFIG,
+  buildMarkdownBlock, applyMarkdown, MD_BEGIN, MD_END, MD_ANCHOR, AGENTS,
+} = require('../../scripts/codex/sync-codex-doctrine');
 
 let passed = 0;
 let failed = 0;
@@ -102,6 +105,45 @@ test('a STALE field is replaced and the rest of the TOML is untouched', () => {
 test('a config with no developer_instructions is reported, not silently skipped', () => {
   assert.equal(apply('model = "x"\n', 'Y').status, 'no-field');
 });
+
+console.log('\n=== Codex doctrine: the AGENTS.md channel (what the DESKTOP APP reads) ===\n');
+
+if (haveCanon) {
+  const canonText = fs.readFileSync(CLAUDE_MD, 'utf8').trim();
+
+  test('the markdown block embeds the canon verbatim too', () => {
+    // Measured 2026-08-25 by asking the SAME question on both surfaces:
+    //   `codex exec` CLI  -> "External-value gate" FOUND in active instructions
+    //   Codex desktop app -> NOT FOUND
+    // config.toml `developer_instructions` is a CLI-only channel. A doctrine that
+    // lives only there is invisible on the surface Woody actually types into, and
+    // no number of restarts fixes a wrong channel.
+    assert.ok(buildMarkdownBlock().includes(canonText), 'the AGENTS.md block must carry CLAUDE.md byte-for-byte');
+  });
+
+  test('the markdown block lands after the capability block and before the OMX body', () => {
+    const src = `head\n${MD_ANCHOR}\n\n<!-- omx:generated:agents-md -->\n# oh-my-codex\n`;
+    const res = applyMarkdown(src, buildMarkdownBlock());
+    assert.equal(res.status, 'missing');
+    assert.ok(res.next.indexOf(MD_BEGIN) > res.next.indexOf(MD_ANCHOR), 'must follow the capability block');
+    assert.ok(res.next.indexOf(MD_BEGIN) < res.next.indexOf('# oh-my-codex'), 'must precede the OMX body');
+  });
+
+  test('a stale markdown block is rewritten; a half-marker pair is reported', () => {
+    const b = buildMarkdownBlock();
+    const res = applyMarkdown(`x\n${MD_BEGIN}\nthe July doctrine\n${MD_END}\ny\n`, b);
+    assert.equal(res.status, 'stale');
+    assert.ok(!res.next.includes('the July doctrine'));
+    assert.equal(applyMarkdown(res.next, b).status, 'current');
+    assert.equal(applyMarkdown(`x\n${MD_BEGIN}\ny\n`, b).status, 'broken-markers');
+  });
+
+  test('the installed AGENTS.md carries the current doctrine block', () => {
+    if (!fs.existsSync(AGENTS)) { console.log('    (no ~/.codex/AGENTS.md here — nothing to check)'); return; }
+    const res = applyMarkdown(fs.readFileSync(AGENTS, 'utf8'), buildMarkdownBlock());
+    assert.equal(res.status, 'current', `AGENTS.md doctrine is ${res.status} — run: node scripts/codex/sync-codex-doctrine.js`);
+  });
+}
 
 console.log('\n=== Codex doctrine: the installed config ===\n');
 

@@ -39,6 +39,39 @@ const HOME = process.env.USERPROFILE || os.homedir();
 const TARGET = path.join(HOME, '.codex', 'AGENTS.md');
 const REPO = 'C:\\Github Repos\\everything-claude-code';
 
+/**
+ * Woody's 40 curated skill cards — the same file Claude's retrieval hook scores.
+ *
+ * WHY THEY ARE INLINED HERE. Codex caps skill metadata at ~2% of context. Measured
+ * 2026-08-25 with 1,940 skills installed: "Exceeded skills context budget. All skill
+ * descriptions were removed and 982 additional skills were not included in the
+ * model-visible skills list." So Sol sees roughly half the catalogue as BARE NAMES
+ * with no descriptions — and a name alone almost never says when to use a skill.
+ * Discovery is broken; named invocation still works.
+ *
+ * This was flagged as the open item of the 2026-07-16 migration ("consider a
+ * keyword->skill routing map in AGENTS.md for the highest-value skills") and never
+ * done. AGENTS.md is not subject to the skill budget, so the curated set is put here
+ * with its USE WHEN / NOT WHEN intact. Truncated per row to keep the block bounded.
+ */
+const CARDS = path.join(HOME, '.claude', 'skills-active.tsv');
+const CARD_LIMIT = 40;
+const CARD_DESC_CHARS = 150;
+
+function skillRoutingRows() {
+  let raw;
+  try { raw = fs.readFileSync(CARDS, 'utf8'); } catch { return []; }
+  return raw.split('\n')
+    .map(l => l.split('\t'))
+    .filter(p => p.length >= 2 && p[0].trim() && p[1].trim())
+    .slice(0, CARD_LIMIT)
+    .map(([name, desc]) => {
+      let d = desc.trim().replace(/\s+/g, ' ');
+      if (d.length > CARD_DESC_CHARS) d = `${d.slice(0, CARD_DESC_CHARS).replace(/[\s,;]+\S*$/, '')}…`;
+      return `| \`$${name.trim()}\` | ${d} |`;
+    });
+}
+
 const seat = id => SEATS.find(s => s.id === id);
 const tier = ids => ids.map(id => seat(id)).filter(Boolean).map(s => `\`${s.id}\`=${s.model}`).join(', ');
 const list = ids => ids.map(id => `\`${id}\``).join(', ');
@@ -69,6 +102,15 @@ function buildBlock() {
     '**SHARED HOOKS** (`~/.codex/hooks.json`, same scripts Claude runs): memory-router, skill-suggest, taste-gate, trade-gate inject context on every prompt. When their output says "load with the Skill tool", that means `$name` here.',
     '',
     '**MEMORY PRECEDENCE:** Woody\'s canon `C:\\Users\\woody\\.claude\\projects\\C--Github-Repos-everything-claude-code\\memory\\MEMORY.md` outranks your auto-memories. Read it first for anything AIOS, trading, council, or client.',
+    '',
+    ...(skillRoutingRows().length ? [
+      '',
+      `**SKILL ROUTING — the curated set, because the catalogue is NOT fully visible to you.** With ~1,940 skills installed you exceed Codex's skill-metadata budget: descriptions are stripped and roughly 982 skills are dropped from your visible list entirely. These ${skillRoutingRows().length} are Woody's curated cards, reproduced here where the budget cannot reach them. Invoke by exact name with \`$name\`. Anything not listed still exists — \`$skill-scout\` searches the full catalogue.`,
+      '',
+      '| invoke | USE WHEN / NOT WHEN |',
+      '|---|---|',
+      ...skillRoutingRows(),
+    ] : []),
     '',
     `**KEEP THIS HONEST** — four generators, all drift-tested by \`node tests/run-all.js\`: \`sync-codex-doctrine.js\` (re-ports CLAUDE.md into your developer_instructions) · \`sync-codex-agents.js\` (this block) · \`refresh-codex-skills.js\` (~/.claude/skills → ~/.codex/skills) · \`council/sync-skill-doc.js\` (\`$council\`). All under \`${REPO}\\scripts\\\`. Run all four after any roster, doctrine or skill change.`,
     END,
