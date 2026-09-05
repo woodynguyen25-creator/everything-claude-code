@@ -125,14 +125,19 @@ const CODEX_JS = path.join(
   'npm', 'node_modules', '@openai', 'codex', 'bin', 'codex.js',
 );
 
-/** GPT-5.6 Sol via local codex CLI; prompt over stdin to avoid Windows quoting issues. */
+/** OpenAI frontier via local codex CLI; prompt over stdin to avoid Windows quoting issues. */
+// Promoted gpt-5.6-sol -> gpt-6-astra 2026-09-05 (Astra requires codex-cli >=0.153;
+// 0.147 returned 400 "requires a newer version of Codex". Probed clean on 0.153.4).
+// Sol remains the default in ~/.codex/config.toml for interactive sessions — this
+// pin governs the COUNCIL seat only. Must match roster.js's codex seat `model`.
+const CODEX_MODEL = 'gpt-6-astra';
 function runCodex(prompt, { timeoutMs = 900_000, effort = 'high', images = [] } = {}) {
   const started = Date.now();
   return new Promise(resolve => {
     const done = (ok, text, error) =>
-      resolve({ provider: 'codex', model: 'gpt-5.6-sol', ok, text, ms: Date.now() - started, error });
+      resolve({ provider: 'codex', model: CODEX_MODEL, ok, text, ms: Date.now() - started, error });
     // Fixed args + shell:true (Windows .cmd shim); user prompt only ever flows via stdin.
-    // NOTE: 'gpt-5.5-codex' 400s on ChatGPT-account codex; plain 'gpt-5.6-sol' is the valid id.
+    // NOTE: 'gpt-5.5-codex' 400s on ChatGPT-account codex; bare model ids ('gpt-5.6-sol', 'gpt-6-astra') are the valid form.
     // Pin effort=high explicitly so the council seat stays fast + predictable regardless of
     // whatever ~/.codex/config.toml drifts to (it had crept to 'xhigh' = the timeout cause, 2026-07-26).
     // `-i/--image` is codex's NATIVE attachment flag (verified 2026-08-23:
@@ -140,7 +145,7 @@ function runCodex(prompt, { timeoutMs = 900_000, effort = 'high', images = [] } 
     // counts). The prompt still goes over stdin — passing it as an argv arg with
     // stdin piped makes codex read stdin instead and report "No prompt provided".
     const imageArgs = images.flatMap(i => ['-i', i.file]);
-    const codexArgs = ['exec', '--skip-git-repo-check', '--model', 'gpt-5.6-sol', '-c', `model_reasoning_effort=${effort}`, ...imageArgs, '-'];
+    const codexArgs = ['exec', '--skip-git-repo-check', '--model', CODEX_MODEL, '-c', `model_reasoning_effort=${effort}`, ...imageArgs, '-'];
     const child = fs.existsSync(CODEX_JS)
       ? spawn(process.execPath, [CODEX_JS, ...codexArgs], { shell: false, windowsHide: true })
       : spawn('codex', codexArgs, { shell: true, windowsHide: true }); // shim fallback; args are fixed strings

@@ -79,12 +79,12 @@ const SEATS = [
     tiers: ['LEAD'],
     role: 'ENGINEER - code correctness, implementation realism, spec rigour',
     lab: 'openai',
-    model: 'gpt-5.6-sol',
+    model: 'gpt-6-astra',
     mandate:
-      'The build-it-for-real seat. Boots a full agent session with MCP + skills, so it answers like something that actually has to ship the thing.',
+      'The build-it-for-real seat. Boots a full agent session with MCP + skills, so it answers like something that actually has to ship the thing. Promoted to GPT-6 Astra 2026-09-05 (day-2 of public rollout; latency/failure stats reset — the 182s/22% history belongs to gpt-5.6-sol).',
     swapWhen:
-      'A newer Sol/GPT frontier ships. Watch latency: 182s average and 22% failure historically, which is why it stays out of fast paths and gets summoned for depth.',
-    verified: '2026-08-04',
+      'A newer GPT frontier ships, or Astra proves flakier than Sol did (compare fresh ledger rows before trusting any timeout tuning). Interactive Sol in ~/.codex/config.toml is a separate pin — swapping one is NOT swapping the other.',
+    verified: '2026-09-05',
   },
   {
     id: 'xai',
