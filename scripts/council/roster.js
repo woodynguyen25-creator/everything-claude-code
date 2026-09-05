@@ -68,7 +68,7 @@ const SEATS = [
   },
   {
     id: 'codex',
-    vision: 'native',    // MEASURED 2026-08-23: `codex exec -i <file>` (native flag), 3/3 on the probe.
+    vision: 'native',    // MEASURED 2026-08-23 on gpt-5.6-sol; RE-MEASURED 2026-09-05 on gpt-6-astra (fresh codeword probe, exact text+counts+colors, 17.7s).
     // AGENT seat: spawns a real CLI session, so it CAN read the repo, run commands
     // and verify claims. Ask it to check things.
     toolAccess: 'agent',
