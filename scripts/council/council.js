@@ -574,8 +574,18 @@ async function main() {
     // a raw HTTPS call — burned the dispatch narrating file reads it cannot do;
     // the second time it looped one intent sentence for 21,876 chars. The seat
     // cannot know what it is unless the dispatch says so.
+    // EXCEPTION (2026-09-07): a seat granted live search for THIS dispatch must
+    // not also be told it cannot browse. Measured failure: `--to xai --research`
+    // sent both — liveSearch opts attached, [NO TOOLS] line attached — and the
+    // seat obeyed the line, refusing the entire research brief ($0.016, zero
+    // searches, tag motion-research-xai). Single-seat dispatches are the worst
+    // case because lenses (and the EVIDENCE lens that says "search") are off
+    // below 3 seats, leaving the veto as the only capability statement.
+    const seatHasLiveSearch = args.research && SEARCH_SEATS.includes(seat);
     const toolLine = SEAT_BY_ID[seat] && SEAT_BY_ID[seat].toolAccess === 'api'
-      ? '\n[NO TOOLS] You have NO filesystem, command, or browsing access. Do not attempt or narrate file/tool operations — reason only from what is in this prompt, and state when a claim would need verification you cannot perform.'
+      ? (seatHasLiveSearch
+          ? '\n[TOOLS] For THIS dispatch you HAVE live web search and X search — use them. You still have NO filesystem or command access. Cite and date what you find; say so when a claim rests on training data instead of a fetched source.'
+          : '\n[NO TOOLS] You have NO filesystem, command, or browsing access. Do not attempt or narrate file/tool operations — reason only from what is in this prompt, and state when a claim would need verification you cannot perform.')
       : '';
     const lens = useLenses ? `${roleLine}${toolLine}\n[LENS — apply to your answer] ${assigned.lens[i]}` : toolLine;
     return dispatchWithRetry(seat, args.question + lens + decideSuffix, env, seatOpts(seat),
