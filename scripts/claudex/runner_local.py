@@ -72,18 +72,35 @@ def interactive_model() -> tuple[str | None, str | None]:
         return None, None
 
 
+# A model id / effort level is a plain identifier. Anything else is refused rather than
+# interpolated: these values are only as trustworthy as whatever last wrote ~/.codex/config.toml,
+# and one embedded newline turns this 2-line config into any TOML at all — `notify = [...]` is a
+# command Codex runs. Enumerating forbidden keys (FORBIDDEN_KEYS below) cannot cover that; this
+# can. Found in review, 2026-09-17.
+SAFE_VALUE = re.compile(r"^[A-Za-z0-9][A-Za-z0-9._:-]*$")
+
+
 def lean_config() -> str:
     model, effort = interactive_model()
     lines = []
-    if model:
-        lines.append(f'model = "{model}"')
-    if effort:
-        lines.append(f'model_reasoning_effort = "{effort}"')
+    for key, value in (("model", model), ("model_reasoning_effort", effort)):
+        if not value:
+            continue
+        if not SAFE_VALUE.match(str(value)):
+            raise SystemExit(
+                f"claudex: refusing — ~/.codex/config.toml has {key}={value!r}, which is not a "
+                "plain identifier. Writing it into the lean config could inject arbitrary TOML.")
+        lines.append(f'{key} = "{value}"')
     return "\n".join(lines) + ("\n" if lines else "")
 
 
 def prepare_lean_home() -> Path:
     """Private CODEX_HOME: auth + model only. Re-copied every run so a rotated token never goes stale."""
+    if LEAN_HOME.resolve() == REAL_CODEX_HOME.resolve():
+        # Without this the next two lines write a 2-line config over the real one: doctrine,
+        # 15 MCP servers and all. It happened to abort on SameFileError; that is not a guard.
+        raise SystemExit("claudex: refusing — CLAUDEX_CODEX_HOME points at the real ~/.codex. "
+                         "Writing the lean config there would wipe your doctrine and MCP list.")
     LEAN_HOME.mkdir(parents=True, exist_ok=True)
     shutil.copyfile(REAL_CODEX_HOME / "auth.json", LEAN_HOME / "auth.json")
     cfg = lean_config()
@@ -94,24 +111,71 @@ def prepare_lean_home() -> Path:
     return LEAN_HOME
 
 
+# Upstream runner.py's long options (argparse, default allow_abbrev). Reading them the way
+# argparse does is a SAFETY requirement, not tidiness: a form this file fails to recognise
+# still launches the same delegate, but without the lean CODEX_HOME below — i.e. Codex with
+# the real ~/.codex and its Robinhood trading MCP.
+LONG_OPTIONS = (
+    "--host", "--builder", "--provider", "--repo", "--plan", "--model", "--cli", "--effort",
+    "--resume", "--feedback", "--base", "--approval", "--unreviewed-spec", "--proof",
+    "--artifacts", "--timeout",
+)
+PROVIDERS = ("claude", "codex")
+OTHER = {"claude": "codex", "codex": "claude"}
+WORK_MODES = ("review", "build", "inspect")
+
+
+def resolve_option(token: str) -> str | None:
+    """argparse's rule: an exact name, or a prefix that matches exactly one option."""
+    if token in LONG_OPTIONS:
+        return token
+    hits = [o for o in LONG_OPTIONS if o.startswith(token)]
+    return hits[0] if len(hits) == 1 else None
+
+
+def option_value(argv: list[str], name: str) -> str | None:
+    """Value of `name` in `--opt v`, `--opt=v` or abbreviated form. Last occurrence wins, as argparse does."""
+    found = None
+    for i, tok in enumerate(argv):
+        if not tok.startswith("--"):
+            continue
+        head, sep, inline = tok.partition("=")
+        if resolve_option(head) != name:
+            continue
+        if sep:
+            found = inline
+        elif i + 1 < len(argv) and not argv[i + 1].startswith("--"):
+            found = argv[i + 1]
+    return found
+
+
 def provider_for(argv: list[str]) -> str | None:
-    """Which CLI this runner call will launch — same rules as runner.resolve_roles."""
-    def opt(name):
-        return argv[argv.index(name) + 1] if name in argv and argv.index(name) + 1 < len(argv) else None
+    """Which CLI this runner call will launch — same rules as runner.resolve_roles.
+    None means 'nothing of ours launches here' (roles/check) OR 'cannot tell' — and for a
+    mode that does launch something, plan_launch turns 'cannot tell' into a refusal."""
     mode = argv[0] if argv else None
-    host, builder, explicit = opt("--host"), opt("--builder"), opt("--provider")
-    if explicit:
+    explicit = option_value(argv, "--provider")
+    if explicit in PROVIDERS:
         return explicit
-    if mode in (None, "roles", "check") or host not in ("claude", "codex"):
+    host = option_value(argv, "--host")
+    if mode not in WORK_MODES or host not in PROVIDERS:
         return None
-    other = {"claude": "codex", "codex": "claude"}
-    builder = builder or host
-    return {"review": other[host], "build": builder, "inspect": other[builder]}.get(mode)
+    builder = option_value(argv, "--builder")
+    builder = builder if builder in PROVIDERS else host
+    return {"review": OTHER[host], "build": builder, "inspect": OTHER[builder]}.get(mode)
 
 
 def plan_launch(argv: list[str]) -> dict:
     """Pure-ish: decide argv and env without launching. Exposed for tests via --print-launch."""
     provider = provider_for(argv)
+    mode = argv[0] if argv else None
+    if mode in WORK_MODES and provider is None:
+        # Fail CLOSED. Passing an invocation we could not read straight through to the runner
+        # would launch a delegate with whatever CODEX_HOME this process inherited.
+        raise SystemExit(
+            f"claudex: refusing to launch — cannot tell which CLI {argv!r} would start. "
+            "Pass --host claude|codex (plus --builder for build/inspect). Launching blind can "
+            "hand a Codex delegate the real ~/.codex, Robinhood trading MCP included.")
     args = list(argv)
     env_changes = {}
     if provider == "codex":

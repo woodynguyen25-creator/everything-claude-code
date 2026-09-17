@@ -26,7 +26,7 @@
  */
 'use strict';
 
-const { loadEnv, SEATS, loadImages, USAGE_LIMIT } = require('./providers');
+const { loadEnv, SEATS, loadImages, USAGE_LIMIT, ISOLATION_FAILED } = require('./providers');
 const { saveTranscript, readRecent, summarize, DEFAULT_LEDGER } = require('./ledger');
 const budget = require('./budget');
 const verdictBias = require('./verdict-bias');
@@ -706,6 +706,13 @@ async function main() {
     for (const d of dead.filter(r => String(r.error || '').startsWith(USAGE_LIMIT))) {
       console.log(`\n[council] ${d.provider.toUpperCase()} OFF — ${String(d.error).slice(USAGE_LIMIT.length + 2)}.`);
       console.log('[council] This is the ChatGPT plan allowance, shared with interactive Codex — not a seat fault. Re-convening before then fails the same way; decide now on the seats that answered, or wait.');
+    }
+
+    // A seat that could not be isolated is dropped on purpose (2026-09-17). Loud, because the
+    // alternative this replaced was running Astra against the real ~/.codex without saying so.
+    for (const d of dead.filter(r => String(r.error || '').startsWith(ISOLATION_FAILED))) {
+      console.log(`\n[council] ${d.provider.toUpperCase()} DROPPED — ${String(d.error).slice(ISOLATION_FAILED.length + 2)}`);
+      console.log('[council] The seat was refused, not attempted. Nothing ran against the real Codex home.');
     }
   }
 }

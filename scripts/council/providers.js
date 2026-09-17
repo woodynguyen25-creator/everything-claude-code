@@ -190,6 +190,9 @@ const COUNCIL_CODEX_CONFIG =
  * has a known end, and it takes the interactive session down too, so it gets its own name.
  */
 const USAGE_LIMIT = 'USAGE-LIMIT';
+// A seat that cannot be isolated does not run. Named like USAGE-LIMIT/SANDBOX-BLOCKED so the
+// convene banner can explain the drop instead of printing a bare failure.
+const ISOLATION_FAILED = 'ISOLATION-FAILED';
 function codexFailureReason(stderr, stdout, code) {
   const text = stripAnsi(`${stderr || ''}\n${stdout || ''}`);
   if (/hit your usage limit/i.test(text)) {
@@ -199,18 +202,27 @@ function codexFailureReason(stderr, stdout, code) {
   return `exit ${code}: ${stripAnsi(String(stderr || '')).slice(0, 300)}`;
 }
 
+/**
+ * The seat's private CODEX_HOME. Returns {dir} or {error} — never a bare null.
+ *
+ * 2026-09-17: this used to return null on any failure and the caller then ran with the real
+ * ~/.codex "as a fallback". That is fail-OPEN on the one property the private home exists to
+ * hold: the real home carries 15 MCP servers (Robinhood TRADING among them) and a 1,950-skill
+ * scan. A degraded seat is fine; a seat quietly wired to the trading MCP is not. The reason
+ * now travels back so the refusal can name it.
+ */
 function councilCodexHome() {
   const home = process.env.USERPROFILE || process.env.HOME || '';
-  if (!home) return null;
+  if (!home) return { error: 'no USERPROFILE/HOME in this environment' };
   const src = path.join(home, '.codex');
   const dst = path.join(home, '.codex-council');
   try {
     fs.mkdirSync(dst, { recursive: true });
     fs.copyFileSync(path.join(src, 'auth.json'), path.join(dst, 'auth.json'));
     fs.writeFileSync(path.join(dst, 'config.toml'), COUNCIL_CODEX_CONFIG);
-    return dst;
-  } catch {
-    return null;
+    return { dir: dst };
+  } catch (err) {
+    return { error: err.message };
   }
 }
 
@@ -238,7 +250,13 @@ function runCodex(prompt, { timeoutMs = 900_000, effort = 'high', images = [] } 
     // errors (it then hit the ChatGPT usage cap, which is a different, honestly-reported failure).
     // REVISIT-IF: codex grows a `skills.enabled=false` key (0.153.1 exec --help: none).
     const codexHome = councilCodexHome();
-    const env = codexHome ? { ...process.env, CODEX_HOME: codexHome } : process.env;
+    if (!codexHome.dir) {
+      return done(false, '', `${ISOLATION_FAILED}: could not build the seat's private CODEX_HOME ` +
+        `(${codexHome.error}). Refusing to run Astra against the real ~/.codex — it carries the ` +
+        'Robinhood trading MCP and a 1,950-skill scan. The seat drops out of this convene; ' +
+        'fix ~/.codex/auth.json (or `codex login`) and re-run.');
+    }
+    const env = { ...process.env, CODEX_HOME: codexHome.dir };
     const child = spawn(launcher.file, launcher.args, { shell: launcher.shell, windowsHide: true, env });
     let out = '';
     let err = '';
@@ -748,4 +766,5 @@ const SEATS = {
 module.exports = {
   loadEnv, parseCodexOutput, stripAnsi, isTransientAgyError, SEATS, loadImages, MAX_IMAGE_BYTES, IMAGE_MIME,
   COUNCIL_CODEX_CONFIG, CODEX_MODEL, codexFailureReason, USAGE_LIMIT,
+  councilCodexHome, runCodex, ISOLATION_FAILED,
 };

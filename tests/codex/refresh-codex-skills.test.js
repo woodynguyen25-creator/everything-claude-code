@@ -82,6 +82,67 @@ test('the skip list holds venvs but not node_modules', () => {
   assert.ok(!SKIP_DIRS.has('node_modules'));
 });
 
+/**
+ * 2026-09-17, from an independent review: only copyFilter was tested. main()'s actual decision —
+ * "the Codex copy is NEWER, so report it and do not overwrite" — had no coverage, so changing
+ * that branch to always overwrite would have kept the suite green while silently destroying
+ * Sol-side edits. These run the real script against a throwaway HOME.
+ */
+console.log('\n=== the mirror never overwrites a newer Codex-side edit ===\n');
+
+const { spawnSync } = require('node:child_process');
+
+const SCRIPT = path.resolve(__dirname, '..', '..', 'scripts', 'codex', 'refresh-codex-skills.js');
+
+function skill(root, name, body, mtimeMs) {
+  const dir = path.join(root, name);
+  fs.mkdirSync(dir, { recursive: true });
+  const f = path.join(dir, 'SKILL.md');
+  fs.writeFileSync(f, body);
+  if (mtimeMs) fs.utimesSync(f, mtimeMs / 1000, mtimeMs / 1000);
+  return f;
+}
+
+function mirrorRun(extraArgs = []) {
+  const home = fs.mkdtempSync(path.join(os.tmpdir(), 'mirror-'));
+  const claude = path.join(home, '.claude', 'skills');
+  const codex = path.join(home, '.codex', 'skills');
+  fs.mkdirSync(claude, { recursive: true });
+  fs.mkdirSync(codex, { recursive: true });
+  const now = Date.now();
+  skill(claude, 'sol-edited', '# claude side (older)\n', now - 60_000);
+  skill(codex, 'sol-edited', '# SOL EDITED THIS IN CODEX\n', now);
+  skill(claude, 'stale-in-codex', '# claude side (newer)\n', now);
+  skill(codex, 'stale-in-codex', '# old codex copy\n', now - 60_000);
+  const r = spawnSync(process.execPath, [SCRIPT, ...extraArgs], {
+    encoding: 'utf8', env: { ...process.env, USERPROFILE: home, HOME: home },
+  });
+  return { r, codex };
+}
+
+test('a newer Codex-side copy is reported and left alone', () => {
+  const { r, codex } = mirrorRun();
+  assert.equal(r.status, 0, r.stderr);
+  assert.equal(fs.readFileSync(path.join(codex, 'sol-edited', 'SKILL.md'), 'utf8'),
+    '# SOL EDITED THIS IN CODEX\n', 'Sol-side work must survive a mirror run');
+  assert.match(r.stdout, /codex-newer, NOT overwritten/);
+  assert.match(r.stdout, /sol-edited/);
+});
+
+test('a stale Codex copy IS refreshed — the guard is not just "never copy"', () => {
+  const { r, codex } = mirrorRun();
+  assert.equal(fs.readFileSync(path.join(codex, 'stale-in-codex', 'SKILL.md'), 'utf8'),
+    '# claude side (newer)\n');
+  assert.match(r.stdout, /refreshed: stale-in-codex/);
+});
+
+test('--force is the documented way to overwrite, and it works', () => {
+  const { r, codex } = mirrorRun(['--force']);
+  assert.equal(r.status, 0, r.stderr);
+  assert.equal(fs.readFileSync(path.join(codex, 'sol-edited', 'SKILL.md'), 'utf8'),
+    '# claude side (older)\n');
+});
+
 console.log('\n=== Test Results ===');
 console.log(`Passed: ${passed}`);
 console.log(`Failed: ${failed}`);

@@ -125,6 +125,29 @@ test('garbage on stdin never stops a session from starting', () => {
   assert.equal(r.status, 0);
 });
 
+/**
+ * 2026-09-17, from an independent review: summarize() was tested thoroughly, but nothing checked
+ * that main() emits the envelope Claude Code actually reads. Dropping the hookSpecificOutput
+ * wrapper — or typo'ing hookEventName — would have left every test green while the "Codex is
+ * running a stale brief" warning silently reached nobody. That is the exact failure this hook
+ * was written to end, so it gets a real process-level assertion.
+ */
+test('a session that has something to report gets a well-formed SessionStart envelope', () => {
+  const fakeHome = fs.mkdtempSync(path.join(os.tmpdir(), 'codex-sync-envelope-'));
+  fs.mkdirSync(path.join(fakeHome, '.codex'), { recursive: true });
+  const r = spawnSync(process.execPath, [HOOK], {
+    input: '{"hook_event_name":"SessionStart"}',
+    env: { ...process.env, USERPROFILE: fakeHome, HOME: fakeHome },
+    encoding: 'utf8',
+  });
+  assert.equal(r.status, 0, 'a sync problem must never block a session');
+  assert.ok(r.stdout.trim(), 'an empty ~/.codex means work was done or failed — either way, say so');
+  const payload = JSON.parse(r.stdout);
+  assert.equal(payload.hookSpecificOutput.hookEventName, 'SessionStart');
+  assert.equal(typeof payload.hookSpecificOutput.additionalContext, 'string');
+  assert.ok(payload.hookSpecificOutput.additionalContext.length > 0);
+});
+
 console.log('\n=== Test Results ===');
 console.log(`Passed: ${passed}`);
 console.log(`Failed: ${failed}`);

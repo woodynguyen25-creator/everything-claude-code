@@ -99,19 +99,54 @@ function isOurs(skillDir) {
   return fs.existsSync(f) && /claudex-loop/.test(fs.readFileSync(f, 'utf8'));
 }
 
+/** Every file under `dir`, as paths relative to it. */
+function relFiles(dir, prefix = '') {
+  if (!fs.existsSync(dir)) return [];
+  return fs.readdirSync(dir, { withFileTypes: true }).flatMap(e => (e.isDirectory()
+    ? relFiles(path.join(dir, e.name), path.join(prefix, e.name))
+    : [path.join(prefix, e.name)]));
+}
+
+const GENERATED = new Set(['VENDORED.md']); // written by this installer, not by a human
+
+/**
+ * Files the installed copy has that this vendor drop does not. A refresh re-copies the drop
+ * over the top, so these are exactly the files a blind rmSync would destroy — someone's notes,
+ * a local variant, a saved artifact. Reported so install() can park instead of delete.
+ */
+function extraFiles(installed, source) {
+  const shipped = new Set(relFiles(source));
+  return relFiles(installed).filter(f => !shipped.has(f) && !GENERATED.has(f));
+}
+
+/** Move a directory aside under skills-parked/, without ever overwriting an earlier park. */
+function park(dir, name, why) {
+  fs.mkdirSync(PARKED, { recursive: true });
+  const stamp = new Date().toISOString().slice(0, 10);
+  let dest = path.join(PARKED, `${name}-${stamp}`);
+  for (let n = 2; fs.existsSync(dest); n++) dest = path.join(PARKED, `${name}-${stamp}-${n}`);
+  fs.renameSync(dir, dest);
+  console.log(`[claudex-install] parked ${name} -> ${dest} (${why})`);
+  return dest;
+}
+
 function install(src) {
   const commit = sourceCommit(src);
   for (const name of SKILLS) {
     const from = path.join(src, 'skills', name);
     const to = path.join(DEST, name);
     if (!fs.existsSync(from)) throw new Error(`upstream skill missing: ${from}`);
-    if (fs.existsSync(to) && !isOurs(to)) {
-      // A different skill already owns this name (the old community `codex-review` stub).
-      // Park it rather than overwrite it — reversible, and the name now means claudex's.
-      const parked = path.join(PARKED, `${name}-${new Date().toISOString().slice(0, 10)}`);
-      fs.mkdirSync(PARKED, { recursive: true });
-      fs.renameSync(to, parked);
-      console.log(`[claudex-install] parked pre-existing ${name} -> ${parked}`);
+    if (fs.existsSync(to)) {
+      // Two reasons to move the old directory aside instead of deleting it:
+      //  - a DIFFERENT skill owns the name (the old community `codex-review` stub); or
+      //  - it holds files this drop does not ship, i.e. someone's own work. Deleting those on a
+      //    command documented as a routine "refresh" is data loss with no diff and no undo
+      //    (found in review, 2026-09-17).
+      const extra = isOurs(to) ? extraFiles(to, from) : [];
+      const why = !isOurs(to) ? 'a different skill owned this name'
+        : extra.length ? `keeps ${extra.length} file(s) not in this drop: ${extra.slice(0, 5).join(', ')}`
+          : null;
+      if (why) park(to, name, why);
     }
     fs.rmSync(to, { recursive: true, force: true });
     fs.cpSync(from, to, { recursive: true });

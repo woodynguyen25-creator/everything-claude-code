@@ -81,6 +81,86 @@ test('if claudex is installed here, every local block is current and the launche
   assert.ok(fs.existsSync(LAUNCHER));
 });
 
+/**
+ * 2026-09-17, from an independent review: install() called rmSync(recursive) on each skill dir
+ * and re-copied the vendor drop. Anything hand-added inside those four directories — a note, a
+ * local variant, an artifact — was deleted with no backup and no diff, on a command documented
+ * as a routine "refresh". The park step only fired when a DIFFERENT skill owned the name.
+ *
+ * These run the real installer in a throwaway HOME, so the destructive path is exercised for
+ * real rather than reasoned about.
+ */
+console.log('\n=== claudex install: a refresh never eats work it did not write ===\n');
+
+const os = require('node:os');
+const path = require('node:path');
+const { spawnSync } = require('node:child_process');
+
+const INSTALLER = path.resolve(__dirname, '..', '..', 'scripts', 'claudex', 'install.js');
+const SKILL_NAMES = ['claudex-loop', 'claudex-route', 'codex-review', 'codex-build'];
+
+function fakeSource(root) {
+  for (const name of SKILL_NAMES) {
+    const dir = path.join(root, 'skills', name);
+    fs.mkdirSync(path.join(dir, 'references'), { recursive: true });
+    fs.writeFileSync(path.join(dir, 'SKILL.md'), `---\nname: ${name}\n---\n\nclaudex-loop vendored body\n`);
+    fs.writeFileSync(path.join(dir, 'references', 'runtime.md'), '# runtime\n\nclaudex-loop\n');
+  }
+  return root;
+}
+
+function runInstaller(home, args) {
+  return spawnSync(process.execPath, [INSTALLER, ...args], {
+    encoding: 'utf8', env: { ...process.env, USERPROFILE: home, HOME: home },
+  });
+}
+
+function sandbox() {
+  const home = fs.mkdtempSync(path.join(os.tmpdir(), 'claudex-home-'));
+  const src = fakeSource(fs.mkdtempSync(path.join(os.tmpdir(), 'claudex-src-')));
+  const first = runInstaller(home, ['--from', src]);
+  assert.equal(first.status, 0, `first install failed: ${first.stderr}`);
+  return { home, src };
+}
+
+test('a hand-added file inside a vendored skill survives the next refresh', () => {
+  const { home, src } = sandbox();
+  const mine = path.join(home, '.claude', 'skills', 'claudex-loop', 'MY-NOTES.md');
+  fs.writeFileSync(mine, 'my own notes — not upstream\n');
+
+  const again = runInstaller(home, ['--from', src]);
+  assert.equal(again.status, 0, again.stderr);
+
+  const parked = path.join(home, '.claude', 'skills-parked');
+  const hits = (fs.existsSync(parked) ? fs.readdirSync(parked) : [])
+    .map(d => path.join(parked, d, 'MY-NOTES.md'))
+    .filter(p => fs.existsSync(p));
+  assert.ok(fs.existsSync(mine) || hits.length,
+    'the file was deleted outright — it must be kept or parked where it can be recovered');
+  if (hits.length) {
+    assert.equal(fs.readFileSync(hits[0], 'utf8'), 'my own notes — not upstream\n');
+    assert.match(again.stdout, /parked/i, 'and the refresh must say it moved something');
+  }
+});
+
+test('an ordinary refresh with nothing extra does NOT park anything', () => {
+  const { home, src } = sandbox();
+  const again = runInstaller(home, ['--from', src]);
+  assert.equal(again.status, 0, again.stderr);
+  const parked = path.join(home, '.claude', 'skills-parked');
+  assert.equal(fs.existsSync(parked) ? fs.readdirSync(parked).length : 0, 0,
+    'parking must be the exception, not every run');
+});
+
+test('--check on a real installed tree detects a drifted local block (exit 1)', () => {
+  const { home, src } = sandbox();
+  const skill = path.join(home, '.claude', 'skills', 'claudex-loop', 'SKILL.md');
+  fs.writeFileSync(skill, fs.readFileSync(skill, 'utf8').replace(/runner_local\.py/g, 'runner.py'));
+  const r = runInstaller(home, ['--check', '--from', src]);
+  assert.equal(r.status, 1, 'a drifted block must fail the check, not pass it');
+  assert.match(`${r.stderr}${r.stdout}`, /DRIFT/);
+});
+
 console.log('\n=== Test Results ===');
 console.log(`Passed: ${passed}`);
 console.log(`Failed: ${failed}`);

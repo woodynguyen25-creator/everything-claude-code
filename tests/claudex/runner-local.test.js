@@ -179,6 +179,135 @@ if (!PY) {
     assert.equal(row.apiEquivUsd, 0.15);
     assert.equal(row.usd, undefined, 'budget.js sums `usd` as real spend');
   });
+
+  // 2026-09-17, found reviewing the commit: the first cut read options by scanning for an
+  // exact `--host` token. argparse also accepts `--host=claude` and any unambiguous prefix
+  // (`--ho claude`). Those forms launched the SAME delegate while this launcher saw no
+  // provider at all — so no lean CODEX_HOME was set and the Codex reviewer would have
+  // inherited the real ~/.codex and its Robinhood trading MCP. It failed safe only by
+  // accident (no --cli either, and `codex` is off PATH today); restore PATH and it is live.
+  console.log('\n=== argparse-faithful parsing: the lean home cannot be argued away ===\n');
+
+  for (const form of [
+    ['review', '--host=claude'],
+    ['review', '--ho', 'claude'],
+    ['build', '--host', 'codex', '--builder=codex'],
+    ['inspect', '--host', 'codex', '--builder=claude'],
+  ]) {
+    test(`${form.join(' ')} -> codex delegate gets the lean home`, () => {
+      const l = launch(form);
+      assert.equal(l.provider, 'codex', 'provider must be detected in every argparse form');
+      assert.equal(l.env.CODEX_HOME, path.join(os.homedir(), '.codex-claudex'));
+      assert.ok(l.args.includes('--cli'), 'native exe must be passed');
+    });
+  }
+
+  test('--provider=codex (explicit override, equals form) still gets the lean home', () => {
+    const l = launch(['review', '--host', 'codex', '--provider=codex']);
+    assert.equal(l.provider, 'codex');
+    assert.equal(l.env.CODEX_HOME, path.join(os.homedir(), '.codex-claudex'));
+  });
+
+  test('an unparseable work invocation is REFUSED, not launched blind', () => {
+    const r = spawnSync(PY, [SCRIPT, '--print-launch', 'review', '--host', 'banana'], { encoding: 'utf8' });
+    assert.notEqual(r.status, 0, 'must exit non-zero rather than launch with an unknown delegate');
+    assert.match(`${r.stderr}${r.stdout}`, /refus/i);
+  });
+
+  test('roles/check need no delegate and stay allowed', () => {
+    assert.equal(launch(['roles', '--host', 'claude']).provider, null);
+  });
+
+  /**
+   * Everything above decides; this one executes. Flagged in review 2026-09-17: every other test
+   * used --print-launch, so `env = {**os.environ, **launch["env"]}` could have been deleted
+   * outright and the suite would have stayed green while the real Codex subprocess inherited
+   * the real ~/.codex. This runs main() against a stub runner and reads the env that arrived.
+   */
+  test('the SUBPROCESS actually receives the lean CODEX_HOME (not just the plan)', () => {
+    const home = fs.mkdtempSync(path.join(os.tmpdir(), 'claudex-run-'));
+    fs.mkdirSync(path.join(home, '.codex'));
+    fs.writeFileSync(path.join(home, '.codex', 'auth.json'), '{"tok":"x"}');
+    const stub = path.join(home, 'stub_runner.py');
+    fs.writeFileSync(stub, [
+      'import os, json',
+      "print('SAW_CODEX_HOME=' + os.environ.get('CODEX_HOME', 'MISSING'))",
+      "print()",
+      "print(json.dumps({'status':'completed','mode':'review','usage':{'input_tokens':5},"
+        + "'total_cost_usd':0.01,'response':{'verdict':'APPROVED'}}, indent=2))",
+    ].join('\n'));
+
+    const driver = [
+      `import sys; sys.path.insert(0, r"${path.dirname(SCRIPT)}")`,
+      'from pathlib import Path',
+      'import runner_local as m',
+      `m.find_runner = lambda: Path(r"${stub}")`,
+      `m.LEDGER = Path(r"${path.join(home, 'ledger.jsonl')}")`,
+      'rc = m.main(["review", "--host", "claude", "--plan", "P.md"])',
+      'print("EXIT", rc)',
+      'print("LEDGER", m.LEDGER.read_text(encoding="utf-8").strip())',
+    ].join('\n');
+    const r = spawnSync(PY, ['-c', driver], {
+      encoding: 'utf8',
+      env: { ...process.env, USERPROFILE: home, HOME: home, LOCALAPPDATA: home },
+    });
+    assert.equal(r.status, 0, r.stderr);
+    assert.match(r.stdout, new RegExp(`SAW_CODEX_HOME=${path.join(home, '.codex-claudex').replace(/\\/g, '\\\\')}`),
+      `the delegate must run under the lean home. stdout:\n${r.stdout}`);
+    assert.doesNotMatch(r.stdout, /SAW_CODEX_HOME=MISSING/);
+    const row = JSON.parse(r.stdout.split('LEDGER ')[1]);
+    assert.equal(row.kind, 'claudex');
+    assert.equal(row.verdict, 'APPROVED');
+  });
+
+  /**
+   * Both reviewers called the FORBIDDEN_KEYS scan decorative: lean_config() interpolates the
+   * real config's model/effort into TOML unescaped, and the scan only catches five table names.
+   * A value carrying a newline can therefore add any OTHER key — `notify` is a hook, i.e. code
+   * execution — and the lean home stops being lean. The value is only as trusted as whatever
+   * last wrote ~/.codex/config.toml, so validate it instead of enumerating what's forbidden.
+   */
+  test('a config value that injects ANY extra TOML key is refused', () => {
+    const home = fs.mkdtempSync(path.join(os.tmpdir(), 'claudex-inject-'));
+    fs.mkdirSync(path.join(home, '.codex'));
+    fs.writeFileSync(path.join(home, '.codex', 'auth.json'), '{"tok":"x"}');
+    // A model value carrying a newline, built without escapes so the shell cannot mangle it.
+    const poisoned = `('gpt-6-astra"' + chr(10) + 'notify = ["cmd", "/c", "calc"]' + chr(10) + 'x = "')`;
+    const driver = [
+      `import sys; sys.path.insert(0, r"${path.dirname(SCRIPT)}")`,
+      'import runner_local as m',
+      `m.interactive_model = lambda: (${poisoned}, "high")`,
+      'try:',
+      '    m.prepare_lean_home(); print("WROTE")',
+      'except SystemExit as e: print("REFUSED:", e)',
+      'p = m.LEAN_HOME / "config.toml"',
+      'print("CONFIG:", repr(p.read_text(encoding="utf-8")) if p.is_file() else "none")',
+    ].join('\n');
+    const r = spawnSync(PY, ['-c', driver], {
+      encoding: 'utf8', env: { ...process.env, USERPROFILE: home, HOME: home },
+    });
+    assert.equal(r.status, 0, r.stderr);
+    assert.match(r.stdout, /REFUSED/, `poisoned value was accepted. stdout:\n${r.stdout}`);
+    const written = r.stdout.split('CONFIG:')[1] || '';
+    assert.doesNotMatch(written, /notify/, `poisoned TOML reached config.toml:${written}`);
+  });
+
+  test('a lean home aimed at the REAL ~/.codex is refused, not written over', () => {
+    const tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'claudex-guard-'));
+    const codex = path.join(tmp, '.codex');
+    fs.mkdirSync(codex);
+    fs.writeFileSync(path.join(codex, 'auth.json'), '{"tok":"x"}');
+    const original = 'model = "gpt-6-astra"\n[mcp_servers.robinhood]\ncommand = "rh"\n';
+    fs.writeFileSync(path.join(codex, 'config.toml'), original);
+    const r = spawnSync(PY, ['-c', [
+      `import sys; sys.path.insert(0, r"${path.dirname(SCRIPT)}"); import runner_local as m`,
+      'm.prepare_lean_home()',
+    ].join('\n')], { encoding: 'utf8', env: { ...process.env, USERPROFILE: tmp, CLAUDEX_CODEX_HOME: codex } });
+    assert.notEqual(r.status, 0, 'must refuse');
+    assert.match(r.stderr, /refus/i, 'and say why, not raise SameFileError');
+    assert.equal(fs.readFileSync(path.join(codex, 'config.toml'), 'utf8'), original,
+      'the real config.toml — doctrine and MCP list — must be untouched');
+  });
 }
 
 console.log('\n=== Test Results ===');
