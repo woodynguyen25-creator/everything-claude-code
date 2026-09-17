@@ -33,11 +33,16 @@ const GENERATORS = [
   { name: 'capability block', script: 'scripts/codex/sync-codex-agents.js' },
   { name: 'council skill doc', script: 'scripts/council/sync-skill-doc.js' },
   { name: 'skills mirror', script: 'scripts/codex/refresh-codex-skills.js' },
+  // CHECK only, never auto-install: re-installing on every session would pull an upstream
+  // change into the skills without anyone reading its diff (2026-09-17, supply-chain rule).
+  // A drifted local block — the one that keeps claudex off the real ~/.codex and its
+  // Robinhood MCP — surfaces as SYNC FAILED, and a human re-runs the installer.
+  { name: 'claudex local rules', script: 'scripts/claudex/install.js', args: ['--check'] },
 ];
 
 function run(gen, env) {
   return new Promise(resolve => {
-    const child = spawn(process.execPath, [path.join(REPO, gen.script)], { cwd: REPO, env, windowsHide: true });
+    const child = spawn(process.execPath, [path.join(REPO, gen.script), ...(gen.args || [])], { cwd: REPO, env, windowsHide: true });
     let out = '';
     let err = '';
     const timer = setTimeout(() => { child.kill(); resolve({ ...gen, code: null, out, err: `timeout after ${TIMEOUT_MS}ms` }); }, TIMEOUT_MS);

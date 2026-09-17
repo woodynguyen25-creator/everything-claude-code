@@ -55,7 +55,10 @@ const REPO = 'C:\\Github Repos\\everything-claude-code';
  * with its USE WHEN / NOT WHEN intact. Truncated per row to keep the block bounded.
  */
 const CARDS = path.join(HOME, '.claude', 'skills-active.tsv');
-const CARD_LIMIT = 40;
+// Was 40 — the file's size on 2026-08-25. It had grown to 50 by 2026-09-17, so ten curated
+// cards (anti-slop and school among them) silently never reached Astra. The cap now exists only
+// as a runaway guard; tests assert every card in the file is in the table.
+const CARD_LIMIT = 80;
 const CARD_DESC_CHARS = 150;
 
 /**

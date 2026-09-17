@@ -84,10 +84,22 @@ test('change and failure in the same run are both reported', () => {
   assert.match(msg, /SYNC FAILED/);
 });
 
-test('it runs all four generators, and every one of them exists', () => {
-  assert.equal(GENERATORS.length, 4);
+test('it runs the four generators plus the claudex check, and every one exists', () => {
+  assert.equal(GENERATORS.length, 5);
   const repo = path.resolve(__dirname, '..', '..');
   for (const g of GENERATORS) assert.ok(fs.existsSync(path.join(repo, g.script)), `${g.script} missing`);
+});
+
+test('claudex is CHECKED, never auto-installed — an upstream change must be read first', () => {
+  const g = GENERATORS.find(x => x.script.includes('claudex'));
+  assert.ok(g, 'claudex check missing');
+  assert.deepEqual(g.args, ['--check']);
+});
+
+test('a claudex drift surfaces as a loud failure', () => {
+  const msg = summarize([{ name: 'claudex local rules', code: 1, out: '', err: '[claudex-install] DRIFT — claudex-loop/SKILL.md: local block missing' }]);
+  assert.match(msg, /SYNC FAILED/);
+  assert.match(msg, /claudex local rules/);
 });
 
 console.log('\n=== codex-sync hook: as a process ===\n');

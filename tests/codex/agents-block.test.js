@@ -17,6 +17,8 @@
 
 const assert = require('node:assert/strict');
 const fs = require('node:fs');
+const os = require('node:os');
+const path = require('node:path');
 
 const { SEATS, LEAD_SEATS, WORKER_SEATS, VISION_SEATS, SEARCH_SEATS } = require('../../scripts/council/roster');
 const { buildBlock, apply, BEGIN, END, ANCHOR, TARGET } = require('../../scripts/codex/sync-codex-agents');
@@ -87,6 +89,16 @@ test('the skill routing table carries USE WHEN guidance, not just names', () => 
   for (const r of rows) {
     assert.ok(r.length < 260, `routing row too long, table must stay scannable: ${r.slice(0, 80)}…`);
   }
+});
+
+test('EVERY curated card reaches Astra — none silently cut off by a row cap', () => {
+  // 2026-09-17: the table stopped at 40 while skills-active.tsv held 50, so ten curated
+  // skills (anti-slop, school, ...) were invisible to Astra with no error anywhere.
+  const cardsFile = path.join(process.env.USERPROFILE || os.homedir(), '.claude', 'skills-active.tsv');
+  if (!fs.existsSync(cardsFile)) { console.log('    (no skills-active.tsv here — nothing to check)'); return; }
+  const names = fs.readFileSync(cardsFile, 'utf8').split('\n')
+    .map(l => l.split('\t')).filter(p => p.length >= 2 && p[0].trim() && p[1].trim()).map(p => p[0].trim());
+  for (const n of names) assert.ok(block.includes(`\`$${n}\``), `curated card "${n}" is missing from Astra's routing table`);
 });
 
 console.log('\n=== Codex AGENTS.md block: apply ===\n');
