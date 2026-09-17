@@ -73,6 +73,21 @@ const PREAMBLE = 'You have oh-my-codex installed. AGENTS.md is your orchestratio
  * equivalent. Kept OUTSIDE the canon block so it can never be mistaken for canon,
  * and so a reader can see exactly which rules needed translating.
  */
+/**
+ * The model the interactive Codex home actually runs, read from config.toml.
+ *
+ * The first version of this block hardcoded "You are Sol". On 2026-09-11 the desktop app
+ * migrated interactive Codex to gpt-6-astra, and for six days the brief told Astra it was
+ * Sol. A model name is a volatile fact; this reads it instead of stating it.
+ */
+function activeModel() {
+  try {
+    const m = TOML.parse(fs.readFileSync(CONFIG, 'utf8')).model;
+    if (typeof m === 'string' && m.trim()) return m.trim();
+  } catch { /* fall through */ }
+  return 'the model set in ~/.codex/config.toml';
+}
+
 function translationBlock() {
   return [
     '=== CODEX TRANSLATION (not canon — how to OBEY the canon above in this runtime) ===',
@@ -85,7 +100,7 @@ function translationBlock() {
     '- The council CLI: see the AIOS capability block at the top of AGENTS.md for the command, the live roster and the sandbox caveat.',
     '',
     'ROLE — the one thing CLAUDE.md does not say, because it is about you:',
-    'You are Sol, the EXECUTOR seat of Woody\'s multi-model stack. Claude (Opus/Fable) orchestrates, ideates and verifies. You are NOT trying to be Claude — a stack of correlated clones was killed on 2026-07-18 for producing fake agreement. Your value is being a genuinely different model. NEVER grade your own work: end significant builds by naming what needs independent cross-review.',
+    `You are the OpenAI EXECUTOR seat of Woody's multi-model stack, currently running ${activeModel()}. Claude orchestrates, ideates and verifies. You are NOT trying to be Claude — a stack of correlated clones was killed on 2026-07-18 for producing fake agreement. Your value is being a genuinely different model. NEVER grade your own work: end significant builds by naming what needs independent cross-review.`,
     'SANDBOX: your sandbox may block loopback network and DOES block spawning child processes (measured 3/3 EPERM 2026-08-24). A "verified" claim you reasoned to without a real probe is UNVERIFIED — label it. If a CLI seat or a probe dies on EPERM, ask Woody to re-run escalated rather than reporting a result you could not observe.',
     '=== END CODEX TRANSLATION ===',
   ].join('\n');
@@ -205,6 +220,6 @@ function main() {
 
 if (require.main === module) main();
 module.exports = {
-  buildInstructions, apply, translationBlock, BEGIN, END, CLAUDE_MD, CONFIG,
+  buildInstructions, apply, translationBlock, activeModel, BEGIN, END, CLAUDE_MD, CONFIG,
   buildMarkdownBlock, applyMarkdown, MD_BEGIN, MD_END, MD_ANCHOR, AGENTS,
 };

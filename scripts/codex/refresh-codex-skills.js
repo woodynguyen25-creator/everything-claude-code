@@ -42,11 +42,39 @@ const force = args.has('--force');
 function read(p) { try { return fs.readFileSync(p, 'utf8'); } catch { return null; } }
 function mtime(p) { try { return fs.statSync(p).mtimeMs; } catch { return 0; } }
 
+/**
+ * Directories that are never part of a skill's instructions and must not be mirrored.
+ *
+ * 2026-09-17: 13,442 of the 20,949 files under ~/.codex/skills (64%) were dependency trees
+ * this script had copied wholesale on 2026-08-24 — markov-regime/.venv (9,113 files),
+ * impeccable/node_modules (2,256), notebooklm/.venv (2,017). Codex walks that tree on every
+ * launch and reports "skills scan reached its traversal limit"; that error is what forced the
+ * council's Astra seat onto a private CODEX_HOME on 2026-09-11.
+ *
+ * Venvs can be skipped because both skills that carry one rebuild it on first use
+ * (notebooklm's scripts/run.py "creates .venv if needed"; markov-regime runs under `uv run`).
+ * NOTE, measured the same day: a copied venv is NOT dead on Windows — .venv\Scripts\python.exe
+ * resolves its environment relative to itself and ran fine from a moved location. The reason to
+ * skip is that the mirror does not need it, not that it would fail. Accepted cost: if Codex ever
+ * runs one of those skills, the rebuild puts those files back into its scan path.
+ *
+ * node_modules is deliberately NOT skipped. Unlike a venv it is relocatable, and a mirrored
+ * skill can execute from it: impeccable's detector dynamic-imports puppeteer, so dropping its
+ * node_modules would have broken `$impeccable` inside Codex. That was caught on the same day,
+ * before the parked copy was lost. The 11,130 venv files were the bulk of the problem anyway.
+ */
+const SKIP_DIRS = new Set(['.venv', 'venv', 'site-packages', '__pycache__', '.git', '.pytest_cache', '.mypy_cache']);
+
+/** cpSync filter: copy everything except dependency / cache / VCS directories. */
+function copyFilter(src) {
+  return !path.normalize(src).split(path.sep).some(part => SKIP_DIRS.has(part));
+}
+
 function copySkill(name) {
   if (dryRun) return;
   const dst = path.join(CODEX, name);
   fs.rmSync(dst, { recursive: true, force: true });
-  fs.cpSync(path.join(CLAUDE, name), dst, { recursive: true });
+  fs.cpSync(path.join(CLAUDE, name), dst, { recursive: true, filter: copyFilter });
 }
 
 function main() {
@@ -80,4 +108,4 @@ function main() {
 }
 
 if (require.main === module) main();
-module.exports = { main, RUNTIME_BOUND };
+module.exports = { main, RUNTIME_BOUND, SKIP_DIRS, copyFilter };

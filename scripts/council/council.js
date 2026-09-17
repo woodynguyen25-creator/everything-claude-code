@@ -26,7 +26,7 @@
  */
 'use strict';
 
-const { loadEnv, SEATS, loadImages } = require('./providers');
+const { loadEnv, SEATS, loadImages, USAGE_LIMIT } = require('./providers');
 const { saveTranscript, readRecent, summarize, DEFAULT_LEDGER } = require('./ledger');
 const budget = require('./budget');
 const verdictBias = require('./verdict-bias');
@@ -698,6 +698,14 @@ async function main() {
       console.log('[council] This is the Codex sandbox (workspace-write denies grandchild spawn), not a seat outage.');
       console.log('[council] FIX: re-run this exact command with escalated (unsandboxed) permissions. Do not treat the answering seats as a quorum.');
       process.exitCode = 3;
+    }
+
+    // 2026-09-17: the ChatGPT plan cap took the Astra seat out mid-trading-day. Unlike a seat
+    // outage it has a stated end, and it is the same pool the interactive Codex session uses —
+    // so say when it comes back, and that re-convening before then just fails again.
+    for (const d of dead.filter(r => String(r.error || '').startsWith(USAGE_LIMIT))) {
+      console.log(`\n[council] ${d.provider.toUpperCase()} OFF — ${String(d.error).slice(USAGE_LIMIT.length + 2)}.`);
+      console.log('[council] This is the ChatGPT plan allowance, shared with interactive Codex — not a seat fault. Re-convening before then fails the same way; decide now on the seats that answered, or wait.');
     }
   }
 }

@@ -125,12 +125,95 @@ const CODEX_JS = path.join(
   'npm', 'node_modules', '@openai', 'codex', 'bin', 'codex.js',
 );
 
+// 2026-09-11: the npm package was REMOVED by the Codex desktop app's own migration (~10:12 CDT),
+// which silently killed this seat — both paths above failed and the council reported a dead
+// Astra as "FAILED: exit 1". The working CLI is now the NATIVE exe under
+// %LOCALAPPDATA%\OpenAI\Codex\bin\<hash>\codex.exe. The <hash> dir changes on every desktop
+// update, so it is globbed (newest mtime wins), never pinned. Order: native exe → npm codex.js
+// → PATH shim. Same argv works on all three (verified: `codex.exe exec --skip-git-repo-check
+// --model gpt-6-astra -c model_reasoning_effort=high -i x.png -` → ASTRA_OK).
+function resolveCodexLauncher(codexArgs) {
+  const binDir = path.join(
+    process.env.LOCALAPPDATA || path.join(process.env.USERPROFILE || '', 'AppData', 'Local'),
+    'OpenAI', 'Codex', 'bin',
+  );
+  try {
+    const exes = fs.readdirSync(binDir)
+      .map(d => path.join(binDir, d, 'codex.exe'))
+      .filter(p => fs.existsSync(p))
+      .map(p => ({ p, mtime: fs.statSync(p).mtimeMs }))
+      .sort((a, b) => b.mtime - a.mtime);
+    if (exes.length) return { file: exes[0].p, args: codexArgs, shell: false, via: 'native' };
+  } catch { /* bin dir absent -> fall through to the npm layout */ }
+  if (fs.existsSync(CODEX_JS)) return { file: process.execPath, args: [CODEX_JS, ...codexArgs], shell: false, via: 'npm' };
+  return { file: 'codex', args: codexArgs, shell: true, via: 'shim' }; // args are fixed strings
+}
+
 /** OpenAI frontier via local codex CLI; prompt over stdin to avoid Windows quoting issues. */
 // Promoted gpt-5.6-sol -> gpt-6-astra 2026-09-05 (Astra requires codex-cli >=0.153;
 // 0.147 returned 400 "requires a newer version of Codex". Probed clean on 0.153.4).
 // Sol remains the default in ~/.codex/config.toml for interactive sessions — this
 // pin governs the COUNCIL seat only. Must match roster.js's codex seat `model`.
 const CODEX_MODEL = 'gpt-6-astra';
+
+// Private CODEX_HOME for council runs (see the comment at the spawn site). auth.json is re-copied
+// on every convene so a rotated token never goes stale here; config is regenerated so drift in
+// ~/.codex/config.toml (effort creeping to xhigh, plugin hooks, the 5KB doctrine copy) cannot reach
+// the seat. Returns null on any failure -> caller falls back to the real CODEX_HOME and the seat
+// may die on the skills scan, which the council reports as FAILED rather than hiding.
+//
+// project_doc_max_bytes = 0 (2026-09-17). The private home stripped skills, plugins and hooks, but
+// `codex exec` still runs with cwd = this repo, so it loaded the REPO's AGENTS.md on every call:
+// 14KB of ECC contributor conventions plus a claude-mem dump dated 2026-05-21. Measured with the
+// same one-line prompt, same seat, same launcher:
+//     as-is ............ 10,873 tokens
+//     project doc off ..  2,311 tokens   (-79%)
+// The council convenes before every trade analysis (standing order 2026-09-09), so that 8.5k
+// tax compounded on every one — and it bought nothing: the packet carries the question, the seat
+// is an AGENT that can open AGENTS.md itself when a question is actually about this repo, and the
+// council's value is decorrelation, which a shared house-conventions preamble works against.
+const COUNCIL_CODEX_CONFIG =
+  `model = "${CODEX_MODEL}"\n` +
+  'model_reasoning_effort = "high"\n' +
+  'service_tier = "fast"\n' +
+  'project_doc_max_bytes = 0\n';
+
+/**
+ * Why a codex run failed, in words the council banner can show.
+ *
+ * 2026-09-17: the ChatGPT plan's Codex allowance ran out mid-trading-day. codex prints
+ *   "ERROR: You've hit your usage limit. Upgrade to Pro (...), visit ... or try again at 2:20 PM."
+ * but only AFTER a ~250-char session header on stderr, and the old handler kept the first 300
+ * chars — then the degraded-quorum banner kept the first 100 of those. The seat would have
+ * been reported as a generic "exit 1" with no reason and no return time, on the day the
+ * council is standing-ordered to review every trade. The plan cap is not a seat outage: it
+ * has a known end, and it takes the interactive session down too, so it gets its own name.
+ */
+const USAGE_LIMIT = 'USAGE-LIMIT';
+function codexFailureReason(stderr, stdout, code) {
+  const text = stripAnsi(`${stderr || ''}\n${stdout || ''}`);
+  if (/hit your usage limit/i.test(text)) {
+    const when = (text.match(/try again at ([^\r\n]+?)\.?[ \t]*$/im) || [])[1];
+    return `${USAGE_LIMIT}: ChatGPT plan cap reached — Astra back ${when ? `at ${when.trim()}` : 'after the plan window resets'}`;
+  }
+  return `exit ${code}: ${stripAnsi(String(stderr || '')).slice(0, 300)}`;
+}
+
+function councilCodexHome() {
+  const home = process.env.USERPROFILE || process.env.HOME || '';
+  if (!home) return null;
+  const src = path.join(home, '.codex');
+  const dst = path.join(home, '.codex-council');
+  try {
+    fs.mkdirSync(dst, { recursive: true });
+    fs.copyFileSync(path.join(src, 'auth.json'), path.join(dst, 'auth.json'));
+    fs.writeFileSync(path.join(dst, 'config.toml'), COUNCIL_CODEX_CONFIG);
+    return dst;
+  } catch {
+    return null;
+  }
+}
+
 function runCodex(prompt, { timeoutMs = 900_000, effort = 'high', images = [] } = {}) {
   const started = Date.now();
   return new Promise(resolve => {
@@ -146,9 +229,17 @@ function runCodex(prompt, { timeoutMs = 900_000, effort = 'high', images = [] } 
     // stdin piped makes codex read stdin instead and report "No prompt provided".
     const imageArgs = images.flatMap(i => ['-i', i.file]);
     const codexArgs = ['exec', '--skip-git-repo-check', '--model', CODEX_MODEL, '-c', `model_reasoning_effort=${effort}`, ...imageArgs, '-'];
-    const child = fs.existsSync(CODEX_JS)
-      ? spawn(process.execPath, [CODEX_JS, ...codexArgs], { shell: false, windowsHide: true })
-      : spawn('codex', codexArgs, { shell: true, windowsHide: true }); // shim fallback; args are fixed strings
+    const launcher = resolveCodexLauncher(codexArgs);
+    // 2026-09-11: ~/.codex/skills holds 1,950 mirrored skills. codex scans them on EVERY exec and
+    // dies with "skills scan reached its traversal limit" on any real packet (a one-line probe
+    // survived but burned 50k tokens on the scan + the doctrine copy in config.toml). Council
+    // runs therefore get a private CODEX_HOME holding only auth + a 3-line config: no skills dir,
+    // no plugins, no notify hooks. Probed 9/11 with the real 88-line system packet: 0 traversal
+    // errors (it then hit the ChatGPT usage cap, which is a different, honestly-reported failure).
+    // REVISIT-IF: codex grows a `skills.enabled=false` key (0.153.1 exec --help: none).
+    const codexHome = councilCodexHome();
+    const env = codexHome ? { ...process.env, CODEX_HOME: codexHome } : process.env;
+    const child = spawn(launcher.file, launcher.args, { shell: launcher.shell, windowsHide: true, env });
     let out = '';
     let err = '';
     const timer = setTimeout(() => {
@@ -161,7 +252,7 @@ function runCodex(prompt, { timeoutMs = 900_000, effort = 'high', images = [] } 
     child.on('close', code => {
       clearTimeout(timer);
       if (code === 0) done(true, parseCodexOutput(out));
-      else done(false, '', `exit ${code}: ${stripAnsi(err).slice(0, 300)}`);
+      else done(false, '', codexFailureReason(err, out, code));
     });
     child.stdin.write(prompt);
     child.stdin.end();
@@ -654,4 +745,7 @@ const SEATS = {
   // every gate keyed on seat records fails open for it.
 };
 
-module.exports = { loadEnv, parseCodexOutput, stripAnsi, isTransientAgyError, SEATS, loadImages, MAX_IMAGE_BYTES, IMAGE_MIME };
+module.exports = {
+  loadEnv, parseCodexOutput, stripAnsi, isTransientAgyError, SEATS, loadImages, MAX_IMAGE_BYTES, IMAGE_MIME,
+  COUNCIL_CODEX_CONFIG, CODEX_MODEL, codexFailureReason, USAGE_LIMIT,
+};
