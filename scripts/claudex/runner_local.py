@@ -62,14 +62,25 @@ def native_codex() -> str | None:
     return str(max(exes, key=lambda p: p.stat().st_mtime))
 
 
-def interactive_model() -> tuple[str | None, str | None]:
-    """Mirror Woody's own Codex model/effort so 'CLI default' means what he chose."""
+def real_config() -> dict:
     try:
         import tomllib
-        cfg = tomllib.loads((REAL_CODEX_HOME / "config.toml").read_text(encoding="utf-8"))
-        return cfg.get("model"), cfg.get("model_reasoning_effort")
+        return tomllib.loads((REAL_CODEX_HOME / "config.toml").read_text(encoding="utf-8"))
     except Exception:
-        return None, None
+        return {}
+
+
+def interactive_model() -> tuple[str | None, str | None]:
+    """Mirror Woody's own Codex model/effort so 'CLI default' means what he chose."""
+    cfg = real_config()
+    return cfg.get("model"), cfg.get("model_reasoning_effort")
+
+
+def windows_sandbox() -> str | None:
+    """The real home's [windows] sandbox mode. Without it, Codex on Windows rejects every
+    shell command in -s read-only (CreateProcess 'Rejected'): the first live Astra review,
+    2026-09-18, could open no file, returned BLOCKED with zero findings, and burned 128k tokens."""
+    return (real_config().get("windows") or {}).get("sandbox")
 
 
 # A model id / effort level is a plain identifier. Anything else is refused rather than
@@ -91,6 +102,11 @@ def lean_config() -> str:
                 f"claudex: refusing — ~/.codex/config.toml has {key}={value!r}, which is not a "
                 "plain identifier. Writing it into the lean config could inject arbitrary TOML.")
         lines.append(f'{key} = "{value}"')
+    sandbox = windows_sandbox()
+    if sandbox:
+        if not SAFE_VALUE.match(str(sandbox)):
+            raise SystemExit(f"claudex: refusing — [windows] sandbox={sandbox!r} is not a plain identifier.")
+        lines += ["", "[windows]", f'sandbox = "{sandbox}"']
     return "\n".join(lines) + ("\n" if lines else "")
 
 

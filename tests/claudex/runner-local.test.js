@@ -111,14 +111,25 @@ if (!PY) {
     assert.match(l.args[i + 1], /\.claudex-runs$/);
   });
 
-  test('the lean config mirrors only model and effort — no MCP, plugins or hooks', () => {
+  test('the lean config mirrors only model, effort and the Windows sandbox — no MCP, plugins or hooks', () => {
     const cfg = pyEval('print(m.lean_config())');
     for (const key of ['mcp_servers', 'plugins', 'hooks', 'marketplaces', 'developer_instructions']) {
       assert.ok(!cfg.includes(key), `lean config must not contain ${key}`);
     }
-    for (const line of cfg.split('\n').filter(Boolean)) {
-      assert.match(line, /^(model|model_reasoning_effort) = "/, `unexpected line: ${line}`);
+    for (const line of cfg.split(/\r?\n/).map(l => l.trim()).filter(Boolean)) {
+      assert.match(line, /^(model|model_reasoning_effort|sandbox) = "|^\[windows\]$/, `unexpected line: ${line}`);
     }
+  });
+
+  // 2026-09-18: the first live Astra review ran in a lean home WITHOUT the real [windows]
+  // sandbox mode. Every read-only shell command came back CreateProcess "Rejected"; Astra read
+  // no file, returned BLOCKED with zero findings and spent 128k tokens finding that out.
+  test('the real home\'s [windows] sandbox mode is carried into the lean home', () => {
+    const out = pyEval([
+      'm.real_config = lambda: {"model": "gpt-6-astra", "windows": {"sandbox": "unelevated"}}',
+      'import tomllib; print(tomllib.loads(m.lean_config())["windows"]["sandbox"])',
+    ].join('\n'));
+    assert.equal(out, 'unelevated');
   });
 
   console.log('\n=== claudex runner_local: naming the plan cap ===\n');
