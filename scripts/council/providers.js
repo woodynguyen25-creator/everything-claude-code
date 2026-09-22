@@ -325,7 +325,9 @@ function runCodex(prompt, { timeoutMs = 900_000, effort = 'high', images = [] } 
 // gpt-oss-120b-medium.
 const AGY_PRO   = 'gemini-3.1-pro-high';        // geminipro  — hand-summon deep seat
 const AGY_COLD  = 'claude-opus-4-6-thinking';   // agyopus    — free Opus-class labour
-const AGY_FLASH = 'gemini-3.7-flash-high';      // gemini     — THE Google LEAD seat
+// 3.8 promoted 2026-09-22 by bake-off: 7/8 vs 7/8 on the same known-answer set (both
+// missed the same item), max 70.5s vs 140.3s — the tail decides a quorum seat.
+const AGY_FLASH = 'gemini-3.8-flash-high';      // gemini     — THE Google LEAD seat
 const AGY_FLASH_PREV = 'gemini-3.6-flash-high'; // agyflash   — free worker seat
 
 const AGY_BIN = path.join(
@@ -409,7 +411,7 @@ function runAgy(prompt, { seat = 'geminipro', timeoutMs = 300_000, model = AGY_P
     // model 'Gemini 3.1 Pro'") — for Gemini the effort tier is part of the model
     // id instead (…-high / …-low). Claude seats carry it in the id too.
     if (effort && !/pro|claude|opus|sonnet/i.test(model)) cliArgs.push('--effort', effort);
-    cliArgs.push('-p', prompt);
+    cliArgs.push('-p', withAgyToolLine(prompt));
     // shell:false — no shell means no arg-escaping hazard, and the prompt can
     // contain quotes/newlines safely on Windows.
     const bin = fs.existsSync(AGY_BIN) ? AGY_BIN : 'agy';
@@ -425,23 +427,52 @@ function runAgy(prompt, { seat = 'geminipro', timeoutMs = 300_000, model = AGY_P
     child.on('error', e => { clearTimeout(timer); done(false, '', e.message); });
     child.on('close', code => {
       clearTimeout(timer);
-      if (code === 0) return done(true, stripAnsi(out).trim());
-      const detail = stripAnsi(err).slice(0, 300);
-      // INTERNAL RETRY REMOVED 2026-08-21 (codex-seat finding, promoted from
-      // deferred to live the day --public made these seats usable again): the
-      // recursion collapsed two PHYSICAL attempts into one dispatch result, so
-      // the first attempt never got a ledger row — the exact hole the dispatch
-      // boundary exists to close. Retry policy now lives in dispatch.js
-      // dispatchWithRetry, which logs BOTH attempts. The transient-vs-refusal
-      // classification stays here (isTransientAgyError, exported) because only
-      // this file knows agy's error shapes; a REAL refusal is marked
-      // non-retryable so a dead entitlement still surfaces immediately.
-      const kind = isTransientAgyError(detail) ? 'transient' : 'refusal';
-      done(false, '', `exit ${code} [agy-${kind}]: ${detail}`);
+      const r = interpretAgyExit(code, out, err);
+      done(r.ok, r.text, r.error);
     });
     // prompt already passed via -p; close stdin so agy does not wait on it
     child.stdin.end();
   });
+}
+
+/**
+ * Turn an agy exit into { ok, text, error }. Pure, so it is testable without a
+ * real agy.exe.
+ *
+ * EXIT 0 + EMPTY STDOUT IS A FAILURE (2026-09-22). agy auto-updated at 12:57 that
+ * day; on code questions the model now reaches for a command tool, headless mode
+ * auto-denies it, and agy exits 0 with nothing on stdout and
+ *   "jetski: no output produced — a tool required the "command" permission ..."
+ * on stderr. Read as success, that is a seat that answered and said nothing —
+ * reproduced 6/6 on two code questions without a [NO TOOLS] line.
+ */
+function interpretAgyExit(code, out, err) {
+  const text = stripAnsi(out || '').trim();
+  if (code === 0 && text) return { ok: true, text };
+  if (code === 0) {
+    return { ok: false, text: '', error: `exit 0 [agy-empty]: no output — ${stripAnsi(err || '').trim().slice(0, 240) || 'stderr empty'}` };
+  }
+  const detail = stripAnsi(err || '').slice(0, 300);
+  // INTERNAL RETRY REMOVED 2026-08-21 (codex-seat finding, promoted from
+  // deferred to live the day --public made these seats usable again): the
+  // recursion collapsed two PHYSICAL attempts into one dispatch result, so
+  // the first attempt never got a ledger row — the exact hole the dispatch
+  // boundary exists to close. Retry policy now lives in dispatch.js
+  // dispatchWithRetry, which logs BOTH attempts. The transient-vs-refusal
+  // classification stays here (isTransientAgyError, exported) because only
+  // this file knows agy's error shapes; a REAL refusal is marked
+  // non-retryable so a dead entitlement still surfaces immediately.
+  const kind = isTransientAgyError(detail) ? 'transient' : 'refusal';
+  return { ok: false, text: '', error: `exit ${code} [agy-${kind}]: ${detail}` };
+}
+
+// Every agy seat is prompt-bound in practice (see the roster's toolAccess notes),
+// and the post-12:57 agy goes SILENT when the model tries a tool. council.js adds
+// this line for api seats, but direct SEATS.* callers (bake-offs, preflight,
+// debate rounds) did not — so the runner guarantees it. Idempotent.
+const AGY_NO_TOOLS = '\n[NO TOOLS] You have NO filesystem, command, or browsing access. Do not attempt or narrate file/tool operations — reason only from what is in this prompt, and state when a claim would need verification you cannot perform.';
+function withAgyToolLine(prompt) {
+  return /\[(NO )?TOOLS\]/.test(prompt) ? prompt : prompt + AGY_NO_TOOLS;
 }
 
 /**
@@ -456,7 +487,7 @@ function runAgy(prompt, { seat = 'geminipro', timeoutMs = 300_000, model = AGY_P
  */
 const CLAUDE_BIN = path.join(process.env.USERPROFILE || '', '.local', 'bin', 'claude.exe');
 
-function runClaude(prompt, { timeoutMs = 300_000, model = 'claude-opus-5', seat = 'claude', images = [] } = {}) {
+function runClaude(prompt, { timeoutMs = 300_000, model = 'claude-opus-5-5', seat = 'claude', images = [] } = {}) {
   // claude.exe has no --image flag (checked 2026-08-23), but in -p mode it still
   // has its Read tool, which renders images visually. So the attachment is an
   // absolute path in the prompt. Verified 3/3 on the probe for BOTH claude-opus-5
@@ -594,7 +625,46 @@ async function runXaiResponses(prompt, env, { timeoutMs = 300_000, model = 'grok
  */
 const GEMINI_VISION_MODEL = 'gemini-flash-latest';
 
-async function runGeminiVision(prompt, env, { timeoutMs = 300_000, images = [], seat = 'gemini', model = GEMINI_VISION_MODEL } = {}) {
+// Overload ladder (2026-09-22). The free-tier API answered 503 "overloaded" on 57 of
+// 71 image dispatches since 8/22. Probe that day, 5 calls each with an image:
+//   flash-latest 0/5 · 3.8-flash 0/5 · 3.7-flash 0/5 · 3.6-flash 2/5 (27s) ·
+//   3.1-flash-lite 4/5 · flash-lite-latest 5/5 (0.9s)
+// Strongest first; step down ONLY on 503/429 (capacity), never on a 4xx that means
+// the request itself is wrong. The label names the model that actually answered.
+// 3.6-flash was a middle rung for one live run and was dropped: a 503 takes ~30s to
+// arrive, so two slow rungs made a successful fallback cost 55-78s (4/4 live).
+// A non-final rung is also capped, so a hung primary cannot eat the seat's budget.
+const GEMINI_VISION_LADDER = ['gemini-flash-lite-latest'];
+const GEMINI_OVERLOAD = new Set([429, 503]);
+const GEMINI_RUNG_TIMEOUT_MS = 30_000;
+
+async function runGeminiVision(prompt, env, opts = {}) {
+  const { model = GEMINI_VISION_MODEL } = opts;
+  const started = Date.now();
+  // Only the default model walks the ladder; an explicitly requested model is honoured as-is.
+  const rungs = model === GEMINI_VISION_MODEL ? [model, ...GEMINI_VISION_LADDER] : [model];
+  const misses = [];
+  let last;
+  for (const [i, rung] of rungs.entries()) {
+    const isFinal = i === rungs.length - 1;
+    const timeoutMs = isFinal ? opts.timeoutMs : Math.min(opts.timeoutMs || GEMINI_RUNG_TIMEOUT_MS, GEMINI_RUNG_TIMEOUT_MS);
+    last = await runGeminiVisionOnce(prompt, env, { ...opts, model: rung, timeoutMs });
+    // A capped rung that times out is treated as overloaded: that is what the cap is for.
+    const timedOut = !last.ok && !isFinal && /timeout|aborted/i.test(last.error || '');
+    if (last.ok || !(GEMINI_OVERLOAD.has(last.status) || timedOut)) break;
+    misses.push(`${rung}: ${last.error.slice(0, 60)}`);
+  }
+  const { status, ...result } = last;
+  result.ms = Date.now() - started;
+  if (result.ok && misses.length) result.model = `${result.model.replace(/ \(vision\)$/, '')} (vision, fallback after ${misses.length} overloaded)`;
+  if (!result.ok && misses.length) {
+    const lastRung = GEMINI_OVERLOAD.has(status) ? '' : `; then ${result.error.slice(0, 120)}`;
+    result.error = `Gemini vision failed — overloaded: ${misses.join(' | ')}${lastRung}`;
+  }
+  return result;
+}
+
+async function runGeminiVisionOnce(prompt, env, { timeoutMs = 300_000, images = [], seat = 'gemini', model = GEMINI_VISION_MODEL } = {}) {
   const started = Date.now();
   const key = env.GEMINI_API_KEY;
   const label = `${model} (vision)`;
@@ -611,7 +681,7 @@ async function runGeminiVision(prompt, env, { timeoutMs = 300_000, images = [], 
     // Body included on purpose: a bare "HTTP 429" here reads as a dead key when it
     // is usually the free-tier minute quota, and that ambiguity cost a debugging
     // pass on the Pro ids in August.
-    if (!res.ok) return { provider: seat, model: label, ok: false, text: '', ms: Date.now() - started, error: `HTTP ${res.status}: ${raw.slice(0, 200)}` };
+    if (!res.ok) return { provider: seat, model: label, ok: false, text: '', ms: Date.now() - started, status: res.status, error: `HTTP ${res.status}: ${raw.slice(0, 200)}` };
     const data = JSON.parse(raw);
     const text = (data.candidates?.[0]?.content?.parts || []).map(pt => pt.text || '').join('').trim();
     return {
@@ -742,7 +812,7 @@ const SEATS = {
   // family distinct from cerebras's gpt-oss. REVISIT-IF: Groq retires qwen3.6
   // — pick from /models, prefer a non-gpt-oss family for seat diversity.
   groq: (prompt, env, opts) =>
-    runOpenAiCompat('groq', 'https://api.groq.com/openai/v1', 'GROQ_API_KEY', 'qwen/qwen3.6-27b', prompt, env, opts),
+    runOpenAiCompat('groq', 'https://api.groq.com/openai/v1', 'GROQ_API_KEY', 'qwen/qwen3.8-27b', prompt, env, opts), // 3.6 retired (HTTP 404) by 2026-09-22; 3.8 probed that day: text correct 1.0s, image 2.0s
   // xAI Grok 4.6 — 500k ctx, $2.00/$6.00 per M (the priciest seat; economical
   // ONLY while xAI's data-sharing free credits are active). Seat id is 'xai',
   // not 'grok', to keep it one typo away from 'groq' (a different vendor).
@@ -767,4 +837,5 @@ module.exports = {
   loadEnv, parseCodexOutput, stripAnsi, isTransientAgyError, SEATS, loadImages, MAX_IMAGE_BYTES, IMAGE_MIME,
   COUNCIL_CODEX_CONFIG, CODEX_MODEL, codexFailureReason, USAGE_LIMIT,
   councilCodexHome, runCodex, ISOLATION_FAILED,
+  interpretAgyExit, withAgyToolLine, GEMINI_VISION_LADDER,
 };

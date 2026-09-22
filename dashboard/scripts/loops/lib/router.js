@@ -83,9 +83,10 @@ const MODEL_MAP = {
   // against council-catalogue-seen.json, refreshed the same day) — the same
   // silent rot this map's own header documents, recurring inside the map.
   // qwen3.6-27b is the id the council's groq seat already validated 2026-08-17.
-  groq: 'qwen/qwen3.6-27b',
+  // 2026-09-22: qwen3.6-27b retired (404); qwen3.8-27b is live and re-validated by the council groq seat.
+  groq: 'qwen/qwen3.8-27b',
   groqSmall: 'openai/gpt-oss-20b',    // live small tier; llama-3.1-8b-instant is GONE
-  groqLlama: 'qwen/qwen3.6-27b',      // alias kept for callers; no llama exists on this key anymore
+  groqLlama: 'qwen/qwen3.8-27b',      // alias kept for callers; no llama exists on this key anymore
   deepseek: 'deepseek-chat',
   deepseekReasoner: 'deepseek-reasoner',
   codex: 'gpt-5.6-sol', // was gpt-5.4 — pre-Sol id; the CLI validates only gpt-5.6-sol (2026-08-21)

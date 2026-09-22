@@ -59,12 +59,12 @@ const SEATS = [
     tiers: ['LEAD'],
     role: 'ARCHITECT - systems reasoning, long-context synthesis, final review',
     lab: 'anthropic',
-    model: 'claude-opus-5',
+    model: 'claude-opus-5-5', // promoted 2026-09-22 (release day): CLI PONG 8.2s; $4/$20 per M, 20% under Opus 5.
     mandate:
       'Deepest reasoning seat. Carries the most context and is the one to trust on architecture and multi-file consequences.',
     swapWhen:
       'A newer Anthropic frontier ships (Opus 6, etc). NOTE: this is the LEAST decorrelated seat - `claude -p` inherits the same CLAUDE.md, rules and memory as the main session, so it argues in Woody\'s house style. Treat its agreement with the orchestrator as near-zero evidence.',
-    verified: '2026-08-04',
+    verified: '2026-09-22',
   },
   {
     id: 'codex',
@@ -127,8 +127,8 @@ const SEATS = [
     mandate:
       'Most reliable seat in the roster (0% failure over 128 calls, highest average output). Least filtered, which is what the red-team lens needs.',
     swapWhen:
-      'grok-5 ships, or the xAI data-sharing free credits end - at $2/$6 per M it is the priciest seat and only economical while those credits are active.',
-    verified: '2026-08-04',
+      'grok-5 ships, or the xAI data-sharing free credits end - at $2/$6 per M it is the priciest seat and only economical while those credits are active. grok-4.7 was bake-offed 2026-09-22 and NOT taken: 8/8 accuracy on both across two runs, but worst-case 91.7s and 135.7s against 4.6\'s 53.5s and 53.4s. Re-test when a 4.7 point release ships.',
+    verified: '2026-09-22',
   },
   {
     id: 'gemini',
@@ -208,11 +208,11 @@ const SEATS = [
     tiers: ['LEAD'],
     role: 'FRONTIER-GOOGLE - the Google lead seat, fourth lab in the LEAD roster',
     lab: 'google',
-    model: 'gemini-3.7-flash-high (via agy)',
+    model: 'gemini-3.8-flash-high (via agy)', // 2026-09-22 bake-off: ties 3.7 on accuracy (7/8 each), half the worst-case latency (70.5s vs 140.3s).
     mandate:
       'The one Google seat, and the fourth independent lab in the LEAD roster alongside Anthropic, OpenAI and xAI — at $0 on the AI Pro student plan. Consolidates what were three overlapping Google-ish seats (gemini/geminipro/agyflash) into one named seat with one job. Its value is DECORRELATION, not cost: the whole metered roster runs about $1.42/month, so this seat does not meaningfully save money — it adds a viewpoint that Anthropic, OpenAI and xAI cannot supply.',
     swapWhen:
-      'A newer agy id ships (`node scripts/council/health.js --discover` reports arrivals) — as of 2026-08-22 nothing on the plan beats 3.7-flash-high. THE REAL UPGRADE IS NOT A MODEL: attaching BILLING to an AI-Studio project flips ai.google.dev\'s "Used to improve our products" from Yes to No, which would give a VERIFIED-PRIVATE Google seat that works on trading and client prompts like claude and codex do. That is the only path to true parity; it costs cents and needs Woody\'s card. Falls back to `geminipro` if Google changes the Antigravity allocation.',
+      'A newer agy id ships (`node scripts/council/health.js --discover` reports arrivals) — as of 2026-09-22 3.8-flash-high is the best measured id on the plan. THE REAL UPGRADE IS NOT A MODEL: attaching BILLING to an AI-Studio project flips ai.google.dev\'s "Used to improve our products" from Yes to No, which would give a VERIFIED-PRIVATE Google seat that works on trading and client prompts like claude and codex do. That is the only path to true parity; it costs cents and needs Woody\'s card. Falls back to `geminipro` if Google changes the Antigravity allocation.',
     verified: '2026-08-22',
   },
   {
@@ -298,7 +298,7 @@ const SEATS = [
   },
   {
     id: 'groq',
-    vision: 'native',    // MEASURED 2026-08-23: qwen/qwen3.6-27b took image_url and scored 3/3. NOT assumed — this one was a surprise.
+    vision: 'native',    // MEASURED 2026-08-23: qwen/qwen3.6-27b took image_url and scored 3/3. Re-measured on its successor qwen3.8-27b 2026-09-22: image read correctly, 2.0s.
     // API seat: a raw HTTPS call. NO filesystem, NO commands, NO verification.
     // Asking it to 'check the tree' produces a confident stub — measured 2026-08-21,
     // when a brief told xai it had filesystem access and it burned a dispatch
@@ -311,7 +311,7 @@ const SEATS = [
     tiers: ['WORKER'],
     role: 'CHEAP DRAFT - throwaway passes where substance barely matters',
     lab: 'meta',
-    model: 'qwen/qwen3.6-27b',
+    model: 'qwen/qwen3.8-27b', // 3.6 retired by Groq (404, found 2026-09-22)
     // DRIFT FIX 2026-08-20, caught by `health.js --models`. Groq decommissioned
     // llama-3.3-70b-versatile (404, found by probe 2026-08-17) and providers.js
     // was swapped to qwen3.6 that day - but THIS file, the declared single source

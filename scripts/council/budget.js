@@ -40,7 +40,10 @@ const PRICING = {
   // A long council prompt therefore silently costs 2x. Modelled explicitly.
   xai: { in: 2.0, out: 6.0, bigIn: 4.0, bigOut: 12.0, bigPromptTokens: 200_000 },
   deepseek: { in: 0.27, out: 1.1 },
-  groq: { in: 0.59, out: 0.79 },
+  // qwen/qwen3.8-27b (seat swapped 2026-09-22): $0.80/$4.00 per M from pricepertoken.com +
+  // search listings — groq.com/pricing did not render for the fetch. The old 0.59/0.79
+  // under-counted output ~5x. When unsure, over-count: this table feeds a spend CAP.
+  groq: { in: 0.8, out: 4.0 },
   cerebras: { in: 0.1, out: 0.1 },
 
   claude: null,
