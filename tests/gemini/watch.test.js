@@ -52,5 +52,54 @@ test('args: source + question required; --model overrides the free-tier default'
   assert.equal(W.parseArgs(['a.mp4', 'q', '--model', 'gemini-3.8-flash']).model, 'gemini-3.8-flash');
 });
 
-console.log(`\n=== Test Results ===\nPassed: ${passed}\nFailed: ${failed}\nTotal:  ${passed + failed}`);
-process.exit(failed ? 1 : 0);
+(async () => {
+  const realFetch = global.fetch;
+  const env = { GEMINI_API_KEY: 'k' };
+  const yt = 'https://youtu.be/x';
+  function stub(byModel) {
+    const calls = [];
+    global.fetch = async (url) => {
+      const m = String(url).match(/models\/([^:]+):/)[1]; calls.push(m);
+      const [status, text] = byModel[m] || [500, 'x'];
+      return { ok: status === 200, status, text: async () => (status === 200
+        ? JSON.stringify({ candidates: [{ content: { parts: [{ text }] } }] }) : text) };
+    };
+    return calls;
+  }
+  async function atest(name, fn) {
+    try { await fn(); console.log(`  ✓ ${name}`); passed++; }
+    catch (e) { console.log(`  ✗ ${name}\n    ${e.message}`); failed++; }
+  }
+
+  await atest('an overloaded default model steps down the ladder and says who answered', async () => {
+    const calls = stub({ [W.DEFAULT_MODEL]: [503, 'busy'], [W.OVERLOAD_LADDER[0]]: [200, 'a zoo video'] });
+    const out = await W.ask({ source: yt, question: 'q', model: W.DEFAULT_MODEL }, env);
+    assert.deepEqual(calls, [W.DEFAULT_MODEL, W.OVERLOAD_LADDER[0]]);
+    assert.match(out, /^a zoo video/);
+    assert.match(out, new RegExp(`answered by ${W.OVERLOAD_LADDER[0]}`));
+  });
+
+  await atest('a 400 is a real error and does not fall back', async () => {
+    const calls = stub({ [W.DEFAULT_MODEL]: [400, 'bad'] });
+    await assert.rejects(W.ask({ source: yt, question: 'q', model: W.DEFAULT_MODEL }, env), /HTTP 400/);
+    assert.deepEqual(calls, [W.DEFAULT_MODEL]);
+  });
+
+  await atest('an explicit --model is not silently swapped for another', async () => {
+    const calls = stub({ 'gemini-3.8-flash': [429, 'quota'] });
+    await assert.rejects(W.ask({ source: yt, question: 'q', model: 'gemini-3.8-flash' }, env), /overloaded/);
+    assert.deepEqual(calls, ['gemini-3.8-flash']);
+  });
+
+  await atest('every rung overloaded → one error naming each model', async () => {
+    stub({});
+    const all = [W.DEFAULT_MODEL, ...W.OVERLOAD_LADDER];
+    stub(Object.fromEntries(all.map(m => [m, [503, 'busy']])));
+    await assert.rejects(W.ask({ source: yt, question: 'q', model: W.DEFAULT_MODEL }, env),
+      e => all.every(m => e.message.includes(m)));
+  });
+
+  global.fetch = realFetch;
+  console.log(`\n=== Test Results ===\nPassed: ${passed}\nFailed: ${failed}\nTotal:  ${passed + failed}`);
+process.exitCode = failed ? 1 : 0;
+})();

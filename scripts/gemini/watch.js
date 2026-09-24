@@ -28,6 +28,8 @@ const { spawnSync } = require('node:child_process');
 const { loadEnv } = require('../council/providers');
 
 const DEFAULT_MODEL = 'gemini-flash-lite-latest';
+const OVERLOAD_LADDER = ['gemini-3.1-flash-lite', 'gemini-3.6-flash']; // 4/5 and 2/5 on the 9/22 overload probe
+const OVERLOAD = new Set([429, 503]);
 const INLINE_LIMIT = 18 * 1024 * 1024; // request cap is 20MB; leave room for base64 + prompt
 const TIMEOUT_MS = 180_000;
 const YOUTUBE = /^https?:\/\/(www\.|m\.)?(youtube\.com\/(watch|shorts)|youtu\.be\/)/i;
@@ -80,14 +82,22 @@ async function ask({ source, question, model }, env = loadEnv()) {
   } finally {
     if (file !== source) fs.rmSync(file, { force: true }); // the shrunk copy is only needed until it is encoded
   }
-  const res = await fetch(
-    `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${env.GEMINI_API_KEY}`,
-    { method: 'POST', headers: { 'Content-Type': 'application/json' }, body, signal: AbortSignal.timeout(TIMEOUT_MS) });
-  const raw = await res.text();
-  if (!res.ok) throw new Error(`HTTP ${res.status}: ${raw.slice(0, 240)}`);
-  const text = (JSON.parse(raw).candidates?.[0]?.content?.parts || []).map(p => p.text || '').join('').trim();
-  if (!text) throw new Error('Gemini returned an empty answer');
-  return text;
+  // 2026-09-24: flash-lite-latest itself returned 503 "high demand" on the first real use.
+  // Only the default model walks the ladder; an explicit --model is honoured as-is.
+  const rungs = model === DEFAULT_MODEL ? [model, ...OVERLOAD_LADDER] : [model];
+  const misses = [];
+  for (const rung of rungs) {
+    const res = await fetch(
+      `https://generativelanguage.googleapis.com/v1beta/models/${rung}:generateContent?key=${env.GEMINI_API_KEY}`,
+      { method: 'POST', headers: { 'Content-Type': 'application/json' }, body, signal: AbortSignal.timeout(TIMEOUT_MS) });
+    const raw = await res.text();
+    if (OVERLOAD.has(res.status)) { misses.push(`${rung}: HTTP ${res.status}`); continue; }
+    if (!res.ok) throw new Error(`HTTP ${res.status} from ${rung}: ${raw.slice(0, 240)}`);
+    const text = (JSON.parse(raw).candidates?.[0]?.content?.parts || []).map(p => p.text || '').join('').trim();
+    if (!text) throw new Error(`${rung} returned an empty answer`);
+    return misses.length ? `${text}\n\n[answered by ${rung} after ${misses.join(', ')}]` : text;
+  }
+  throw new Error(`every model overloaded — ${misses.join(' | ')}; try again in a few minutes`);
 }
 
 if (require.main === module) {
@@ -97,9 +107,11 @@ if (require.main === module) {
       process.stdout.write(`${await ask(args)}\n`);
     } catch (e) {
       process.stderr.write(`[gemini-watch] ${e.message}\n`);
-      process.exit(1);
+      // exitCode, not exit(): exit() mid-teardown of an aborted fetch trips a libuv
+      // assertion on Windows (UV_HANDLE_CLOSING, seen 2026-09-24).
+      process.exitCode = 1;
     }
   })();
 }
 
-module.exports = { parseArgs, videoPart, buildRequest, DEFAULT_MODEL, INLINE_LIMIT };
+module.exports = { parseArgs, videoPart, buildRequest, ask, DEFAULT_MODEL, OVERLOAD_LADDER, INLINE_LIMIT };
