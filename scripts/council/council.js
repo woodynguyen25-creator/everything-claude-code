@@ -93,6 +93,16 @@ const LENS_SETS = {
 // could not answer and the failure read as a payment error instead of "no synth
 // seat available". Benching a seat now removes it from synthesis automatically.
 const SYNTH_FALLBACK_CHAIN = SYNTH_CHAIN;
+
+// Preflight PONG budget. 15s suits raw-HTTPS seats (xai p90 5.5s). The gemini seat
+// shells out to the agy CLI: ledger 8/22-9/29 shows p50 5.9s, p90 9.0s, max OK 14.2s,
+// and 6 of 77 preflights died on the 15s timer — each one blocked the WHOLE convene
+// over a seat that was merely slow. It gets 30s; everything else keeps 15s.
+const PREFLIGHT_TIMEOUT_MS = 15_000;
+const PREFLIGHT_TIMEOUT_OVERRIDES = { gemini: 30_000 };
+function preflightTimeoutMs(seat) {
+  return PREFLIGHT_TIMEOUT_OVERRIDES[seat] || PREFLIGHT_TIMEOUT_MS;
+}
 const SYNTH_BLOCK_MAX_CHARS = 6000; // per-seat cap fed into the synthesis prompt
 const DEBATE_BLOCK_MAX_CHARS = 4000; // per-seat cap fed into round-2 prompts
 
@@ -448,7 +458,7 @@ async function main() {
     const pings = await Promise.all(apiSeats.map(seat =>
       // Through the dispatch boundary: preflight PONGs are metered spend and
       // were previously invisible to both the ledger and the cap.
-      dispatch(seat, 'Reply with exactly one word: PONG', env, { timeoutMs: 15_000 }, { tag: 'preflight', kind: 'preflight', privateContent: args.privateContent })
+      dispatch(seat, 'Reply with exactly one word: PONG', env, { timeoutMs: preflightTimeoutMs(seat) }, { tag: 'preflight', kind: 'preflight', privateContent: args.privateContent })
         .then(r => ({ seat, ok: Boolean(r.ok), error: r.error }))
         .catch(e => ({ seat, ok: false, error: e.message })),
     ));
@@ -730,4 +740,4 @@ if (require.main === module) {
   });
 }
 
-module.exports = { parseArgs, applyPrivacyPolicy, applyVisionPolicy, assignLenses };
+module.exports = { parseArgs, applyPrivacyPolicy, applyVisionPolicy, assignLenses, preflightTimeoutMs };

@@ -144,6 +144,18 @@ const env = { GEMINI_API_KEY: 'test' };
     assert.equal(P.withAgyToolLine(b), b);
   });
 
+  console.log('\n=== Preflight budget: a slow-but-healthy seat must not block the convene ===\n');
+
+  await test('gemini gets a preflight budget above its measured worst healthy ping (14.2s, 77 runs)', () => {
+    const { preflightTimeoutMs } = require('../../scripts/council/council');
+    assert.ok(preflightTimeoutMs('gemini') >= 30_000, `got ${preflightTimeoutMs('gemini')}`);
+  });
+
+  await test('fast API seats keep the tight 15s preflight', () => {
+    const { preflightTimeoutMs } = require('../../scripts/council/council');
+    for (const s of ['xai', 'groq']) assert.equal(preflightTimeoutMs(s), 15_000, s);
+  });
+
   console.log(`\n=== Test Results ===\nPassed: ${passed}\nFailed: ${failed}\nTotal:  ${passed + failed}`);
   process.exit(failed ? 1 : 0);
 })();

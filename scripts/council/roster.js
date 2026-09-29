@@ -259,7 +259,11 @@ const SEATS = [
     // to route sensitive prompts to a seat that may train on them, rather than
     // relying on a comment nobody reads. 'UNVERIFIED' is NOT 'safe'.
     dataTerms: 'UNVERIFIED', // Not audited.
-    tiers: ['WORKER'],
+    // BENCHED 2026-09-29 on Woody's word ("go ahead and drop DeepSeek"): HTTP 402 out of credit
+    // since August, health DOWN every probe. Benching removes it from every default convene AND from
+    // SYNTH_CHAIN automatically; haiku takes over synthesis at $0, as the mandate below anticipated.
+    // Revive = top up the key and set tiers back to ['WORKER'].
+    tiers: ['BENCH'],
     role: 'SYNTHESIST - merges seat answers, drafts, bulk reasoning',
     lab: 'deepseek',
     model: 'deepseek-chat',
@@ -512,8 +516,12 @@ const API_SEATS = SEATS.filter(s => s.toolAccess === 'api').map(s => s.id);
  * the seat is summarising answers that already exist, so cheap-and-reliable beats
  * frontier-and-slow. That is why the deepseek WORKER seat leads a chain whose
  * second link is a LEAD seat.
+ *
+ * 2026-09-29: deepseek benched (out of credit). haiku inserted as the live first
+ * link: $0 on the Max plan, 100% of its dispatches ok since 9/22, and NOT a voting
+ * seat — so the merge is no longer done by xai, a LEAD seat summarising its own answer.
  */
-const SYNTH_PREFERENCE = ['deepseek', 'xai', 'cerebras', 'groq'];
+const SYNTH_PREFERENCE = ['deepseek', 'haiku', 'xai', 'cerebras', 'groq'];
 
 /**
  * Live synthesis chain. Filtering introduces a new way to fail — bench enough
