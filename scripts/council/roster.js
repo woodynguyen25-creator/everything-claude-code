@@ -520,8 +520,16 @@ const API_SEATS = SEATS.filter(s => s.toolAccess === 'api').map(s => s.id);
  * 2026-09-29: deepseek benched (out of credit). haiku inserted as the live first
  * link: $0 on the Max plan, 100% of its dispatches ok since 9/22, and NOT a voting
  * seat — so the merge is no longer done by xai, a LEAD seat summarising its own answer.
+ *
+ * 2026-10-05: synthesis became SELECTION (council.js selectorPrompt): pick the best
+ * anonymised answer, list disagreements, add no facts. For selection the selector's
+ * strength matters more than seat diversity (arXiv 2603.20324: judge-selection 0.81 vs
+ * blending 0.18; three Opus copies + a judge ≈ 0.51), so claude (Opus 5.5, $0 on Max)
+ * leads. It is a voting seat; anonymised letters blunt but do not remove self-preference
+ * (arXiv 2410.21819). REVISIT-IF: across 10 runs the selector picks claude's own answer
+ * clearly more than its share — then move haiku back to first.
  */
-const SYNTH_PREFERENCE = ['deepseek', 'haiku', 'xai', 'cerebras', 'groq'];
+const SYNTH_PREFERENCE = ['claude', 'deepseek', 'haiku', 'xai', 'cerebras', 'groq'];
 
 /**
  * Live synthesis chain. Filtering introduces a new way to fail — bench enough

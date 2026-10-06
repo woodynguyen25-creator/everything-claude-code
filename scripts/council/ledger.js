@@ -66,6 +66,9 @@ function buildEntry(result, { tag = '', promptChars = 0, round = undefined, kind
     // mode, or organically). Accrues the data that makes the council's dissent
     // rate auditable — without it, "the council agreed" is unfalsifiable.
     verdict: result.verdict || undefined,
+    // P(success) the seat attached to its verdict (0-1). Scored against the tag's later
+    // resolution by scores.js (Brier). null/absent = the seat gave none — never defaulted.
+    prob: typeof result.prob === 'number' ? result.prob : undefined,
     tag,
     error: result.error || undefined,
   };
@@ -117,7 +120,7 @@ function appendEntry(entry, ledgerPath = DEFAULT_LEDGER) {
  * 99.4% of historical rows predate `kind` and must keep counting as real work.
  * budget consumers do NOT use this — money is money, probes bill too.
  */
-const NON_TIMING_KINDS = new Set(['probe', 'preflight']);
+const NON_TIMING_KINDS = new Set(['probe', 'preflight', 'resolution']); // resolution: scores.js outcome rows (10/05) — not a call
 function isTimingRow(e) {
   return !NON_TIMING_KINDS.has(e && e.kind);
 }

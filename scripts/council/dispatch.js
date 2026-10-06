@@ -262,7 +262,11 @@ async function dispatch(seat, prompt, env, opts = {}, meta = {}, seatsMap = SEAT
     result.error = `degenerate output: ${result.text.length} chars of looping repetition`;
   }
   if (meta.retried) result.retried = true;
-  if (meta.verdicts) result.verdict = extractVerdict(result.text, { strict: Boolean(meta.strictVerdict), binary: Boolean(meta.binaryVerdict) });
+  if (meta.verdicts) {
+    result.verdict = extractVerdict(result.text, { strict: Boolean(meta.strictVerdict), binary: Boolean(meta.binaryVerdict) });
+    const prob = extractProbability(result.text);
+    if (prob !== null) result.prob = prob;
+  }
   try {
     appendEntry(
       buildEntry(result, { tag: meta.tag || '', promptChars: prompt.length, round: meta.round, kind: meta.kind, decisionMode: meta.decisionMode }),
@@ -288,7 +292,31 @@ async function dispatchWithRetry(seat, prompt, env, opts = {}, meta = {}, seatsM
   return dispatch(seat, prompt, env, opts, { ...meta, retried: true }, seatsMap);
 }
 
+/**
+ * The seat's P(success) for its verdict, from the tail of the answer (2026-10-05).
+ * Accepts "P(success): 72%", "P: 15", "P(success)=0.4". Tail-only (last 5 non-empty
+ * lines) for the same reason as strict verdicts: a number quoted mid-answer is not the
+ * seat's commitment. Returns 0-1, or null when absent or out of range — never a default,
+ * because a defaulted probability would be scored as if the seat had said it.
+ */
+function extractProbability(text) {
+  // Review fix 10/05: the label must be P(success) at the START of a line (a "p: 0.05"
+  // significance value used to win), markdown emphasis is stripped (**P(success):** 72%
+  // returned null), the LAST such line wins, and a range (70-75%) is ambiguous → null.
+  const lines = String(text || '').split(/\r?\n/).map(l => l.replace(/[*_`]/g, '').trim()).filter(Boolean).slice(-5);
+  for (let i = lines.length - 1; i >= 0; i--) {
+    const m = lines[i].match(/^\W*P\s*\(\s*success\s*\)\s*[:=]\s*(?:~|about|approx\.?)?\s*(\d+(?:\.\d+)?)\s*(%)?\s*(-|–|to\b)?/i);
+    if (!m) continue;
+    if (m[3]) return null;
+    let v = Number(m[1]);
+    if (m[2] || v > 1) v = v / 100;
+    return v >= 0 && v <= 1 ? Math.round(v * 1000) / 1000 : null;
+  }
+  return null;
+}
+
 module.exports = {
+  extractProbability,
   dispatch, dispatchWithRetry, extractVerdict, isRetryable, looksDegenerate, dataTermsRefusal,
   classifySeatError, isSandboxBlocked, SANDBOX_BLOCKED,
 };

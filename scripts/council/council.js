@@ -313,15 +313,60 @@ function printResult(result, label = '') {
   console.log(result.ok ? result.text : `[FAILED: ${result.error}]`);
 }
 
+/**
+ * Anonymise seat answers before any model reads another's (2026-10-05). Models defer to
+ * peers they can identify (Choi et al., arXiv 2510.07517) and judges favour their own
+ * family (arXiv 2410.21819), so blocks carry letters only. The letter order is shuffled by
+ * a seed (the run tag), so no seat is always "A", and is deterministic per seed so a run
+ * can be re-read. Returns { blocks, key: { A: 'claude', ... } } — the key is for the human.
+ */
+const MODEL_NAME_RE = /\b(claude|opus|sonnet|haiku|fable|anthropic|gpt-?\d[\w.-]*|chatgpt|openai|codex|astra|grok[\w.-]*|xai|x\.ai|gemini[\w.-]*|google deepmind|deepseek|qwen[\w.-]*|groq|llama[\w.-]*|mistral)\b/gi;
+
+function anonymize(results, seed = '', maxChars = SYNTH_BLOCK_MAX_CHARS) {
+  const ok = results.filter(r => r.ok);
+  const hash = s => { let h = 2166136261; for (const c of String(s)) { h ^= c.charCodeAt(0); h = Math.imul(h, 16777619); } return h >>> 0; };
+  const order = ok.map(r => ({ r, k: hash(`${seed}|${r.provider}`) })).sort((a, b) => a.k - b.k).map(x => x.r);
+  const key = {};
+  const blocks = order.map((r, i) => {
+    const letter = String.fromCharCode(65 + i);
+    key[letter] = r.provider;
+    // Scrub self-identification inside the text too (review 10/05): "As Claude…", "I am
+    // Grok" leaked identity straight past the letter labels.
+    const scrubbed = truncate(r.text, maxChars).replace(MODEL_NAME_RE, '[model]');
+    return `--- Answer ${letter} ---\n${scrubbed}`;
+  }).join('\n\n');
+  return { blocks, key };
+}
+
+/**
+ * Selector, not blender (2026-10-05): judge-selection beat blended synthesis 0.81 vs 0.18
+ * in arXiv 2603.20324, and on 10/03 the haiku synth INVENTED a client claim ("missed calls
+ * answered in 6 seconds") that no seat had made. The selector picks one answer, shows
+ * where the answers disagree, and may not introduce facts.
+ */
+function selectorPrompt(question, blocks) {
+  return `Several independent answers to the same question follow, labelled by letter only. You are the SELECTOR for a human director.\n` +
+    `1. BEST: <letter> — the single strongest answer and the one-line reason it beats the others.\n` +
+    `2. DISAGREE — each point where the answers conflict: which letters say what, and which side the evidence in the answers supports.\n` +
+    `3. MISSED — anything correct that only a non-selected answer raised.\n` +
+    `Rules: you must not add facts, numbers, names or claims that appear in none of the answers; if the answers lack something, say "not covered". No preamble.\n\n` +
+    `QUESTION: ${question}\n\nANSWERS:\n${blocks}`;
+}
+
 /** Synthesis with a provider fallback chain instead of a hardcoded single seat. */
 async function synthesize(question, results, env, tag = '', forceBudget = false, privateContent = false) {
-  const blocks = results
-    .filter(r => r.ok)
-    .map(r => `--- ${r.provider.toUpperCase()} (${r.model}) ---\n${truncate(r.text, SYNTH_BLOCK_MAX_CHARS)}`)
-    .join('\n\n');
-  const prompt = `Multiple AI models answered the same question. Synthesize for the human director:\n1. CONSENSUS — points most/all agree on (terse bullets).\n2. DISAGREEMENTS — where they diverge, who says what, and which position looks stronger.\n3. UNIQUE — any insight only one model surfaced that deserves attention.\nNo preamble.\n\nQUESTION: ${question}\n\nANSWERS:\n${blocks}`;
+  // Review fixes 10/05: selecting among one answer is pointless; a seat that just failed in
+  // this convene is skipped as selector instead of burning its 120s timeout first; the
+  // letter key goes to stdout (and so into the saved transcript), not stderr only.
+  if (results.filter(r => r.ok).length < 2) {
+    return { provider: 'synth', model: 'none', ok: false, text: '', ms: 0, error: 'fewer than 2 answers — nothing to select between' };
+  }
+  const { blocks, key } = anonymize(results, tag || question);
+  const prompt = selectorPrompt(question, blocks);
+  console.log(`[council] selector key: ${Object.entries(key).map(([l, s]) => `${l}=${s}`).join(' ')}`);
+  const failedNow = new Set(results.filter(r => !r.ok).map(r => r.provider));
   let last = { provider: 'synth', model: 'none', ok: false, text: '', ms: 0, error: 'no synth seat available' };
-  for (const seat of SYNTH_FALLBACK_CHAIN) {
+  for (const seat of SYNTH_FALLBACK_CHAIN.filter(s => !failedNow.has(s))) {
     // Through the dispatch boundary: a FAILED fallback attempt billed too, and
     // used to vanish - only the final result ever reached the ledger.
     last = await dispatch(seat, prompt, env, { timeoutMs: 120_000 }, { tag: `${tag}#synth`, kind: 'synth', forceBudget, privateContent });
@@ -342,11 +387,11 @@ async function debateRound(question, seats, round1, env, seatOpts, tag, decideSu
   const promises = seats.map((seat, i) => {
     const mine = round1[i];
     if (!mine.ok) return Promise.resolve(mine); // a seat that failed round 1 sits the debate out
-    const others = okResults
-      .filter(r => r !== mine)
-      .map(r => `--- ${r.provider.toUpperCase()} ---\n${truncate(r.text, DEBATE_BLOCK_MAX_CHARS)}`)
-      .join('\n\n');
-    const prompt = `QUESTION: ${question}\n\nYOUR ROUND-1 ANSWER:\n${truncate(mine.text, DEBATE_BLOCK_MAX_CHARS)}\n\nOTHER COUNCIL MEMBERS' ANSWERS:\n${others}\n\nROUND 2: Where are the others wrong or missing something you caught? Where are they right and you were wrong? Then give your REVISED final answer. Be terse — revised answer only needs what changed plus your final position.${decideSuffix}`;
+    // Anonymised (2026-10-05): identity-driven deference is the documented way debate
+    // flips correct answers to wrong ones (arXiv 2510.07517, 2509.05396). Debate itself
+    // adds little over voting (arXiv 2508.17536) — keep --rounds 2 for rare use only.
+    const { blocks: others } = anonymize(okResults.filter(r => r !== mine), `${tag}|${seat}`, DEBATE_BLOCK_MAX_CHARS);
+    const prompt = `QUESTION: ${question}\n\nYOUR ROUND-1 ANSWER:\n${truncate(mine.text, DEBATE_BLOCK_MAX_CHARS)}\n\nOTHER INDEPENDENT ANSWERS (unattributed):\n${others}\n\nROUND 2: Name the single strongest objection to your answer among these. Does it change your answer? If yes, give the revised answer; if no, say why in one line. Change only on evidence, not on agreement. Be terse.${decideSuffix}`;
     // ^ decideSuffix WAS MISSING here (found by the claude seat reviewing this
     // pass, 2026-08-21): under --decide --rounds 2 no seat was ever ASKED for a
     // round-2 verdict, extraction was nonetheless strict, and finalResults is
@@ -562,10 +607,13 @@ async function main() {
   // "It depends" is the yes-man's exit hatch — close it. Extraction is STRICT in
   // this mode (dispatch.js): the VERDICT line must sit in the last 3 non-empty
   // lines, so a seat cannot "decide" in paragraph two and hedge for ten more.
+  // P(success) line added 2026-10-05: a forced probability exposes fence-sitting that a
+  // neutral MODIFY hides (Gemini: 90% MODIFY), and is what scores.js grades per seat.
+  const probLine = '\nThen one final line: "P(success): NN%" — your probability that the plan/answer succeeds as proposed. A bare 50% is allowed only if you truly have no lean.';
   const decideSuffix = args.binary
-    ? '\n\n[DECISION MODE — BINARY] End your answer with exactly one line: "VERDICT: GO" or "VERDICT: NO-GO" followed by " — " and a one-clause reason. There is no MODIFY: if the work is not ready, that is NO-GO, and the clause must name the single blocker.'
+    ? '\n\n[DECISION MODE — BINARY] End your answer with exactly one line: "VERDICT: GO" or "VERDICT: NO-GO" followed by " — " and a one-clause reason. There is no MODIFY: if the work is not ready, that is NO-GO, and the clause must name the single blocker.' + probLine
     : args.decide
-      ? '\n\n[DECISION MODE] End your answer with exactly one line: "VERDICT: GO", "VERDICT: NO-GO", or "VERDICT: MODIFY" followed by " — " and a one-clause reason. You MUST pick one; "it depends" is not a verdict. If you pick MODIFY, the clause must name the single change that flips you to GO.'
+      ? '\n\n[DECISION MODE] End your answer with exactly one line: "VERDICT: GO", "VERDICT: NO-GO", or "VERDICT: MODIFY" followed by " — " and a one-clause reason. You MUST pick one; "it depends" is not a verdict. If you pick MODIFY, the clause must name the single change that flips you to GO.' + probLine
       : '';
 
   // Snapshot each seat's PRIOR verdict record before dispatching. Ledger rows are
@@ -740,4 +788,4 @@ if (require.main === module) {
   });
 }
 
-module.exports = { parseArgs, applyPrivacyPolicy, applyVisionPolicy, assignLenses, preflightTimeoutMs };
+module.exports = { parseArgs, applyPrivacyPolicy, applyVisionPolicy, assignLenses, preflightTimeoutMs, anonymize, selectorPrompt };

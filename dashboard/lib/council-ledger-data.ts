@@ -64,7 +64,7 @@ const METERED = new Set(['xai', 'deepseek', 'groq', 'cerebras']);
  * vs 65.5s real. Negative filter: rows that predate `kind` are real work.
  * Mirrors scripts/council/ledger.js isTimingRow.
  */
-const NON_TIMING_KINDS = new Set(['probe', 'preflight']);
+const NON_TIMING_KINDS = new Set(['probe', 'preflight', 'resolution']); // resolution: scores.js outcome rows (10/05) — not a call
 const isTimingRow = (e: LedgerEntry) => !NON_TIMING_KINDS.has((e as { kind?: string }).kind ?? '');
 
 let cache: { at: number; value: CouncilLedgerData } | null = null;
